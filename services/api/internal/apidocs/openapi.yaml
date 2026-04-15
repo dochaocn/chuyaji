@@ -1,38 +1,29 @@
 openapi: 3.0.3
 info:
   title: 初芽记 chuyaji API
-  version: "0.1.0"
+  version: "0.2.0"
   description: |
-    家庭孕期与婴幼儿健康记录 HTTP API（Gin + SQLite）。
+    宝宝 / 宝妈双工作台 HTTP API（Gin + SQLite）。
 
-    **在线文档**：服务启动后浏览器打开 `/docs`（Stoplight Elements，支持 Try it）。
-
-    **认证**：除登录、健康检查、公开附件外，请求头需携带 `Authorization: Bearer <JWT>`。
-    登录接口 `POST /api/v1/auth/wechat` 的响应里返回 `token`。
-
-    **开发**：当服务端 `CHUYAJI_DEV_MODE=true` 时，登录 body 可使用 `{"code":"dev"}` 走固定测试用户（勿用于生产）。
+    认证方式：除登录、健康检查、公开附件外，请求头需携带 `Authorization: Bearer <JWT>`。
+    开发模式：当服务端 `CHUYAJI_DEV_MODE=true` 时，登录 body 可使用 `{"code":"dev"}`。
 
 servers:
   - url: http://127.0.0.1:8282
-    description: 本地默认（与 CHUYAJI_HTTP_ADDR 一致时可改）
+    description: 本地默认
   - url: /
-    description: 相对当前访问的主机与端口
+    description: 相对当前主机与端口
 
 tags:
   - name: Meta
-    description: 健康与文档
   - name: Auth
-    description: 登录与当前用户
-  - name: Family
-    description: 家庭
   - name: Baby
-    description: 宝宝
-  - name: Record
-    description: 记录
+  - name: BabyRecord
+  - name: Mother
+  - name: MotherRecord
+  - name: Dashboard
   - name: Attachment
-    description: 附件与上传
   - name: Public
-    description: 公开资源（无需 JWT）
 
 paths:
   /healthz:
@@ -51,7 +42,7 @@ paths:
   /api/v1/auth/wechat:
     post:
       tags: [Auth]
-      summary: 微信 code 登录（或 dev code）
+      summary: 微信 code 登录
       requestBody:
         required: true
         content:
@@ -60,7 +51,7 @@ paths:
               $ref: "#/components/schemas/WechatLoginRequest"
       responses:
         "200":
-          description: 成功，返回 JWT 与用户信息
+          description: 返回 JWT 与用户信息
           content:
             application/json:
               schema:
@@ -69,13 +60,11 @@ paths:
           $ref: "#/components/responses/BadRequest"
         "401":
           $ref: "#/components/responses/Unauthorized"
-        "500":
-          $ref: "#/components/responses/ServerError"
 
   /api/v1/me:
     get:
       tags: [Auth]
-      summary: 当前用户信息
+      summary: 当前用户
       security:
         - bearerAuth: []
       responses:
@@ -90,118 +79,12 @@ paths:
         "404":
           $ref: "#/components/responses/NotFound"
 
-  /api/v1/families:
-    get:
-      tags: [Family]
-      summary: 当前用户所在家庭列表
-      security:
-        - bearerAuth: []
-      responses:
-        "200":
-          description: 成功
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  items:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/Family"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "500":
-          $ref: "#/components/responses/ServerError"
-    post:
-      tags: [Family]
-      summary: 创建家庭
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CreateFamilyRequest"
-      responses:
-        "201":
-          description: 已创建
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Family"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "500":
-          $ref: "#/components/responses/ServerError"
-
-  /api/v1/families/join:
-    post:
-      tags: [Family]
-      summary: 通过邀请码加入家庭
-      security:
-        - bearerAuth: []
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/JoinFamilyRequest"
-      responses:
-        "200":
-          description: 成功（已加入或已是成员）
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Family"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/ServerError"
-
-  /api/v1/families/{id}:
-    get:
-      tags: [Family]
-      summary: 家庭详情
-      security:
-        - bearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/idPath"
-      responses:
-        "200":
-          description: 成功
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Family"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-
   /api/v1/babies:
     get:
       tags: [Baby]
-      summary: 某家庭下的宝宝列表
+      summary: 当前用户的宝宝列表
       security:
         - bearerAuth: []
-      parameters:
-        - name: family_id
-          in: query
-          required: true
-          schema:
-            type: integer
-            format: int64
       responses:
         "200":
           description: 成功
@@ -214,17 +97,9 @@ paths:
                     type: array
                     items:
                       $ref: "#/components/schemas/Baby"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "500":
-          $ref: "#/components/responses/ServerError"
     post:
       tags: [Baby]
-      summary: 创建宝宝
+      summary: 创建宝宝档案
       security:
         - bearerAuth: []
       requestBody:
@@ -242,12 +117,6 @@ paths:
                 $ref: "#/components/schemas/Baby"
         "400":
           $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "500":
-          $ref: "#/components/responses/ServerError"
 
   /api/v1/babies/{id}:
     get:
@@ -256,7 +125,7 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/babyIdPath"
+        - $ref: "#/components/parameters/idPath"
       responses:
         "200":
           description: 成功
@@ -264,21 +133,17 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Baby"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
         "403":
           $ref: "#/components/responses/Forbidden"
         "404":
           $ref: "#/components/responses/NotFound"
     patch:
       tags: [Baby]
-      summary: 更新宝宝
+      summary: 更新宝宝档案
       security:
         - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/babyIdPath"
+        - $ref: "#/components/parameters/idPath"
       requestBody:
         required: true
         content:
@@ -292,187 +157,127 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Baby"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/ServerError"
     delete:
       tags: [Baby]
-      summary: 删除宝宝
+      summary: 删除宝宝档案
       security:
         - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/babyIdPath"
+        - $ref: "#/components/parameters/idPath"
       responses:
         "204":
           description: 已删除
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "500":
-          $ref: "#/components/responses/ServerError"
 
-  /api/v1/babies/{id}/records:
+  /api/v1/dashboard/baby:
     get:
-      tags: [Record]
-      summary: 宝宝记录分页列表
+      tags: [Dashboard]
+      summary: 宝宝工作台聚合信息
       security:
         - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/babyIdPath"
-        - name: limit
+        - name: baby_id
           in: query
           schema:
             type: integer
-            default: 20
-            maximum: 100
-        - name: cursor
-          in: query
-          description: 上一页响应中的 next_cursor
-          schema:
-            type: string
+            format: int64
       responses:
         "200":
           description: 成功
           content:
             application/json:
               schema:
-                type: object
-                properties:
-                  items:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/Record"
-                  next_cursor:
-                    type: string
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "500":
-          $ref: "#/components/responses/ServerError"
-    post:
-      tags: [Record]
-      summary: 新建记录
+                $ref: "#/components/schemas/BabyDashboard"
+
+  /api/v1/babies/{id}/records:
+    get:
+      tags: [BabyRecord]
+      summary: 宝宝记录分页列表
       security:
         - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/babyIdPath"
+        - $ref: "#/components/parameters/idPath"
+        - $ref: "#/components/parameters/limitQuery"
+        - $ref: "#/components/parameters/cursorQuery"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BabyRecordPage"
+    post:
+      tags: [BabyRecord]
+      summary: 创建宝宝记录
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/idPath"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/CreateRecordRequest"
+              $ref: "#/components/schemas/CreateBabyRecordRequest"
       responses:
         "201":
           description: 已创建
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Record"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "500":
-          $ref: "#/components/responses/ServerError"
+                $ref: "#/components/schemas/BabyRecord"
 
   /api/v1/records/{id}:
     get:
-      tags: [Record]
-      summary: 记录详情
+      tags: [BabyRecord]
+      summary: 宝宝记录详情
       security:
         - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/recordIdPath"
+        - $ref: "#/components/parameters/idPath"
       responses:
         "200":
           description: 成功
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Record"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
+                $ref: "#/components/schemas/BabyRecord"
     patch:
-      tags: [Record]
-      summary: 更新记录
+      tags: [BabyRecord]
+      summary: 更新宝宝记录
       security:
         - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/recordIdPath"
+        - $ref: "#/components/parameters/idPath"
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PatchRecordRequest"
+              $ref: "#/components/schemas/PatchBabyRecordRequest"
       responses:
         "200":
           description: 成功
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/Record"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/ServerError"
+                $ref: "#/components/schemas/BabyRecord"
     delete:
-      tags: [Record]
-      summary: 删除记录（级联删除附件元数据）
+      tags: [BabyRecord]
+      summary: 删除宝宝记录
       security:
         - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/recordIdPath"
+        - $ref: "#/components/parameters/idPath"
       responses:
         "204":
           description: 已删除
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/ServerError"
 
-  /api/v1/records/{id}/attachments:
+  /api/v1/mothers:
     get:
-      tags: [Attachment]
-      summary: 记录下的附件列表
+      tags: [Mother]
+      summary: 当前用户的宝妈档案列表
       security:
         - bearerAuth: []
-      parameters:
-        - $ref: "#/components/parameters/recordIdPath"
       responses:
         "200":
           description: 成功
@@ -484,24 +289,190 @@ paths:
                   items:
                     type: array
                     items:
-                      $ref: "#/components/schemas/Attachment"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/ServerError"
+                      $ref: "#/components/schemas/Mother"
     post:
-      tags: [Attachment]
-      summary: 登记附件（URL 方式，非本地上传）
+      tags: [Mother]
+      summary: 创建宝妈档案
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMotherRequest"
+      responses:
+        "201":
+          description: 已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Mother"
+        "409":
+          description: 当前用户已存在档案
+
+  /api/v1/mothers/{id}:
+    get:
+      tags: [Mother]
+      summary: 宝妈档案详情
       security:
         - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/recordIdPath"
+        - $ref: "#/components/parameters/idPath"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Mother"
+    patch:
+      tags: [Mother]
+      summary: 更新宝妈档案
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/idPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchMotherRequest"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Mother"
+
+  /api/v1/dashboard/mother:
+    get:
+      tags: [Dashboard]
+      summary: 宝妈工作台聚合信息
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: mother_id
+          in: query
+          schema:
+            type: integer
+            format: int64
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MotherDashboard"
+
+  /api/v1/mothers/{id}/records:
+    get:
+      tags: [MotherRecord]
+      summary: 宝妈记录分页列表
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/idPath"
+        - $ref: "#/components/parameters/limitQuery"
+        - $ref: "#/components/parameters/cursorQuery"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MotherRecordPage"
+    post:
+      tags: [MotherRecord]
+      summary: 创建宝妈记录
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/idPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateMotherRecordRequest"
+      responses:
+        "201":
+          description: 已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MotherRecord"
+
+  /api/v1/mother-records/{id}:
+    get:
+      tags: [MotherRecord]
+      summary: 宝妈记录详情
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/idPath"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MotherRecord"
+    patch:
+      tags: [MotherRecord]
+      summary: 更新宝妈记录
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/idPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PatchMotherRecordRequest"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MotherRecord"
+    delete:
+      tags: [MotherRecord]
+      summary: 删除宝妈记录
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/idPath"
+      responses:
+        "204":
+          description: 已删除
+
+  /api/v1/records/{id}/attachments:
+    get:
+      tags: [Attachment]
+      summary: 宝宝记录附件列表
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/idPath"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttachmentPage"
+    post:
+      tags: [Attachment]
+      summary: 宝宝记录登记附件 URL
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/idPath"
       requestBody:
         required: true
         content:
@@ -515,25 +486,51 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/Attachment"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/ServerError"
+
+  /api/v1/mother-records/{id}/attachments:
+    get:
+      tags: [Attachment]
+      summary: 宝妈记录附件列表
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/idPath"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AttachmentPage"
+    post:
+      tags: [Attachment]
+      summary: 宝妈记录登记附件 URL
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/idPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateAttachmentRequest"
+      responses:
+        "201":
+          description: 已创建
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Attachment"
 
   /api/v1/records/{id}/attachments/upload:
     post:
       tags: [Attachment]
-      summary: multipart 上传文件到服务器（需配置 CHUYAJI_UPLOAD_DIR）
+      summary: 上传宝宝记录附件
       security:
         - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/recordIdPath"
+        - $ref: "#/components/parameters/idPath"
       requestBody:
         required: true
         content:
@@ -547,27 +544,38 @@ paths:
                   format: binary
       responses:
         "201":
-          description: 已保存并登记
+          description: 已上传
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/Attachment"
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "503":
-          description: 未启用本地上传（未设置 CHUYAJI_UPLOAD_DIR）
+
+  /api/v1/mother-records/{id}/attachments/upload:
+    post:
+      tags: [Attachment]
+      summary: 上传宝妈记录附件
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/idPath"
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [file]
+              properties:
+                file:
+                  type: string
+                  format: binary
+      responses:
+        "201":
+          description: 已上传
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorBody"
-        "500":
-          $ref: "#/components/responses/ServerError"
+                $ref: "#/components/schemas/Attachment"
 
   /api/v1/attachments/{id}:
     delete:
@@ -576,25 +584,15 @@ paths:
       security:
         - bearerAuth: []
       parameters:
-        - $ref: "#/components/parameters/attachmentIdPath"
+        - $ref: "#/components/parameters/idPath"
       responses:
         "204":
           description: 已删除
-        "400":
-          $ref: "#/components/responses/BadRequest"
-        "401":
-          $ref: "#/components/responses/Unauthorized"
-        "403":
-          $ref: "#/components/responses/Forbidden"
-        "404":
-          $ref: "#/components/responses/NotFound"
-        "500":
-          $ref: "#/components/responses/ServerError"
 
   /api/v1/p/{token}:
     get:
       tags: [Public]
-      summary: 通过 share_token 读取本机托管的附件文件（图片等）
+      summary: 匿名读取服务端托管附件
       parameters:
         - name: token
           in: path
@@ -603,14 +601,9 @@ paths:
             type: string
       responses:
         "200":
-          description: 文件流
-          content:
-            application/octet-stream:
-              schema:
-                type: string
-                format: binary
+          description: 返回文件流
         "404":
-          description: 未找到
+          description: 不存在
 
 components:
   securitySchemes:
@@ -626,67 +619,49 @@ components:
       required: true
       schema:
         type: integer
-        format: uint64
-      description: 资源 ID（家庭）
-    babyIdPath:
-      name: id
-      in: path
-      required: true
+        format: int64
+    limitQuery:
+      name: limit
+      in: query
       schema:
         type: integer
-        format: uint64
-      description: 宝宝 ID
-    recordIdPath:
-      name: id
-      in: path
-      required: true
+        minimum: 1
+        maximum: 100
+        default: 20
+    cursorQuery:
+      name: cursor
+      in: query
       schema:
-        type: integer
-        format: uint64
-      description: 记录 ID
-    attachmentIdPath:
-      name: id
-      in: path
-      required: true
-      schema:
-        type: integer
-        format: uint64
-      description: 附件 ID
+        type: string
 
   responses:
     BadRequest:
-      description: 请求不合法
+      description: 请求参数错误
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ErrorBody"
+            $ref: "#/components/schemas/Error"
     Unauthorized:
-      description: 未认证或 token 无效
+      description: 未认证
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ErrorBody"
+            $ref: "#/components/schemas/Error"
     Forbidden:
-      description: 无权限
+      description: 无权访问
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ErrorBody"
+            $ref: "#/components/schemas/Error"
     NotFound:
       description: 资源不存在
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ErrorBody"
-    ServerError:
-      description: 服务器错误
-      content:
-        application/json:
-          schema:
-            $ref: "#/components/schemas/ErrorBody"
+            $ref: "#/components/schemas/Error"
 
   schemas:
-    ErrorBody:
+    Error:
       type: object
       properties:
         error:
@@ -698,7 +673,18 @@ components:
       properties:
         code:
           type: string
-          description: 微信 wx.login 的 code；开发模式可为 dev
+          description: 微信登录 code，开发模式可传 dev
+
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        nickname:
+          type: string
+        avatar_url:
+          type: string
 
     WechatLoginResponse:
       type: object
@@ -708,81 +694,53 @@ components:
         expires_in:
           type: integer
           format: int64
-          description: 秒
         user:
           $ref: "#/components/schemas/User"
-
-    User:
-      type: object
-      properties:
-        id:
-          type: integer
-          format: uint64
-        nickname:
-          type: string
-        avatar_url:
-          type: string
-
-    Family:
-      type: object
-      properties:
-        id:
-          type: integer
-          format: uint64
-        name:
-          type: string
-        invite_code:
-          type: string
-
-    CreateFamilyRequest:
-      type: object
-      required: [name]
-      properties:
-        name:
-          type: string
-          maxLength: 64
-
-    JoinFamilyRequest:
-      type: object
-      required: [invite_code]
-      properties:
-        invite_code:
-          type: string
 
     Baby:
       type: object
       properties:
         id:
           type: integer
-          format: uint64
-        family_id:
+          format: int64
+        user_id:
           type: integer
-          format: uint64
+          format: int64
         nickname:
+          type: string
+        gender:
+          type: string
+        avatar_url:
           type: string
         lmp_date:
           type: string
           format: date-time
-          nullable: true
         edd_date:
           type: string
           format: date-time
-          nullable: true
         birth_date:
           type: string
           format: date-time
-          nullable: true
-        gender:
+        birth_weight_g:
+          type: integer
+        birth_height_cm:
+          type: number
+        birth_hospital:
+          type: string
+        feeding_type:
+          type: string
+        note:
           type: string
 
     CreateBabyRequest:
       type: object
-      required: [family_id, nickname]
+      required: [nickname]
       properties:
-        family_id:
-          type: integer
-          format: uint64
         nickname:
+          type: string
+        gender:
+          type: string
+        avatar_url:
           type: string
         lmp_date:
           type: string
@@ -793,35 +751,30 @@ components:
         birth_date:
           type: string
           format: date-time
-        gender:
+        birth_weight_g:
+          type: integer
+        birth_height_cm:
+          type: number
+        birth_hospital:
+          type: string
+        feeding_type:
+          type: string
+        note:
           type: string
 
     PatchBabyRequest:
-      type: object
-      properties:
-        nickname:
-          type: string
-        lmp_date:
-          type: string
-          format: date-time
-        edd_date:
-          type: string
-          format: date-time
-        birth_date:
-          type: string
-          format: date-time
-        gender:
-          type: string
+      allOf:
+        - $ref: "#/components/schemas/CreateBabyRequest"
 
-    Record:
+    BabyRecord:
       type: object
       properties:
         id:
           type: integer
-          format: uint64
+          format: int64
         baby_id:
           type: integer
-          format: uint64
+          format: int64
         phase:
           type: string
           enum: [prenatal, postnatal]
@@ -832,14 +785,11 @@ components:
           format: date-time
         gestational_weeks:
           type: integer
-          nullable: true
         gestational_days:
           type: integer
-          nullable: true
         summary:
           type: string
         payload:
-          description: 任意 JSON 对象
           type: object
           additionalProperties: true
         created_at:
@@ -849,7 +799,7 @@ components:
           type: string
           format: date-time
 
-    CreateRecordRequest:
+    CreateBabyRecordRequest:
       type: object
       required: [phase, record_type, occurred_at]
       properties:
@@ -871,35 +821,151 @@ components:
           type: object
           additionalProperties: true
 
-    PatchRecordRequest:
+    PatchBabyRecordRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateBabyRecordRequest"
+
+    BabyRecordPage:
       type: object
       properties:
-        phase:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/BabyRecord"
+        next_cursor:
           type: string
+
+    Mother:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        user_id:
+          type: integer
+          format: int64
+        name:
+          type: string
+        birthday:
+          type: string
+          format: date-time
+        height_cm:
+          type: number
+        pre_pregnancy_weight_kg:
+          type: number
+        blood_type:
+          type: string
+        allergy_history:
+          type: string
+        medical_history:
+          type: string
+        status:
+          type: string
+          enum: [pregnant, postpartum, parenting]
+        delivery_date:
+          type: string
+          format: date-time
+        note:
+          type: string
+
+    CreateMotherRequest:
+      type: object
+      properties:
+        name:
+          type: string
+        birthday:
+          type: string
+          format: date-time
+        height_cm:
+          type: number
+        pre_pregnancy_weight_kg:
+          type: number
+        blood_type:
+          type: string
+        allergy_history:
+          type: string
+        medical_history:
+          type: string
+        status:
+          type: string
+          enum: [pregnant, postpartum, parenting]
+        delivery_date:
+          type: string
+          format: date-time
+        note:
+          type: string
+
+    PatchMotherRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateMotherRequest"
+
+    MotherRecord:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        mother_id:
+          type: integer
+          format: int64
         record_type:
           type: string
         occurred_at:
           type: string
           format: date-time
-        gestational_weeks:
-          type: integer
-        gestational_days:
-          type: integer
+        summary:
+          type: string
+        payload:
+          type: object
+          additionalProperties: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    CreateMotherRecordRequest:
+      type: object
+      required: [record_type, occurred_at]
+      properties:
+        record_type:
+          type: string
+        occurred_at:
+          type: string
+          format: date-time
         summary:
           type: string
         payload:
           type: object
           additionalProperties: true
 
+    PatchMotherRecordRequest:
+      allOf:
+        - $ref: "#/components/schemas/CreateMotherRecordRequest"
+
+    MotherRecordPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/MotherRecord"
+        next_cursor:
+          type: string
+
     Attachment:
       type: object
       properties:
         id:
           type: integer
-          format: uint64
-        record_id:
+          format: int64
+        owner_type:
+          type: string
+          enum: [baby_record, mother_record]
+        owner_id:
           type: integer
-          format: uint64
+          format: int64
         url:
           type: string
         thumb_url:
@@ -909,6 +975,14 @@ components:
         size:
           type: integer
           format: int64
+
+    AttachmentPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Attachment"
 
     CreateAttachmentRequest:
       type: object
@@ -923,3 +997,37 @@ components:
         size:
           type: integer
           format: int64
+
+    BabyDashboard:
+      type: object
+      properties:
+        profile:
+          $ref: "#/components/schemas/Baby"
+        phase_summary:
+          type: object
+          properties:
+            stage:
+              type: string
+              enum: [prenatal, postnatal]
+            record_count:
+              type: integer
+        latest_records:
+          type: array
+          items:
+            $ref: "#/components/schemas/BabyRecord"
+        growth_summary:
+          type: object
+          additionalProperties: true
+
+    MotherDashboard:
+      type: object
+      properties:
+        profile:
+          $ref: "#/components/schemas/Mother"
+        health_summary:
+          type: object
+          additionalProperties: true
+        latest_records:
+          type: array
+          items:
+            $ref: "#/components/schemas/MotherRecord"

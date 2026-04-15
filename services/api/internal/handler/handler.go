@@ -21,32 +21,20 @@ func New(db *gorm.DB, cfg *config.Config) *Handler {
 	return &Handler{DB: db, Cfg: cfg}
 }
 
-func (h *Handler) familyIDsForUser(uid uint64) ([]uint64, error) {
-	var ids []uint64
-	err := h.DB.Model(&model.FamilyMember{}).Where("user_id = ?", uid).Pluck("family_id", &ids).Error
-	return ids, err
-}
-
-func (h *Handler) isFamilyMember(uid, familyID uint64) (bool, error) {
-	var n int64
-	err := h.DB.Model(&model.FamilyMember{}).Where("user_id = ? AND family_id = ?", uid, familyID).Count(&n).Error
-	return n > 0, err
-}
-
-func (h *Handler) babyFamilyID(babyID uint64) (uint64, error) {
+func (h *Handler) babyUserID(babyID uint64) (uint64, error) {
 	var b model.Baby
 	if err := h.DB.First(&b, babyID).Error; err != nil {
 		return 0, err
 	}
-	return b.FamilyID, nil
+	return b.UserID, nil
 }
 
 func (h *Handler) canAccessBaby(uid, babyID uint64) (bool, error) {
-	fid, err := h.babyFamilyID(babyID)
+	ownerID, err := h.babyUserID(babyID)
 	if err != nil {
 		return false, err
 	}
-	return h.isFamilyMember(uid, fid)
+	return ownerID == uid, nil
 }
 
 func (h *Handler) canAccessRecord(uid, recordID uint64) (bool, error) {
@@ -55,6 +43,22 @@ func (h *Handler) canAccessRecord(uid, recordID uint64) (bool, error) {
 		return false, err
 	}
 	return h.canAccessBaby(uid, r.BabyID)
+}
+
+func (h *Handler) canAccessMother(uid, motherID uint64) (bool, error) {
+	var m model.Mother
+	if err := h.DB.First(&m, motherID).Error; err != nil {
+		return false, err
+	}
+	return m.UserID == uid, nil
+}
+
+func (h *Handler) canAccessMotherRecord(uid, recordID uint64) (bool, error) {
+	var r model.MotherRecord
+	if err := h.DB.First(&r, recordID).Error; err != nil {
+		return false, err
+	}
+	return h.canAccessMother(uid, r.MotherID)
 }
 
 // EncodeCursor packs occurred_at + id for keyset pagination (records sorted by occurred_at DESC, id DESC).

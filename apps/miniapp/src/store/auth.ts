@@ -1,5 +1,6 @@
 import { defineStore } from "pinia";
 import { request } from "@/api/http";
+import { useSessionStore } from "@/store/session";
 
 interface LoginResp {
   token: string;
@@ -38,6 +39,7 @@ export const useAuthStore = defineStore("auth", {
       });
       this.setToken(data.token);
       this.userId = data.user.id;
+      useSessionStore().clearFamilyCache();
       return data;
     },
     logout() {
@@ -45,6 +47,8 @@ export const useAuthStore = defineStore("auth", {
       this.userId = 0;
       try {
         uni.removeStorageSync("chuyaji_token");
+        uni.removeStorageSync("chuyaji_baby_id");
+        uni.removeStorageSync("chuyaji_mother_id");
       } catch {
         /* ignore */
       }

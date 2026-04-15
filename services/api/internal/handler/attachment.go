@@ -14,7 +14,8 @@ import (
 
 type attachmentOut struct {
 	ID        uint64 `json:"id"`
-	RecordID  uint64 `json:"record_id"`
+	OwnerType string `json:"owner_type"`
+	OwnerID   uint64 `json:"owner_id"`
 	URL       string `json:"url"`
 	ThumbURL  string `json:"thumb_url,omitempty"`
 	SortOrder int    `json:"sort_order"`
@@ -28,18 +29,41 @@ type createAttachmentReq struct {
 	Size      int64  `json:"size"`
 }
 
-func (h *Handler) ListAttachments(c *gin.Context) {
+func attachmentToOut(a *model.Attachment) attachmentOut {
+	return attachmentOut{
+		ID:        a.ID,
+		OwnerType: a.OwnerType,
+		OwnerID:   a.OwnerID,
+		URL:       a.URL,
+		ThumbURL:  a.ThumbURL,
+		SortOrder: a.SortOrder,
+		Size:      a.Size,
+	}
+}
+
+func (h *Handler) ensureAttachmentOwnerAccess(uid, ownerID uint64, ownerType string) (bool, error) {
+	switch ownerType {
+	case "baby_record":
+		return h.canAccessRecord(uid, ownerID)
+	case "mother_record":
+		return h.canAccessMotherRecord(uid, ownerID)
+	default:
+		return false, gorm.ErrRecordNotFound
+	}
+}
+
+func (h *Handler) listAttachmentsByOwner(c *gin.Context, ownerType string) {
 	uid, ok := middleware.UserID(c)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
-	rid, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	ownerID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "bad record id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "bad owner id"})
 		return
 	}
-	ok2, err := h.canAccessRecord(uid, rid)
+	ok2, err := h.ensureAttachmentOwnerAccess(uid, ownerID, ownerType)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
@@ -49,31 +73,29 @@ func (h *Handler) ListAttachments(c *gin.Context) {
 		return
 	}
 	var atts []model.Attachment
-	if err := h.DB.Where("record_id = ?", rid).Order("sort_order ASC, id ASC").Find(&atts).Error; err != nil {
+	if err := h.DB.Where("owner_type = ? AND owner_id = ?", ownerType, ownerID).Order("sort_order ASC, id ASC").Find(&atts).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "query"})
 		return
 	}
 	out := make([]attachmentOut, 0, len(atts))
-	for _, a := range atts {
-		out = append(out, attachmentOut{
-			ID: a.ID, RecordID: a.RecordID, URL: a.URL, ThumbURL: a.ThumbURL, SortOrder: a.SortOrder, Size: a.Size,
-		})
+	for i := range atts {
+		out = append(out, attachmentToOut(&atts[i]))
 	}
 	c.JSON(http.StatusOK, gin.H{"items": out})
 }
 
-func (h *Handler) CreateAttachment(c *gin.Context) {
+func (h *Handler) createAttachmentByOwner(c *gin.Context, ownerType string) {
 	uid, ok := middleware.UserID(c)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
-	rid, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	ownerID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "bad record id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "bad owner id"})
 		return
 	}
-	ok2, err := h.canAccessRecord(uid, rid)
+	ok2, err := h.ensureAttachmentOwnerAccess(uid, ownerID, ownerType)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
@@ -88,7 +110,8 @@ func (h *Handler) CreateAttachment(c *gin.Context) {
 		return
 	}
 	a := model.Attachment{
-		RecordID:  rid,
+		OwnerType: ownerType,
+		OwnerID:   ownerID,
 		URL:       req.URL,
 		ThumbURL:  req.ThumbURL,
 		SortOrder: req.SortOrder,
@@ -98,9 +121,23 @@ func (h *Handler) CreateAttachment(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "create"})
 		return
 	}
-	c.JSON(http.StatusCreated, attachmentOut{
-		ID: a.ID, RecordID: a.RecordID, URL: a.URL, ThumbURL: a.ThumbURL, SortOrder: a.SortOrder, Size: a.Size,
-	})
+	c.JSON(http.StatusCreated, attachmentToOut(&a))
+}
+
+func (h *Handler) ListAttachments(c *gin.Context) {
+	h.listAttachmentsByOwner(c, "baby_record")
+}
+
+func (h *Handler) CreateAttachment(c *gin.Context) {
+	h.createAttachmentByOwner(c, "baby_record")
+}
+
+func (h *Handler) ListMotherAttachments(c *gin.Context) {
+	h.listAttachmentsByOwner(c, "mother_record")
+}
+
+func (h *Handler) CreateMotherAttachment(c *gin.Context) {
+	h.createAttachmentByOwner(c, "mother_record")
 }
 
 func (h *Handler) DeleteAttachment(c *gin.Context) {
@@ -119,7 +156,7 @@ func (h *Handler) DeleteAttachment(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 	}
-	ok2, err := h.canAccessRecord(uid, a.RecordID)
+	ok2, err := h.ensureAttachmentOwnerAccess(uid, a.OwnerID, a.OwnerType)
 	if err != nil || !ok2 {
 		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
 		return

@@ -1,17 +1,26 @@
 {
   "pages": [
-    { "path": "pages/index/index", "style": { "navigationBarTitleText": "初芽记" } },
-    { "path": "pages/privacy/privacy", "style": { "navigationBarTitleText": "隐私说明" } },
-    { "path": "pages/families/index", "style": { "navigationBarTitleText": "我的家庭" } },
-    { "path": "pages/families/create", "style": { "navigationBarTitleText": "创建家庭" } },
-    { "path": "pages/families/join", "style": { "navigationBarTitleText": "加入家庭" } },
-    { "path": "pages/baby/list", "style": { "navigationBarTitleText": "宝宝" } },
-    { "path": "pages/baby/edit", "style": { "navigationBarTitleText": "编辑宝宝" } },
-    { "path": "pages/timeline/index", "style": { "navigationBarTitleText": "成长时间线" } },
-    { "path": "pages/record/detail", "style": { "navigationBarTitleText": "记录详情" } },
-    { "path": "pages/record/edit", "style": { "navigationBarTitleText": "编辑记录" } },
-    { "path": "pages/growth/index", "style": { "navigationBarTitleText": "生长曲线" } }
+    { "path": "pages/baby/home", "style": { "navigationBarTitleText": "宝宝" } },
+    { "path": "pages/mom/home", "style": { "navigationBarTitleText": "宝妈" } },
+    { "path": "pages/baby/profile-edit", "style": { "navigationBarTitleText": "宝宝档案" } },
+    { "path": "pages/baby/record-edit", "style": { "navigationBarTitleText": "宝宝记录" } },
+    { "path": "pages/baby/record-detail", "style": { "navigationBarTitleText": "宝宝记录详情" } },
+    { "path": "pages/baby/growth", "style": { "navigationBarTitleText": "生长趋势" } },
+    { "path": "pages/mom/profile-edit", "style": { "navigationBarTitleText": "宝妈档案" } },
+    { "path": "pages/mom/record-edit", "style": { "navigationBarTitleText": "宝妈记录" } },
+    { "path": "pages/mom/record-detail", "style": { "navigationBarTitleText": "宝妈记录详情" } },
+    { "path": "pages/privacy/privacy", "style": { "navigationBarTitleText": "隐私说明" } }
   ],
+  "tabBar": {
+    "color": "#8b8077",
+    "selectedColor": "#c96b5c",
+    "backgroundColor": "#fffdf9",
+    "borderStyle": "black",
+    "list": [
+      { "pagePath": "pages/baby/home", "text": "宝宝" },
+      { "pagePath": "pages/mom/home", "text": "宝妈" }
+    ]
+  },
   "globalStyle": {
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "初芽记",

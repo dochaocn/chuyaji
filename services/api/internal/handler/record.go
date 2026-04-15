@@ -280,7 +280,7 @@ func (h *Handler) DeleteRecord(c *gin.Context) {
 		return
 	}
 	if err := h.DB.Transaction(func(tx *gorm.DB) error {
-		if err := tx.Where("record_id = ?", id).Delete(&model.Attachment{}).Error; err != nil {
+		if err := tx.Where("owner_type = ? AND owner_id = ?", "baby_record", id).Delete(&model.Attachment{}).Error; err != nil {
 			return err
 		}
 		return tx.Delete(&model.Record{}, id).Error

@@ -1,98 +1,42 @@
 # 初芽记 · 微信小程序（前端）
 
-uni-app（Vue 3 + TypeScript + Pinia）编译为**微信小程序**。界面为「暖春手帐」亲子向视觉；全局样式与 `$cj-*` 变量集中在 `src/uni.scss` 顶部（受 uni-app 注入顺序限制，勿在业务样式里 `@import` token 文件）。
+`apps/miniapp` 现在是一个围绕 `宝宝`、`宝妈` 双 Tab 的微信小程序。默认进入 `宝宝` tab，家庭入口已移除，核心体验改为“工作台 + 档案 + 记录”。
 
-## 项目简介
+## 页面结构
 
-供家长在小程序内登录、管理家庭与宝宝、浏览成长时间线、编辑记录与附件、查看生长数据汇总等。数据来自同仓库 [services/api](../../services/api/README.md) 暴露的 REST API。
+| 页面 | 路径 | 说明 |
+|------|------|------|
+| 宝宝工作台 | `pages/baby/home` | 默认首页，展示宝宝档案摘要、最近记录、生长入口 |
+| 宝宝档案 | `pages/baby/profile-edit` | 编辑昵称、孕期日期、出生资料、喂养等 |
+| 宝宝记录编辑 | `pages/baby/record-edit` | 新增或编辑宝宝记录 |
+| 宝宝记录详情 | `pages/baby/record-detail` | 查看记录详情、附件上传/删除 |
+| 生长趋势 | `pages/baby/growth` | 查看体重趋势摘要与数据点 |
+| 宝妈工作台 | `pages/mom/home` | 展示宝妈档案摘要与最近记录 |
+| 宝妈档案 | `pages/mom/profile-edit` | 编辑基础信息、健康资料、状态 |
+| 宝妈记录编辑 | `pages/mom/record-edit` | 新增或编辑宝妈记录 |
+| 宝妈记录详情 | `pages/mom/record-detail` | 查看详情、附件上传/删除 |
+| 隐私说明 | `pages/privacy/privacy` | 本地记录隐私同意状态 |
 
-## 页面与功能
+## 前端 API 封装
 
-| 页面/模块 | 路径（`pages.json`） | 功能说明 |
-|-----------|----------------------|----------|
-| 首页 | `pages/index/index` | 隐私入口、微信登录/退出、跳转家庭与时间线 |
-| 隐私说明 | `pages/privacy/privacy` | 阅读后本地标记同意（Pinia） |
-| 我的家庭 | `pages/families/index` | 列出家庭、进入宝宝列表、创建/加入家庭 |
-| 创建家庭 | `pages/families/create` | 输入名称创建家庭 |
-| 加入家庭 | `pages/families/join` | 邀请码加入 |
-| 宝宝列表 | `pages/baby/list` | 按家庭列出宝宝、进入时间线或新增宝宝 |
-| 编辑宝宝 | `pages/baby/edit` | 新建/编辑昵称与日期字段 |
-| 成长时间线 | `pages/timeline/index` | 分页拉取记录、进详情/新建记录/生长页 |
-| 记录详情 | `pages/record/detail` | 展示记录、附件列表、上传图、编辑/删除 |
-| 编辑记录 | `pages/record/edit` | 阶段/类型、日期、摘要、扩展字段、草稿 |
-| 生长曲线 | `pages/growth/index` | 从生长类记录汇总体重与日龄、导出 JSON |
+- `src/api/chuyaji.ts`
+  - 宝宝：`apiListBabies`、`apiCreateBaby`、`apiGetBaby`、`apiPatchBaby`
+  - 宝宝记录：`apiListRecords`、`apiCreateRecord`、`apiGetRecord`、`apiPatchRecord`
+  - 宝妈：`apiListMothers`、`apiCreateMother`、`apiGetMother`、`apiPatchMother`
+  - 宝妈记录：`apiListMotherRecords`、`apiCreateMotherRecord`、`apiGetMotherRecord`
+  - 聚合接口：`apiBabyDashboard`、`apiMotherDashboard`
+- `src/api/upload.ts`
+  - 宝宝记录图片上传：`uploadRecordAttachment`
+  - 宝妈记录图片上传：`uploadMotherRecordAttachment`
 
-## 路由（页面路径）
+## 状态管理
 
-小程序使用 **配置式路由**，与 `pages.json` 一致：
-
-```text
-/pages/index/index
-/pages/privacy/privacy
-/pages/families/index
-/pages/families/create
-/pages/families/join
-/pages/baby/list
-/pages/baby/edit
-/pages/timeline/index
-/pages/record/detail
-/pages/record/edit
-/pages/growth/index
-```
-
-页面间通过 `uni.navigateTo` 传 query（如 `baby_id`、`family_id`、`id`）。
-
-## 每页接口大纲
-
-封装均在 `src/api/chuyaji.ts` 与 `src/api/http.ts`；上传在 `src/api/upload.ts`。
-
-**登录 / 会话**
-
-- `POST /api/v1/auth/wechat` — `auth.loginWithWeChatCode`：body `{ code }`，换 JWT（开发可用 `code=dev`，须后端 `CHUYAJI_DEV_MODE=true`）。
-
-**首页**
-
-- 无强制接口；登录成功后仅本地存 token。
-
-**家庭**
-
-- `GET /api/v1/families` — `apiListFamilies`
-- `POST /api/v1/families` — `apiCreateFamily`
-- `POST /api/v1/families/join` — `apiJoinFamily`
-
-**宝宝**
-
-- `GET /api/v1/babies?family_id=` — `apiListBabies`
-- `POST /api/v1/babies` — `apiCreateBaby`
-- `GET /api/v1/babies/:id` — `apiGetBaby`
-- `PATCH /api/v1/babies/:id` — `apiPatchBaby`
-- `DELETE /api/v1/babies/:id` — `apiDeleteBaby`
-
-**记录与时间线**
-
-- `GET /api/v1/babies/:id/records` — `apiListRecords`（`limit`、`cursor`）
-- `POST /api/v1/babies/:id/records` — `apiCreateRecord`
-- `GET /api/v1/records/:id` — `apiGetRecord`
-- `PATCH /api/v1/records/:id` — `apiPatchRecord`
-- `DELETE /api/v1/records/:id` — `apiDeleteRecord`
-
-**附件**
-
-- `GET /api/v1/records/:id/attachments` — `apiListAttachments`
-- `DELETE /api/v1/attachments/:id` — `apiDeleteAttachment`
-- `POST /api/v1/records/:id/attachments/upload` — `uploadRecordAttachment`（`uni.uploadFile`，multipart 字段 `file`）
-
-**生长页导出**
-
-- `utils/export.ts` 内分页调用 `apiListRecords` 拼 JSON，无单独后端导出接口。
-
-## 技术栈
-
-Vue 3、TypeScript、Pinia、uni-app、Vite（`@dcloudio/vite-plugin-uni`）、Sass。
+- `src/store/auth.ts`
+  - 保存 JWT 与当前用户 ID
+- `src/store/session.ts`
+  - 保存 `babyId`、`motherId` 与隐私同意状态
 
 ## 本地启动
-
-**环境**：Node.js（建议 LTS），包管理器使用 **npm**（仓库脚本以 npm 为准）。
 
 ```bash
 cd apps/miniapp
@@ -100,44 +44,30 @@ npm install
 npm run dev:mp-weixin
 ```
 
-若 CLI 提示找不到 `uni`，可尝试：`npx uni -p mp-weixin`。
-
-### 环境变量（`apps/miniapp`）
-
-| 变量 | 含义 |
-|------|------|
-| `VITE_CHUYAJI_API_BASE` | API 根 URL，如 `http://127.0.0.1:8282` 或局域网 `http://192.168.x.x:8282`（真机必填本机 IP） |
-| `VITE_DEV_WECHAT_LOGIN` | 显式 `false` 时强制走真实 `wx.login` code；未设置时开发构建默认倾向 dev 登录（见 `src/api/config.ts`） |
-
-开发环境可编辑 `.env.development`；修改后需重新执行 `npm run dev:mp-weixin`。
-
-### 构建
-
-```bash
-npm run build:mp-weixin
-```
-
-产物目录以 CLI 输出为准，用于上传微信后台或真机预览。
-
-### 类型检查
+类型检查：
 
 ```bash
 npm run type-check
 ```
 
-（若 `tsconfig` 与本地 TypeScript 版本不兼容报错，需单独调整配置，与业务代码无关。）
+## 环境变量
 
-## 部署（小程序侧）
+| 变量 | 说明 |
+|------|------|
+| `VITE_CHUYAJI_API_BASE` | 后端 API 根地址，如 `http://127.0.0.1:8282` |
+| `VITE_DEV_WECHAT_LOGIN` | 设为 `true` 时使用 `code=dev`（须后端 `CHUYAJI_DEV_MODE=true`）；默认不设置则用真实 `wx.login` code |
 
-1. 生产构建后，用微信开发者工具上传；在微信公众平台配置 **request / uploadFile / downloadFile** 合法域名为你的 HTTPS API 域名。
-2. 生产包勿依赖 `code=dev`；后端关闭 `CHUYAJI_DEV_MODE`，并配置与小程序一致的 AppID/Secret。
+## 界面风格
 
-服务器与反代见仓库 [deploy/README.md](../../deploy/README.md)。
+继续沿用 `src/uni.scss` 中的「暖春手帐」视觉语言：
 
-## 联调常见问题（摘要）
+- 米杏底色
+- 陶土红主色
+- 薄荷绿点缀
+- 卡片化布局
+- 圆角与轻阴影
 
-1. **请求超时**：确认本机 `curl` 能访问 `VITE_CHUYAJI_API_BASE` 对应 `/healthz`；真机须用电脑局域网 IP，不可用 `127.0.0.1`。
-2. **40029 invalid code**：小程序 AppID 与后端 `CHUYAJI_WECHAT_*` 不一致或 Secret 错误；本地可临时用 dev 登录。
-3. **主题修改**：改 `src/uni.scss` 顶部 `$cj-*` 变量后重新编译。
+## 当前边界
 
-更完整的后端环境变量与接口表见 [services/api/README.md](../../services/api/README.md)。
+- 生长页当前为“趋势摘要 + 数据点”版本，后续可继续升级为真实折线图
+- 登录以微信 `code` 换票为主；可选 `VITE_DEV_WECHAT_LOGIN=true` + 后端开发模式支持 `code=dev`

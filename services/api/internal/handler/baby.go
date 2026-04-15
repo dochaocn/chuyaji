@@ -11,24 +11,36 @@ import (
 )
 
 type babyOut struct {
-	ID        uint64     `json:"id"`
-	FamilyID  uint64     `json:"family_id"`
-	Nickname  string     `json:"nickname"`
-	LMPDate   *time.Time `json:"lmp_date,omitempty"`
-	EDDDate   *time.Time `json:"edd_date,omitempty"`
-	BirthDate *time.Time `json:"birth_date,omitempty"`
-	Gender    string     `json:"gender,omitempty"`
+	ID            uint64    `json:"id"`
+	UserID        uint64    `json:"user_id"`
+	Nickname      string    `json:"nickname"`
+	Gender        string    `json:"gender,omitempty"`
+	AvatarURL     string    `json:"avatar_url,omitempty"`
+	LMPDate       *time.Time `json:"lmp_date,omitempty"`
+	EDDDate       *time.Time `json:"edd_date,omitempty"`
+	BirthDate     *time.Time `json:"birth_date,omitempty"`
+	BirthWeightG  *int      `json:"birth_weight_g,omitempty"`
+	BirthHeightCM *float64  `json:"birth_height_cm,omitempty"`
+	BirthHospital string    `json:"birth_hospital,omitempty"`
+	FeedingType   string    `json:"feeding_type,omitempty"`
+	Note          string    `json:"note,omitempty"`
 }
 
 func babyToOut(b *model.Baby) babyOut {
 	return babyOut{
-		ID:        b.ID,
-		FamilyID:  b.FamilyID,
-		Nickname:  b.Nickname,
-		LMPDate:   b.LMPDate,
-		EDDDate:   b.EDDDate,
-		BirthDate: b.BirthDate,
-		Gender:    b.Gender,
+		ID:            b.ID,
+		UserID:        b.UserID,
+		Nickname:      b.Nickname,
+		Gender:        b.Gender,
+		AvatarURL:     b.AvatarURL,
+		LMPDate:       b.LMPDate,
+		EDDDate:       b.EDDDate,
+		BirthDate:     b.BirthDate,
+		BirthWeightG:  b.BirthWeightG,
+		BirthHeightCM: b.BirthHeightCM,
+		BirthHospital: b.BirthHospital,
+		FeedingType:   b.FeedingType,
+		Note:          b.Note,
 	}
 }
 
@@ -38,23 +50,8 @@ func (h *Handler) ListBabies(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
-	fidStr := c.Query("family_id")
-	if fidStr == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "family_id required"})
-		return
-	}
-	fid, err := strconv.ParseUint(fidStr, 10, 64)
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "bad family_id"})
-		return
-	}
-	ok2, err := h.isFamilyMember(uid, fid)
-	if err != nil || !ok2 {
-		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
-		return
-	}
 	var babies []model.Baby
-	if err := h.DB.Where("family_id = ?", fid).Order("id ASC").Find(&babies).Error; err != nil {
+	if err := h.DB.Where("user_id = ?", uid).Order("id ASC").Find(&babies).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "query"})
 		return
 	}
@@ -66,12 +63,17 @@ func (h *Handler) ListBabies(c *gin.Context) {
 }
 
 type createBabyReq struct {
-	FamilyID  uint64     `json:"family_id" binding:"required"`
-	Nickname  string     `json:"nickname" binding:"required,max=64"`
-	LMPDate   *time.Time `json:"lmp_date"`
-	EDDDate   *time.Time `json:"edd_date"`
-	BirthDate *time.Time `json:"birth_date"`
-	Gender    string     `json:"gender" binding:"omitempty,max=8"`
+	Nickname      string     `json:"nickname" binding:"required,max=64"`
+	Gender        string     `json:"gender" binding:"omitempty,max=8"`
+	AvatarURL     string     `json:"avatar_url" binding:"omitempty,max=512"`
+	LMPDate       *time.Time `json:"lmp_date"`
+	EDDDate       *time.Time `json:"edd_date"`
+	BirthDate     *time.Time `json:"birth_date"`
+	BirthWeightG  *int       `json:"birth_weight_g"`
+	BirthHeightCM *float64   `json:"birth_height_cm"`
+	BirthHospital string     `json:"birth_hospital" binding:"omitempty,max=128"`
+	FeedingType   string     `json:"feeding_type" binding:"omitempty,max=32"`
+	Note          string     `json:"note" binding:"omitempty,max=1024"`
 }
 
 func (h *Handler) CreateBaby(c *gin.Context) {
@@ -85,18 +87,19 @@ func (h *Handler) CreateBaby(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
 		return
 	}
-	ok2, err := h.isFamilyMember(uid, req.FamilyID)
-	if err != nil || !ok2 {
-		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
-		return
-	}
 	b := model.Baby{
-		FamilyID:  req.FamilyID,
-		Nickname:  req.Nickname,
-		LMPDate:   req.LMPDate,
-		EDDDate:   req.EDDDate,
-		BirthDate: req.BirthDate,
-		Gender:    req.Gender,
+		UserID:        uid,
+		Nickname:      req.Nickname,
+		Gender:        req.Gender,
+		AvatarURL:     req.AvatarURL,
+		LMPDate:       req.LMPDate,
+		EDDDate:       req.EDDDate,
+		BirthDate:     req.BirthDate,
+		BirthWeightG:  req.BirthWeightG,
+		BirthHeightCM: req.BirthHeightCM,
+		BirthHospital: req.BirthHospital,
+		FeedingType:   req.FeedingType,
+		Note:          req.Note,
 	}
 	if err := h.DB.Create(&b).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "create"})
@@ -130,11 +133,17 @@ func (h *Handler) GetBaby(c *gin.Context) {
 }
 
 type patchBabyReq struct {
-	Nickname  *string    `json:"nickname"`
-	LMPDate   *time.Time `json:"lmp_date"`
-	EDDDate   *time.Time `json:"edd_date"`
-	BirthDate *time.Time `json:"birth_date"`
-	Gender    *string    `json:"gender"`
+	Nickname      *string    `json:"nickname"`
+	Gender        *string    `json:"gender"`
+	AvatarURL     *string    `json:"avatar_url"`
+	LMPDate       *time.Time `json:"lmp_date"`
+	EDDDate       *time.Time `json:"edd_date"`
+	BirthDate     *time.Time `json:"birth_date"`
+	BirthWeightG  *int       `json:"birth_weight_g"`
+	BirthHeightCM *float64   `json:"birth_height_cm"`
+	BirthHospital *string    `json:"birth_hospital"`
+	FeedingType   *string    `json:"feeding_type"`
+	Note          *string    `json:"note"`
 }
 
 func (h *Handler) PatchBaby(c *gin.Context) {
@@ -166,6 +175,12 @@ func (h *Handler) PatchBaby(c *gin.Context) {
 	if req.Nickname != nil {
 		b.Nickname = *req.Nickname
 	}
+	if req.Gender != nil {
+		b.Gender = *req.Gender
+	}
+	if req.AvatarURL != nil {
+		b.AvatarURL = *req.AvatarURL
+	}
 	if req.LMPDate != nil {
 		b.LMPDate = req.LMPDate
 	}
@@ -175,8 +190,20 @@ func (h *Handler) PatchBaby(c *gin.Context) {
 	if req.BirthDate != nil {
 		b.BirthDate = req.BirthDate
 	}
-	if req.Gender != nil {
-		b.Gender = *req.Gender
+	if req.BirthWeightG != nil {
+		b.BirthWeightG = req.BirthWeightG
+	}
+	if req.BirthHeightCM != nil {
+		b.BirthHeightCM = req.BirthHeightCM
+	}
+	if req.BirthHospital != nil {
+		b.BirthHospital = *req.BirthHospital
+	}
+	if req.FeedingType != nil {
+		b.FeedingType = *req.FeedingType
+	}
+	if req.Note != nil {
+		b.Note = *req.Note
 	}
 	if err := h.DB.Save(&b).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "save"})

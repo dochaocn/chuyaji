@@ -16,7 +16,7 @@
       </text>
     </view>
 
-    <button type="primary" class="btn" @click="agree">我已阅读并同意</button>
+    <button class="btn" @click="agree">我已阅读并同意</button>
   </view>
 </template>
 
@@ -131,5 +131,8 @@ function agree() {
 .btn {
   border-radius: $cj-radius-pill !important;
   animation: cj-fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.14s backwards;
+  background: linear-gradient(165deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%) !important;
+  color: #fffefb !important;
+  border: none !important;
 }
 </style>

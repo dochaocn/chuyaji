@@ -19,6 +19,14 @@ import (
 
 // UploadAttachment 接收 multipart 字段 file，写入 CHUYAJI_UPLOAD_DIR，并登记附件（外链带随机 token）。
 func (h *Handler) UploadAttachment(c *gin.Context) {
+	h.uploadAttachmentByOwner(c, "baby_record")
+}
+
+func (h *Handler) UploadMotherAttachment(c *gin.Context) {
+	h.uploadAttachmentByOwner(c, "mother_record")
+}
+
+func (h *Handler) uploadAttachmentByOwner(c *gin.Context, ownerType string) {
 	if strings.TrimSpace(h.Cfg.UploadDir) == "" {
 		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "upload disabled: set CHUYAJI_UPLOAD_DIR"})
 		return
@@ -28,12 +36,12 @@ func (h *Handler) UploadAttachment(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
-	rid, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	ownerID, err := strconv.ParseUint(c.Param("id"), 10, 64)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "bad record id"})
+		c.JSON(http.StatusBadRequest, gin.H{"error": "bad owner id"})
 		return
 	}
-	ok2, err := h.canAccessRecord(uid, rid)
+	ok2, err := h.ensureAttachmentOwnerAccess(uid, ownerID, ownerType)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
@@ -60,7 +68,11 @@ func (h *Handler) UploadAttachment(c *gin.Context) {
 		ext = ".bin"
 	}
 	token := uuid.NewString()
-	dir := filepath.Join(h.Cfg.UploadDir, "records")
+	dirName := "records"
+	if ownerType == "mother_record" {
+		dirName = "mother-records"
+	}
+	dir := filepath.Join(h.Cfg.UploadDir, dirName)
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "mkdir"})
 		return
@@ -88,7 +100,8 @@ func (h *Handler) UploadAttachment(c *gin.Context) {
 
 	tok := token
 	a := model.Attachment{
-		RecordID:   rid,
+		OwnerType:  ownerType,
+		OwnerID:    ownerID,
 		URL:        publicURL,
 		ThumbURL:   "",
 		SortOrder:  0,
@@ -102,9 +115,7 @@ func (h *Handler) UploadAttachment(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, attachmentOut{
-		ID: a.ID, RecordID: a.RecordID, URL: a.URL, ThumbURL: a.ThumbURL, SortOrder: a.SortOrder, Size: a.Size,
-	})
+	c.JSON(http.StatusCreated, attachmentToOut(&a))
 }
 
 // PublicAttachment 通过不可猜测 token 读取本机托管附件（小程序 image 可直接使用该 URL）。

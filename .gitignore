@@ -26,3 +26,6 @@ apps/miniapp/.hbuilderx/
 .idea/
 .vscode/
 *.swp
+
+# APP
+bin/chuyaji-api

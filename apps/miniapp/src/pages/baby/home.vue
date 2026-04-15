@@ -1,0 +1,491 @@
+<template>
+  <view class="page">
+    <view class="hero">
+      <text class="hero-kicker">宝宝工作台</text>
+      <text class="hero-title">把检查、成长和关键变化都放在这里。</text>
+      <text class="hero-desc">默认首页聚焦当前宝宝，适合快速补录、查看最近记录和打开生长趋势。</text>
+    </view>
+
+    <view v-if="!session.privacyOk" class="notice">
+      <text class="notice-title">先阅读隐私说明</text>
+      <text class="notice-desc">记录只保存在你的账号范围内，进入正式记录前先确认使用说明。</text>
+      <button size="mini" class="notice-btn" @click="goPrivacy">去阅读</button>
+    </view>
+
+    <view v-if="!auth.token" class="empty-card">
+      <text class="empty-title">先登录后再开始记录</text>
+      <text class="empty-desc">登录后会自动加载当前宝宝档案与最近记录。</text>
+      <button class="main-btn" @click="onLogin">微信登录</button>
+    </view>
+
+    <template v-else>
+      <view v-if="dashboard?.profile" class="profile-card">
+        <view class="profile-top">
+          <view>
+            <text class="profile-name">{{ dashboard.profile.nickname || "未命名宝宝" }}</text>
+            <text class="profile-stage">{{ stageLabel }}</text>
+          </view>
+          <button class="ghost-btn" size="mini" @click="goProfileEdit">编辑档案</button>
+        </view>
+        <view class="pill-row">
+          <text class="pill">出生：{{ dashboard.profile.birth_date ? dashboard.profile.birth_date.slice(0, 10) : "未填写" }}</text>
+          <text class="pill">预产：{{ dashboard.profile.edd_date ? dashboard.profile.edd_date.slice(0, 10) : "未填写" }}</text>
+        </view>
+        <view class="summary-grid">
+          <view class="summary-card">
+            <text class="summary-label">记录数</text>
+            <text class="summary-value">{{ dashboard.phase_summary?.record_count || 0 }}</text>
+          </view>
+          <view class="summary-card">
+            <text class="summary-label">最近体重</text>
+            <text class="summary-value">{{ latestWeightLabel }}</text>
+          </view>
+        </view>
+      </view>
+
+      <view v-else class="empty-card">
+        <text class="empty-title">还没有宝宝档案</text>
+        <text class="empty-desc">先创建一个宝宝档案，后续所有孕期和成长期记录都围绕它展开。</text>
+        <button class="main-btn" @click="goProfileEdit">创建宝宝档案</button>
+      </view>
+
+      <view class="action-grid">
+        <view class="action-tile warm" @click="goProfileEdit">
+          <text class="action-title">档案</text>
+          <text class="action-desc">基础信息、孕期与出生资料</text>
+        </view>
+        <view class="action-tile mint" @click="goNewRecord">
+          <text class="action-title">录入记录</text>
+          <text class="action-desc">检查、成长、喂养、疾病</text>
+        </view>
+        <view class="action-tile accent" @click="goGrowth">
+          <text class="action-title">生长趋势</text>
+          <text class="action-desc">查看近期体重与趋势摘要</text>
+        </view>
+      </view>
+
+      <view class="section">
+        <view class="section-head">
+          <text class="section-title">最近记录</text>
+          <view v-if="(dashboard?.latest_records?.length || 0) > 0" class="section-meta">
+            <text class="section-meta-count">共 {{ (dashboard?.latest_records || []).length }} 条</text>
+            <text class="section-meta-hint">点卡片查看详情</text>
+          </view>
+          <view v-else-if="dashboard?.profile && !loading" class="section-meta">
+            <text class="section-meta-hint">在「录入记录」里新增一条</text>
+          </view>
+        </view>
+        <view v-if="loading" class="placeholder">加载中…</view>
+        <view v-else-if="!dashboard?.latest_records?.length" class="placeholder">还没有记录，先写第一条检查或成长信息。</view>
+        <view
+          v-for="item in dashboard?.latest_records || []"
+          :key="item.id"
+          class="record-card"
+          @click="openRecord(item.id)"
+        >
+          <view class="record-top">
+            <text :class="['record-tag', item.phase === 'prenatal' ? 'pre' : 'post']">
+              {{ item.phase === "prenatal" ? "怀孕期" : "成长期" }}
+            </text>
+            <text class="record-type">{{ labelForType(item.phase, item.record_type) }}</text>
+          </view>
+          <text class="record-date">{{ item.occurred_at.slice(0, 10) }}</text>
+          <text class="record-summary">{{ item.summary || "未填写摘要" }}</text>
+        </view>
+      </view>
+    </template>
+  </view>
+</template>
+
+<script setup lang="ts">
+import { onShow } from "@dcloudio/uni-app";
+import { computed, ref } from "vue";
+import { isDevWechatLogin } from "@/api/config";
+import { apiBabyDashboard } from "@/api/chuyaji";
+import type { RecordItem } from "@/api/chuyaji";
+import { useAuthStore } from "@/store/auth";
+import { useSessionStore } from "@/store/session";
+import { labelForType } from "@/utils/recordTypes";
+
+const auth = useAuthStore();
+const session = useSessionStore();
+const loading = ref(false);
+const dashboard = ref<{
+  profile: {
+    id: number;
+    nickname: string;
+    birth_date?: string;
+    edd_date?: string;
+  } | null;
+  phase_summary?: { stage: "prenatal" | "postnatal"; record_count: number };
+  latest_records: RecordItem[];
+  growth_summary?: Record<string, unknown>;
+} | null>(null);
+
+const stageLabel = computed(() => {
+  return dashboard.value?.phase_summary?.stage === "postnatal" ? "成长期" : "怀孕期";
+});
+
+const latestWeightLabel = computed(() => {
+  const value = dashboard.value?.growth_summary?.latest_weight_g;
+  if (typeof value !== "number") return "暂无";
+  return `${(value / 1000).toFixed(2)} kg`;
+});
+
+onShow(() => {
+  auth.loadToken();
+  session.load();
+  if (auth.token) {
+    loadDashboard();
+  }
+});
+
+async function loadDashboard() {
+  loading.value = true;
+  try {
+    const data = await apiBabyDashboard(session.babyId || undefined);
+    dashboard.value = data;
+    if (data.profile?.id) {
+      session.setBaby(data.profile.id);
+    }
+  } catch (error) {
+    console.error(error);
+    uni.showToast({ title: "加载失败", icon: "none" });
+  } finally {
+    loading.value = false;
+  }
+}
+
+function goPrivacy() {
+  uni.navigateTo({ url: "/pages/privacy/privacy" });
+}
+
+async function onLogin() {
+  if (isDevWechatLogin()) {
+    try {
+      await auth.loginWithWeChatCode("dev");
+      await loadDashboard();
+      uni.showToast({ title: "登录成功", icon: "success" });
+    } catch (error) {
+      console.error(error);
+      uni.showToast({ title: "登录失败", icon: "none" });
+    }
+    return;
+  }
+  uni.login({
+    provider: "weixin",
+    success: async (res) => {
+      if (!res.code) {
+        uni.showToast({ title: "缺少登录 code", icon: "none" });
+        return;
+      }
+      try {
+        await auth.loginWithWeChatCode(res.code);
+        await loadDashboard();
+        uni.showToast({ title: "登录成功", icon: "success" });
+      } catch (error) {
+        console.error(error);
+        uni.showToast({ title: "登录失败", icon: "none" });
+      }
+    },
+    fail: (error) => {
+      console.error(error);
+      uni.showToast({ title: "登录失败", icon: "none" });
+    },
+  });
+}
+
+function goProfileEdit() {
+  const id = dashboard.value?.profile?.id || session.babyId || 0;
+  const suffix = id ? `?id=${id}` : "";
+  uni.navigateTo({ url: `/pages/baby/profile-edit${suffix}` });
+}
+
+function goNewRecord() {
+  if (!session.babyId) {
+    uni.showToast({ title: "请先创建宝宝档案", icon: "none" });
+    return;
+  }
+  uni.navigateTo({ url: `/pages/baby/record-edit?baby_id=${session.babyId}` });
+}
+
+function openRecord(id: number) {
+  uni.navigateTo({ url: `/pages/baby/record-detail?id=${id}` });
+}
+
+function goGrowth() {
+  if (!session.babyId) {
+    uni.showToast({ title: "请先创建宝宝档案", icon: "none" });
+    return;
+  }
+  uni.navigateTo({ url: `/pages/baby/growth?baby_id=${session.babyId}` });
+}
+</script>
+
+<style lang="scss" scoped>
+.page {
+  padding: $cj-page-pad-y $cj-page-pad-x 72rpx;
+}
+
+.hero {
+  margin-bottom: $cj-gap-lg;
+}
+
+.hero-kicker {
+  display: block;
+  font-size: 22rpx;
+  letter-spacing: 4rpx;
+  color: $cj-primary;
+  margin-bottom: 12rpx;
+}
+
+.hero-title {
+  display: block;
+  font-size: 44rpx;
+  line-height: 1.3;
+  color: $cj-ink;
+  font-weight: $cj-fw-display;
+}
+
+.hero-desc {
+  display: block;
+  margin-top: $cj-gap-sm;
+  color: $cj-text-secondary;
+  font-size: 26rpx;
+  line-height: 1.65;
+}
+
+.notice,
+.empty-card,
+.profile-card,
+.section {
+  background: $cj-surface;
+  border: 1rpx solid $cj-border-light;
+  border-radius: $cj-radius-lg;
+  box-shadow: $cj-shadow-card;
+  padding: $cj-gap-md;
+  margin-bottom: $cj-gap-md;
+}
+
+.notice {
+  background: $cj-warn-bg;
+}
+
+.notice-title,
+.empty-title,
+.profile-name,
+.section-title {
+  display: block;
+  color: $cj-ink;
+  font-weight: $cj-fw-display;
+}
+
+.notice-title,
+.section-title {
+  font-size: 30rpx;
+}
+
+.empty-title,
+.profile-name {
+  font-size: 34rpx;
+}
+
+.notice-desc,
+.empty-desc,
+.profile-stage {
+  display: block;
+  margin-top: 10rpx;
+  color: $cj-text-secondary;
+  font-size: 25rpx;
+  line-height: 1.6;
+}
+
+.notice-btn,
+.main-btn {
+  margin-top: $cj-gap-md;
+  border-radius: $cj-radius-pill !important;
+  background: linear-gradient(165deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%) !important;
+  color: #fffefb !important;
+  border: none !important;
+}
+
+.profile-top,
+.section-head,
+.record-top,
+.summary-grid,
+.pill-row,
+.action-grid {
+  display: flex;
+}
+
+.profile-top,
+.section-head {
+  justify-content: space-between;
+  align-items: center;
+  gap: $cj-gap-sm;
+}
+
+.ghost-btn {
+  background: $cj-surface-2 !important;
+  color: $cj-text !important;
+  border: 1rpx solid $cj-border-light !important;
+  border-radius: $cj-radius-pill !important;
+}
+
+.pill-row,
+.summary-grid,
+.action-grid {
+  flex-wrap: wrap;
+  gap: $cj-gap-sm;
+  margin-top: $cj-gap-md;
+}
+
+.pill,
+.summary-card,
+.action-tile,
+.record-card {
+  border-radius: $cj-radius-md;
+}
+
+.pill {
+  padding: 12rpx 22rpx;
+  background: $cj-accent-soft;
+  color: $cj-text-secondary;
+  font-size: 22rpx;
+}
+
+.summary-card {
+  flex: 1;
+  min-width: 220rpx;
+  padding: $cj-gap-md;
+  background: linear-gradient(165deg, $cj-surface-2 0%, $cj-surface 100%);
+}
+
+.summary-label {
+  display: block;
+  color: $cj-text-muted;
+  font-size: 22rpx;
+}
+
+.summary-value {
+  display: block;
+  margin-top: 10rpx;
+  color: $cj-ink;
+  font-size: 34rpx;
+  font-weight: $cj-fw-display;
+}
+
+.action-grid {
+  margin-bottom: $cj-gap-md;
+}
+
+.action-tile {
+  flex: 1;
+  min-width: 200rpx;
+  padding: $cj-gap-md;
+  color: $cj-ink;
+}
+
+.action-tile.warm {
+  background: linear-gradient(145deg, $cj-primary-soft 0%, $cj-surface 100%);
+}
+
+.action-tile.mint {
+  background: linear-gradient(145deg, $cj-mint-soft 0%, $cj-surface 100%);
+}
+
+.action-tile.accent {
+  background: linear-gradient(145deg, $cj-accent-soft 0%, $cj-surface 100%);
+}
+
+.action-title {
+  display: block;
+  font-size: 30rpx;
+  font-weight: $cj-fw-display;
+}
+
+.action-desc {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 23rpx;
+  line-height: 1.6;
+  color: $cj-text-secondary;
+}
+
+.placeholder {
+  padding: 36rpx 0;
+  text-align: center;
+  color: $cj-text-muted;
+  font-size: 24rpx;
+}
+
+.record-card {
+  padding: $cj-gap-md;
+  background: $cj-surface-2;
+  margin-top: $cj-gap-sm;
+}
+
+.record-top {
+  align-items: center;
+  gap: $cj-gap-sm;
+}
+
+.record-tag {
+  padding: 6rpx 16rpx;
+  border-radius: $cj-radius-pill;
+  font-size: 20rpx;
+  font-weight: $cj-fw-title;
+}
+
+.record-tag.pre {
+  background: $cj-tag-prenatal-bg;
+  color: $cj-tag-prenatal-text;
+}
+
+.record-tag.post {
+  background: $cj-tag-postnatal-bg;
+  color: $cj-tag-postnatal-text;
+}
+
+.record-type {
+  font-size: 28rpx;
+  color: $cj-ink;
+  font-weight: $cj-fw-title;
+}
+
+.record-date {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  color: $cj-text-muted;
+}
+
+.record-summary {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 25rpx;
+  color: $cj-text-secondary;
+  line-height: 1.6;
+}
+
+.section-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4rpx;
+  max-width: 62%;
+}
+
+.section-meta-count {
+  font-size: 24rpx;
+  color: $cj-ink;
+  font-weight: $cj-fw-title;
+}
+
+.section-meta-hint {
+  font-size: 22rpx;
+  color: $cj-text-muted;
+  line-height: 1.4;
+  text-align: right;
+}
+</style>
