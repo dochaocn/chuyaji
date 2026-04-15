@@ -1,0 +1,14 @@
+[Unit]
+Description=初芽记 chuyaji API (Go)
+After=network.target
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/chuyaji/services/api
+EnvironmentFile=/opt/chuyaji/services/api/.env
+ExecStart=/opt/chuyaji/bin/chuyaji-api
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target

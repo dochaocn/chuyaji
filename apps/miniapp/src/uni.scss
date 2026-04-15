@@ -1,0 +1,75 @@
+// 初芽记 · 暖春手帐（温柔亲子）设计 token — 须保持在本文件最前
+$cj-page-bg: #f4ebe3;
+$cj-surface: #fffdf9;
+$cj-surface-2: #fff6ee;
+$cj-ink: #2a2420;
+$cj-text: #3d3530;
+$cj-text-secondary: #6e655c;
+$cj-text-muted: #9a9188;
+$cj-primary: #c96b5c;
+$cj-primary-dark: #a84f42;
+$cj-primary-gradient-top: #d88478;
+$cj-primary-soft: #f3d9d3;
+$cj-accent: #d4a574;
+$cj-accent-warm: #e8b896;
+$cj-accent-soft: #fdf4eb;
+$cj-mint: #8fb8a8;
+$cj-mint-soft: #e8f2ee;
+$cj-border: #ead9cc;
+$cj-border-light: rgba(234, 217, 204, 0.65);
+$cj-shadow-card: 0 16rpx 48rpx rgba(42, 36, 32, 0.07);
+$cj-shadow-lift: 0 24rpx 64rpx rgba(201, 107, 92, 0.11);
+$cj-shadow-soft: 0 10rpx 28rpx rgba(201, 107, 92, 0.14);
+$cj-radius-sm: 14rpx;
+$cj-radius-md: 28rpx;
+$cj-radius-lg: 40rpx;
+$cj-radius-pill: 999rpx;
+$cj-page-pad-x: 36rpx;
+$cj-page-pad-y: 24rpx;
+$cj-gap-sm: 16rpx;
+$cj-gap-md: 24rpx;
+$cj-gap-lg: 36rpx;
+$cj-tag-prenatal-bg: #ead4dd;
+$cj-tag-prenatal-text: #5c3d4a;
+$cj-tag-postnatal-bg: #cfe8de;
+$cj-tag-postnatal-text: #2d4a3e;
+$cj-warn-bg: #fff3e6;
+$cj-warn-border: #e8c9a8;
+$cj-danger-bg: #fcefea;
+$cj-danger-text: #8f3d36;
+$cj-fw-title: 600;
+$cj-fw-display: 700;
+$cj-fw-body: 400;
+$cj-track: rgba(201, 107, 92, 0.22);
+
+/**
+ * 全局页面：分层暖色光晕 + 手帐纸感底色
+ */
+page {
+  background-color: $cj-page-bg;
+  color: $cj-text;
+  background-image:
+    radial-gradient(ellipse 130% 90% at 100% -10%, rgba(232, 184, 150, 0.35) 0%, transparent 52%),
+    radial-gradient(ellipse 100% 70% at -15% 105%, rgba(143, 184, 168, 0.2) 0%, transparent 48%),
+    radial-gradient(ellipse 60% 40% at 50% 50%, rgba(255, 253, 249, 0.5) 0%, transparent 100%);
+  font-family:
+    -apple-system,
+    BlinkMacSystemFont,
+    "PingFang SC",
+    "Hiragino Sans GB",
+    "Microsoft YaHei",
+    sans-serif;
+}
+
+button::after {
+  border: none !important;
+}
+
+button[type="primary"] {
+  background: linear-gradient(165deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%) !important;
+  color: #fffefb !important;
+  border-radius: $cj-radius-pill !important;
+  font-weight: 600;
+  letter-spacing: 2rpx;
+  box-shadow: $cj-shadow-soft;
+}

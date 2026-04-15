@@ -1,0 +1,21 @@
+{
+  "pages": [
+    { "path": "pages/index/index", "style": { "navigationBarTitleText": "初芽记" } },
+    { "path": "pages/privacy/privacy", "style": { "navigationBarTitleText": "隐私说明" } },
+    { "path": "pages/families/index", "style": { "navigationBarTitleText": "我的家庭" } },
+    { "path": "pages/families/create", "style": { "navigationBarTitleText": "创建家庭" } },
+    { "path": "pages/families/join", "style": { "navigationBarTitleText": "加入家庭" } },
+    { "path": "pages/baby/list", "style": { "navigationBarTitleText": "宝宝" } },
+    { "path": "pages/baby/edit", "style": { "navigationBarTitleText": "编辑宝宝" } },
+    { "path": "pages/timeline/index", "style": { "navigationBarTitleText": "成长时间线" } },
+    { "path": "pages/record/detail", "style": { "navigationBarTitleText": "记录详情" } },
+    { "path": "pages/record/edit", "style": { "navigationBarTitleText": "编辑记录" } },
+    { "path": "pages/growth/index", "style": { "navigationBarTitleText": "生长曲线" } }
+  ],
+  "globalStyle": {
+    "navigationBarTextStyle": "black",
+    "navigationBarTitleText": "初芽记",
+    "navigationBarBackgroundColor": "#f4ebe3",
+    "backgroundColor": "#f4ebe3"
+  }
+}

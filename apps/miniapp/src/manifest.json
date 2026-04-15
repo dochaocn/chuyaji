@@ -1,0 +1,19 @@
+{
+  "name": "初芽记",
+  "appid": "",
+  "description": "家庭孕期与婴幼儿健康记录",
+  "versionName": "0.1.0",
+  "versionCode": "100",
+  "transformPx": false,
+  "mp-weixin": {
+    "appid": "",
+    "setting": {
+      "urlCheck": false
+    },
+    "usingComponents": true
+  },
+  "uniStatistics": {
+    "enable": false
+  },
+  "vueVersion": "3"
+}

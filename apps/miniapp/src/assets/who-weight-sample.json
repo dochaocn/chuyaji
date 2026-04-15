@@ -1,0 +1,11 @@
+{
+  "sex": "unknown",
+  "unit": "kg",
+  "p50": [
+    { "age_days": 0, "kg": 3.3 },
+    { "age_days": 30, "kg": 4.5 },
+    { "age_days": 90, "kg": 6.0 },
+    { "age_days": 180, "kg": 7.8 }
+  ],
+  "note": "示例静态曲线（P50），仅作 UI 演示，非医疗标准。"
+}

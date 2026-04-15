@@ -1,0 +1,28 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Env
+.env
+.env.local
+*.pem
+
+# Go
+services/api/data/
+# 本地 SQLite（若放在仓库根 data/）
+/data/
+services/api/tmp/
+*.exe
+*.test
+*.out
+vendor/
+
+# Node / uni-app
+apps/miniapp/node_modules/
+apps/miniapp/dist/
+apps/miniapp/.hbuilderx/
+
+# IDE
+.idea/
+.vscode/
+*.swp
