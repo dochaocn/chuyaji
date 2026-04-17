@@ -120,7 +120,7 @@ export async function apiMotherDashboard(motherId?: number) {
   const path = motherId ? `/api/v1/dashboard/mother?mother_id=${motherId}` : "/api/v1/dashboard/mother";
   return request<{
     profile: Mother | null;
-    health_summary?: Record<string, unknown>;
+    health_summary?: { status?: string; record_count?: number };
     latest_records: MotherRecordItem[];
   }>({ path });
 }

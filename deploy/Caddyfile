@@ -1,7 +1,0 @@
-# 示例：将 HTTPS 反代到本机 Go API（监听 127.0.0.1:8282）
-# 用法：调整域名与证书路径后 `caddy run --config Caddyfile`
-
-api.example.com {
-  encode gzip
-  reverse_proxy 127.0.0.1:8282
-}

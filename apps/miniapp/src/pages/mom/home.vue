@@ -2,8 +2,13 @@
   <view class="page">
     <view class="hero">
       <text class="hero-kicker">宝妈工作台</text>
-      <text class="hero-title">记录身体状态、产检节奏和恢复变化。</text>
-      <text class="hero-desc">宝妈页聚焦孕期与产后阶段，用更轻的方式补充健康、情绪和恢复记录。</text>
+      <text class="hero-title">身体、产检与恢复，随记。</text>
+    </view>
+
+    <view v-if="!session.privacyOk" class="notice">
+      <text class="notice-title">先阅读隐私说明</text>
+      <text class="notice-desc">记录只保存在你的账号范围内，进入正式记录前先确认使用说明。</text>
+      <button size="mini" class="notice-btn" @click="goPrivacy">去阅读</button>
     </view>
 
     <view v-if="!auth.token" class="empty-card">
@@ -13,16 +18,23 @@
 
     <template v-else>
       <view v-if="dashboard?.profile" class="profile-card">
-        <view class="profile-top">
-          <view>
-            <text class="profile-name">{{ dashboard.profile.name || "宝妈档案" }}</text>
-            <text class="profile-stage">{{ statusLabel }}</text>
-          </view>
-          <button class="ghost-btn" size="mini" @click="goProfileEdit">编辑档案</button>
+        <view class="profile-header">
+          <text class="profile-name">{{ dashboard.profile.name || "宝妈档案" }}</text>
+          <text :class="['profile-badge', motherBadgeClass]">{{ statusLabel }}</text>
         </view>
         <view class="pill-row">
           <text class="pill">血型：{{ dashboard.profile.blood_type || "未填写" }}</text>
           <text class="pill">分娩：{{ dashboard.profile.delivery_date ? dashboard.profile.delivery_date.slice(0, 10) : "未填写" }}</text>
+        </view>
+        <view class="summary-grid">
+          <view class="summary-card">
+            <text class="summary-label">记录数</text>
+            <text class="summary-value">{{ dashboard.health_summary?.record_count ?? 0 }}</text>
+          </view>
+          <view class="summary-card">
+            <text class="summary-label">最近更新</text>
+            <text class="summary-value">{{ latestUpdateLabel }}</text>
+          </view>
         </view>
       </view>
 
@@ -33,13 +45,17 @@
       </view>
 
       <view class="action-grid">
-        <view class="action-tile rose" @click="goProfileEdit">
+        <view class="action-tile warm" @click="goProfileEdit">
           <text class="action-title">档案</text>
-          <text class="action-desc">身高、孕前体重、血型与病史</text>
+          <text class="action-desc">基础信息、孕期与健康状况</text>
         </view>
-        <view class="action-tile warm" @click="goNewRecord">
-          <text class="action-title">写记录</text>
+        <view class="action-tile mint" @click="goNewRecord">
+          <text class="action-title">录入记录</text>
           <text class="action-desc">产检、症状、心情、恢复</text>
+        </view>
+        <view class="action-tile accent" @click="goLatestOrInsight">
+          <text class="action-title">最近一条</text>
+          <text class="action-desc">查看详情或新建记录</text>
         </view>
       </view>
 
@@ -51,7 +67,7 @@
             <text class="section-meta-hint">点卡片查看详情</text>
           </view>
           <view v-else-if="dashboard?.profile && !loading" class="section-meta">
-            <text class="section-meta-hint">在「写记录」里新增一条</text>
+            <text class="section-meta-hint">在「录入记录」里新增一条</text>
           </view>
         </view>
         <view v-if="loading" class="placeholder">加载中…</view>
@@ -62,7 +78,10 @@
           class="record-card"
           @click="openRecord(item.id)"
         >
-          <text class="record-type">{{ labelForMotherType(item.record_type) }}</text>
+          <view class="record-top">
+            <text class="record-tag record-tag--mom">宝妈</text>
+            <text class="record-type">{{ labelForMotherType(item.record_type) }}</text>
+          </view>
           <text class="record-date">{{ item.occurred_at.slice(0, 10) }}</text>
           <text class="record-summary">{{ item.summary || "未填写摘要" }}</text>
         </view>
@@ -91,6 +110,7 @@ const dashboard = ref<{
     blood_type?: string;
     delivery_date?: string;
   } | null;
+  health_summary?: { status?: string; record_count?: number };
   latest_records: MotherRecordItem[];
 } | null>(null);
 
@@ -99,6 +119,17 @@ const statusLabel = computed(() => {
   if (status === "postpartum") return "产后恢复";
   if (status === "parenting") return "育儿期";
   return "怀孕中";
+});
+
+const motherBadgeClass = computed(() => {
+  const status = dashboard.value?.profile?.status;
+  return status === "pregnant" ? "profile-badge--pre" : "profile-badge--post";
+});
+
+const latestUpdateLabel = computed(() => {
+  const at = dashboard.value?.latest_records?.[0]?.occurred_at;
+  if (!at) return "暂无";
+  return at.slice(0, 10);
 });
 
 onShow(() => {
@@ -125,6 +156,10 @@ async function loadDashboard() {
   }
 }
 
+function goPrivacy() {
+  uni.navigateTo({ url: "/pages/privacy/privacy" });
+}
+
 function goProfileEdit() {
   const id = dashboard.value?.profile?.id || session.motherId || 0;
   const suffix = id ? `?id=${id}` : "";
@@ -137,6 +172,15 @@ function goNewRecord() {
     return;
   }
   uni.navigateTo({ url: `/pages/mom/record-edit?mother_id=${session.motherId}` });
+}
+
+function goLatestOrInsight() {
+  const first = dashboard.value?.latest_records?.[0];
+  if (first) {
+    openRecord(first.id);
+    return;
+  }
+  goNewRecord();
 }
 
 function openRecord(id: number) {
@@ -157,26 +201,19 @@ function openRecord(id: number) {
   display: block;
   font-size: 22rpx;
   letter-spacing: 4rpx;
-  color: $cj-mint;
+  color: $cj-primary;
   margin-bottom: 12rpx;
 }
 
 .hero-title {
   display: block;
   font-size: 44rpx;
-  line-height: 1.3;
+  line-height: 1.35;
   color: $cj-ink;
   font-weight: $cj-fw-display;
 }
 
-.hero-desc {
-  display: block;
-  margin-top: $cj-gap-sm;
-  color: $cj-text-secondary;
-  font-size: 26rpx;
-  line-height: 1.65;
-}
-
+.notice,
 .empty-card,
 .profile-card,
 .section {
@@ -188,6 +225,11 @@ function openRecord(id: number) {
   margin-bottom: $cj-gap-md;
 }
 
+.notice {
+  background: $cj-warn-bg;
+}
+
+.notice-title,
 .empty-title,
 .profile-name,
 .section-title {
@@ -196,17 +238,18 @@ function openRecord(id: number) {
   font-weight: $cj-fw-display;
 }
 
+.notice-title,
+.section-title {
+  font-size: 30rpx;
+}
+
 .empty-title,
 .profile-name {
   font-size: 34rpx;
 }
 
-.section-title {
-  font-size: 30rpx;
-}
-
-.empty-desc,
-.profile-stage {
+.notice-desc,
+.empty-desc {
   display: block;
   margin-top: 10rpx;
   color: $cj-text-secondary;
@@ -214,32 +257,53 @@ function openRecord(id: number) {
   line-height: 1.6;
 }
 
-.main-btn,
-.ghost-btn {
-  border-radius: $cj-radius-pill !important;
-}
-
+.notice-btn,
 .main-btn {
   margin-top: $cj-gap-md;
+  border-radius: $cj-radius-pill !important;
   background: linear-gradient(165deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%) !important;
   color: #fffefb !important;
   border: none !important;
 }
 
-.ghost-btn {
-  background: $cj-surface-2 !important;
-  color: $cj-text !important;
-  border: 1rpx solid $cj-border-light !important;
+.profile-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12rpx 16rpx;
 }
 
-.profile-top,
+.profile-name {
+  flex: 1;
+  min-width: 200rpx;
+}
+
+.profile-badge {
+  flex-shrink: 0;
+  padding: 8rpx 20rpx;
+  border-radius: $cj-radius-pill;
+  font-size: 22rpx;
+  font-weight: 500;
+}
+
+.profile-badge--pre {
+  background: $cj-tag-prenatal-bg;
+  color: $cj-tag-prenatal-text;
+}
+
+.profile-badge--post {
+  background: $cj-tag-postnatal-bg;
+  color: $cj-tag-postnatal-text;
+}
+
 .section-head,
+.record-top,
+.summary-grid,
 .pill-row,
 .action-grid {
   display: flex;
 }
 
-.profile-top,
 .section-head {
   justify-content: space-between;
   align-items: center;
@@ -247,10 +311,18 @@ function openRecord(id: number) {
 }
 
 .pill-row,
+.summary-grid,
 .action-grid {
-  gap: $cj-gap-sm;
   flex-wrap: wrap;
+  gap: $cj-gap-sm;
   margin-top: $cj-gap-md;
+}
+
+.pill,
+.summary-card,
+.action-tile,
+.record-card {
+  border-radius: $cj-radius-md;
 }
 
 .pill {
@@ -258,7 +330,27 @@ function openRecord(id: number) {
   background: $cj-accent-soft;
   color: $cj-text-secondary;
   font-size: 22rpx;
-  border-radius: $cj-radius-pill;
+}
+
+.summary-card {
+  flex: 1;
+  min-width: 220rpx;
+  padding: $cj-gap-md;
+  background: linear-gradient(165deg, $cj-surface-2 0%, $cj-surface 100%);
+}
+
+.summary-label {
+  display: block;
+  color: $cj-text-muted;
+  font-size: 22rpx;
+}
+
+.summary-value {
+  display: block;
+  margin-top: 10rpx;
+  color: $cj-ink;
+  font-size: 34rpx;
+  font-weight: $cj-fw-display;
 }
 
 .action-grid {
@@ -267,16 +359,20 @@ function openRecord(id: number) {
 
 .action-tile {
   flex: 1;
-  min-width: 220rpx;
+  min-width: 200rpx;
   padding: $cj-gap-md;
-  border-radius: $cj-radius-md;
-}
-
-.action-tile.rose {
-  background: linear-gradient(145deg, $cj-primary-soft 0%, $cj-surface 100%);
+  color: $cj-ink;
 }
 
 .action-tile.warm {
+  background: linear-gradient(145deg, $cj-primary-soft 0%, $cj-surface 100%);
+}
+
+.action-tile.mint {
+  background: linear-gradient(145deg, $cj-mint-soft 0%, $cj-surface 100%);
+}
+
+.action-tile.accent {
   background: linear-gradient(145deg, $cj-accent-soft 0%, $cj-surface 100%);
 }
 
@@ -284,7 +380,6 @@ function openRecord(id: number) {
   display: block;
   font-size: 30rpx;
   font-weight: $cj-fw-display;
-  color: $cj-ink;
 }
 
 .action-desc {
@@ -303,14 +398,29 @@ function openRecord(id: number) {
 }
 
 .record-card {
-  margin-top: $cj-gap-sm;
   padding: $cj-gap-md;
-  border-radius: $cj-radius-md;
   background: $cj-surface-2;
+  margin-top: $cj-gap-sm;
+}
+
+.record-top {
+  align-items: center;
+  gap: $cj-gap-sm;
+}
+
+.record-tag {
+  padding: 6rpx 16rpx;
+  border-radius: $cj-radius-pill;
+  font-size: 20rpx;
+  font-weight: $cj-fw-title;
+}
+
+.record-tag--mom {
+  background: $cj-mint-soft;
+  color: $cj-text-secondary;
 }
 
 .record-type {
-  display: block;
   font-size: 28rpx;
   color: $cj-ink;
   font-weight: $cj-fw-title;

@@ -2,8 +2,7 @@
   <view class="page">
     <view class="hero">
       <text class="hero-kicker">宝宝工作台</text>
-      <text class="hero-title">把检查、成长和关键变化都放在这里。</text>
-      <text class="hero-desc">默认首页聚焦当前宝宝，适合快速补录、查看最近记录和打开生长趋势。</text>
+      <text class="hero-title">检查与成长，一站记下。</text>
     </view>
 
     <view v-if="!session.privacyOk" class="notice">
@@ -20,12 +19,14 @@
 
     <template v-else>
       <view v-if="dashboard?.profile" class="profile-card">
-        <view class="profile-top">
-          <view>
-            <text class="profile-name">{{ dashboard.profile.nickname || "未命名宝宝" }}</text>
-            <text class="profile-stage">{{ stageLabel }}</text>
-          </view>
-          <button class="ghost-btn" size="mini" @click="goProfileEdit">编辑档案</button>
+        <view class="profile-header">
+          <text class="profile-name">{{ dashboard.profile.nickname || "未命名宝宝" }}</text>
+          <text
+            :class="[
+              'profile-badge',
+              dashboard.phase_summary?.stage === 'postnatal' ? 'profile-badge--post' : 'profile-badge--pre',
+            ]"
+            >{{ stageLabel }}</text>
         </view>
         <view class="pill-row">
           <text class="pill">出生：{{ dashboard.profile.birth_date ? dashboard.profile.birth_date.slice(0, 10) : "未填写" }}</text>
@@ -242,17 +243,9 @@ function goGrowth() {
 .hero-title {
   display: block;
   font-size: 44rpx;
-  line-height: 1.3;
+  line-height: 1.35;
   color: $cj-ink;
   font-weight: $cj-fw-display;
-}
-
-.hero-desc {
-  display: block;
-  margin-top: $cj-gap-sm;
-  color: $cj-text-secondary;
-  font-size: 26rpx;
-  line-height: 1.65;
 }
 
 .notice,
@@ -291,8 +284,7 @@ function goGrowth() {
 }
 
 .notice-desc,
-.empty-desc,
-.profile-stage {
+.empty-desc {
   display: block;
   margin-top: 10rpx;
   color: $cj-text-secondary;
@@ -309,7 +301,36 @@ function goGrowth() {
   border: none !important;
 }
 
-.profile-top,
+.profile-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12rpx 16rpx;
+}
+
+.profile-name {
+  flex: 1;
+  min-width: 200rpx;
+}
+
+.profile-badge {
+  flex-shrink: 0;
+  padding: 8rpx 20rpx;
+  border-radius: $cj-radius-pill;
+  font-size: 22rpx;
+  font-weight: 500;
+}
+
+.profile-badge--pre {
+  background: $cj-tag-prenatal-bg;
+  color: $cj-tag-prenatal-text;
+}
+
+.profile-badge--post {
+  background: $cj-tag-postnatal-bg;
+  color: $cj-tag-postnatal-text;
+}
+
 .section-head,
 .record-top,
 .summary-grid,
@@ -318,18 +339,10 @@ function goGrowth() {
   display: flex;
 }
 
-.profile-top,
 .section-head {
   justify-content: space-between;
   align-items: center;
   gap: $cj-gap-sm;
-}
-
-.ghost-btn {
-  background: $cj-surface-2 !important;
-  color: $cj-text !important;
-  border: 1rpx solid $cj-border-light !important;
-  border-radius: $cj-radius-pill !important;
 }
 
 .pill-row,

@@ -16,7 +16,7 @@ description: >-
 | API 入口包 | `./services/api/cmd/server` |
 | 构建产物名 | `bin/chuyaji-api`（与根目录 [Makefile](../../../Makefile) 一致） |
 
-详细配置、systemd、反代与小程序检查见 [deploy/README.md](../../../deploy/README.md)；systemd 单元模板见 [deploy/chuyaji-api.service](../../../deploy/chuyaji-api.service)（需将路径改为本约定下的 `WorkingDirectory`、`ExecStart`、`EnvironmentFile`）。
+详细配置、systemd、反代与小程序检查见仓库根目录 [README.md](../../../README.md) 中「部署与上线」；systemd 单元模板见 [deploy/chuyaji-api.service](../../../deploy/chuyaji-api.service)（需将路径改为本约定下的 `WorkingDirectory`、`ExecStart`、`EnvironmentFile`）。
 
 ## 操作步骤
 
@@ -103,5 +103,5 @@ ssh aliyun 'curl -sS -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8282/heal
 
 ## 与本技能的关系
 
-- 小程序构建、域名与合法域名校验：见 [deploy/README.md](../../../deploy/README.md)，不在此重复。
+- 小程序构建、域名与合法域名校验：见根目录 [README.md](../../../README.md)「部署与上线」，不在此重复。
 - 修改 API 后务必重新 `make api`（或交叉编译命令）再上传，避免运行旧二进制。
