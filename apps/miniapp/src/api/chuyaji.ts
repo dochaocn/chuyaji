@@ -31,14 +31,13 @@ export interface Mother {
   note?: string;
 }
 
+// gestational_weeks / gestational_days 已移入 payload，不再作为顶层字段返回
 export interface RecordItem {
   id: number;
   baby_id: number;
   phase: "prenatal" | "postnatal";
   record_type: string;
   occurred_at: string;
-  gestational_weeks?: number;
-  gestational_days?: number;
   summary: string;
   payload: Record<string, unknown>;
   created_at: string;

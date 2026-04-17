@@ -54,8 +54,8 @@ func (h *Handler) BabyDashboard(c *gin.Context) {
 		var payload map[string]any
 		if json.Unmarshal(latestGrowth.Payload, &payload) == nil {
 			growthSummary = gin.H{
-				"latest_weight_g": payload["weight_g"],
-				"latest_record_at": latestGrowth.OccurredAt,
+				"latest_weight_g":  payload["weight_g"],
+				"latest_weight_at": latestGrowth.OccurredAt,
 			}
 		}
 	}

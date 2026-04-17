@@ -1,6 +1,7 @@
 package store
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -36,6 +37,9 @@ func Open(dbPath string) (*gorm.DB, error) {
 		return nil, err
 	}
 	if err := migrateLegacyAttachmentOwners(db); err != nil {
+		return nil, err
+	}
+	if err := migrateGestationalColsToPayload(db); err != nil {
 		return nil, err
 	}
 	return db, nil
@@ -80,6 +84,60 @@ func migrateLegacyBabyOwnership(db *gorm.DB) error {
 		)
 		WHERE COALESCE(user_id, 0) = 0
 	`).Error
+}
+
+// migrateGestationalColsToPayload moves gestational_weeks/gestational_days column
+// values into the payload JSON and then drops those columns. These fields were
+// redundant with the template payload keys used by the front end.
+func migrateGestationalColsToPayload(db *gorm.DB) error {
+	hasGW, err := hasColumn(db, "records", "gestational_weeks")
+	if err != nil {
+		return err
+	}
+	if !hasGW {
+		return nil
+	}
+
+	type legacyRow struct {
+		ID               uint64
+		GestationalWeeks *int
+		GestationalDays  *int
+		Payload          []byte
+	}
+	var rows []legacyRow
+	if err := db.Raw(
+		"SELECT id, gestational_weeks, gestational_days, payload FROM records WHERE gestational_weeks IS NOT NULL OR gestational_days IS NOT NULL",
+	).Scan(&rows).Error; err != nil {
+		return err
+	}
+	for _, row := range rows {
+		pl := make(map[string]any)
+		if len(row.Payload) > 0 {
+			_ = json.Unmarshal(row.Payload, &pl)
+		}
+		if row.GestationalWeeks != nil {
+			if _, ok := pl["gestational_weeks"]; !ok {
+				pl["gestational_weeks"] = *row.GestationalWeeks
+			}
+		}
+		if row.GestationalDays != nil {
+			if _, ok := pl["gestational_days"]; !ok {
+				pl["gestational_days"] = *row.GestationalDays
+			}
+		}
+		b, merr := json.Marshal(pl)
+		if merr != nil {
+			return merr
+		}
+		if err := db.Exec("UPDATE records SET payload = ? WHERE id = ?", string(b), row.ID).Error; err != nil {
+			return err
+		}
+	}
+
+	if err := db.Exec("ALTER TABLE records DROP COLUMN gestational_weeks").Error; err != nil {
+		return err
+	}
+	return db.Exec("ALTER TABLE records DROP COLUMN gestational_days").Error
 }
 
 func migrateLegacyAttachmentOwners(db *gorm.DB) error {

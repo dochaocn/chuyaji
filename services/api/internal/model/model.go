@@ -51,17 +51,15 @@ type Mother struct {
 }
 
 type Record struct {
-	ID               uint64 `gorm:"primaryKey"`
-	BabyID           uint64 `gorm:"index;not null"`
-	Phase            string `gorm:"size:16;not null"` // prenatal | postnatal
-	RecordType       string `gorm:"size:32;not null"`
-	OccurredAt       time.Time
-	GestationalWeeks *int
-	GestationalDays  *int
-	Summary          string `gorm:"size:512"`
-	Payload          datatypes.JSON
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	ID         uint64 `gorm:"primaryKey"`
+	BabyID     uint64 `gorm:"index;not null"`
+	Phase      string `gorm:"size:16;not null"` // prenatal | postnatal
+	RecordType string `gorm:"size:32;not null"`
+	OccurredAt time.Time
+	Summary    string `gorm:"size:512"`
+	Payload    datatypes.JSON
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 type MotherRecord struct {

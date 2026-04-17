@@ -783,10 +783,6 @@ components:
         occurred_at:
           type: string
           format: date-time
-        gestational_weeks:
-          type: integer
-        gestational_days:
-          type: integer
         summary:
           type: string
         payload:
@@ -811,10 +807,6 @@ components:
         occurred_at:
           type: string
           format: date-time
-        gestational_weeks:
-          type: integer
-        gestational_days:
-          type: integer
         summary:
           type: string
         payload:

@@ -71,7 +71,7 @@
 <script setup lang="ts">
 import { onLoad } from "@dcloudio/uni-app";
 import { ref } from "vue";
-import { apiCreateBaby, apiGetBaby, apiPatchBaby } from "@/api/chuyaji";
+import { apiCreateBaby, apiGetBaby, apiPatchBaby, apiGetMother } from "@/api/chuyaji";
 import { useSessionStore } from "@/store/session";
 
 const session = useSessionStore();
@@ -93,8 +93,30 @@ onLoad((query: Record<string, string | undefined>) => {
   babyId.value = Number(query.id || session.babyId || 0);
   if (babyId.value) {
     loadExisting();
+  } else {
+    // 新建宝宝档案：若已有宝妈档案（postpartum/parenting 且有 delivery_date），自动预填出生日期与医院
+    prefillFromMother();
   }
 });
+
+async function prefillFromMother() {
+  if (!session.motherId) return;
+  try {
+    const mother = await apiGetMother(session.motherId);
+    // 仅在宝妈已分娩（postpartum/parenting）且有分娩日期时才预填
+    if (
+      (mother.status === "postpartum" || mother.status === "parenting") &&
+      mother.delivery_date
+    ) {
+      birth.value = mother.delivery_date.slice(0, 10);
+    }
+    if (mother.note && !birthHospital.value) {
+      // 医院信息在宝妈档案里没有独立字段，此处不强制预填，保留空值
+    }
+  } catch {
+    // 无宝妈档案或加载失败时静默忽略，不影响建档流程
+  }
+}
 
 function toISO(value: string): string | undefined {
   const time = Date.parse(value);

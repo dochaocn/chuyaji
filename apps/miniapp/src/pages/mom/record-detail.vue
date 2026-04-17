@@ -1,21 +1,61 @@
 <template>
   <view v-if="record" class="page">
-    <view class="hero">
-      <text class="type-name">{{ labelForMotherType(record.record_type) }}</text>
-      <text class="date-line">{{ record.occurred_at.slice(0, 10) }}</text>
-      <text class="summary">{{ record.summary || "未填写摘要" }}</text>
+    <view class="head">
+      <text class="head-title">{{ detailTitle }}</text>
+      <text v-if="headDesc" class="head-desc">{{ headDesc }}</text>
     </view>
 
     <view class="section">
-      <view class="section-head">
-        <text class="section-title">附件</text>
-        <text class="section-hint">点击图片可预览</text>
+      <text class="section-label">类型</text>
+      <view class="readonly-line">
+        <view class="picker-input readonly">{{ labelForMotherType(record.record_type) }}</view>
       </view>
-      <view v-if="!attachments.length" class="placeholder">还没有图片，点下方按钮添加。</view>
-      <view v-else class="gallery">
-        <view v-for="(item, index) in attachments" :key="item.id" class="gallery-item">
+    </view>
+
+    <view class="section">
+      <text class="section-label">日期</text>
+      <view class="field">
+        <text class="lab">发生日期</text>
+        <view class="picker-input readonly">{{ record.occurred_at.slice(0, 10) }}</view>
+      </view>
+    </view>
+
+    <view v-if="recommendedFields.length" class="section">
+      <text class="section-label">关键信息</text>
+      <view v-for="field in recommendedFields" :key="field.key" class="field">
+        <text class="lab">{{ field.label }}<text v-if="field.unit" class="unit-text">（{{ field.unit }}）</text></text>
+        <view class="picker-input readonly">{{ displayFor(field) }}</view>
+      </view>
+    </view>
+
+    <view v-if="currentTemplate?.mode === 'standard'" class="section">
+      <text class="section-label">摘要</text>
+      <view class="field">
+        <view class="area readonly">{{ record.summary || "未填写" }}</view>
+      </view>
+    </view>
+
+    <view v-if="optionalFields.length" class="section">
+      <view class="optional-toggle" @click="showOptional = !showOptional">
+        <text class="optional-toggle-text">{{ showOptional ? "收起更多信息" : "展开更多信息" }}</text>
+      </view>
+      <template v-if="showOptional">
+        <view v-for="field in optionalFields" :key="field.key" class="field field--optional">
+          <text class="lab">{{ field.label }}<text v-if="field.unit" class="unit-text">（{{ field.unit }}）</text></text>
+          <view class="picker-input readonly">{{ displayFor(field) }}</view>
+        </view>
+      </template>
+    </view>
+
+    <view class="section">
+      <text class="section-label">图片补充</text>
+      <text v-if="currentTemplate?.attachmentHint" class="section-hint">{{ currentTemplate.attachmentHint }}</text>
+      <text v-else class="section-hint">可选，点击图片可全屏预览</text>
+      <view v-if="!attachments.length" class="photo-placeholder">还没有图片，点下方按钮添加。</view>
+      <view v-else class="photo-grid">
+        <view v-for="(item, index) in attachments" :key="item.id" class="photo-cell">
           <image
-            class="img"
+            class="photo-img"
             :src="attachmentThumbSrc(item)"
             mode="aspectFill"
             :lazy-load="false"
@@ -26,19 +66,20 @@
           </view>
         </view>
       </view>
-      <button class="main-btn" @click="pickImage">添加图片</button>
+      <button class="add-photo-btn" @click="pickImage">添加图片</button>
     </view>
 
-    <view class="actions">
-      <button class="ghost-btn" @click="goEdit">编辑本条</button>
-      <button class="danger-btn" @click="removeRecord">删除记录</button>
+    <view class="actions-row">
+      <button class="ghost-btn action-btn" @click="goEdit">编辑本条</button>
+      <button class="ghost-btn action-btn" @click="goNewWithDraft">载入草稿</button>
     </view>
+    <button class="danger-btn danger-full" @click="removeRecord">删除记录</button>
   </view>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
-import { onLoad } from "@dcloudio/uni-app";
+import { computed, ref } from "vue";
+import { onLoad, onShow } from "@dcloudio/uni-app";
 import {
   apiDeleteAttachment,
   apiDeleteMotherRecord,
@@ -49,16 +90,51 @@ import {
 } from "@/api/chuyaji";
 import { uploadMotherRecordAttachment } from "@/api/upload";
 import { resolvePublicMediaUrl } from "@/utils/mediaUrl";
-import { labelForMotherType } from "@/utils/motherRecordTypes";
+import { formatFieldValueForDisplay, type TemplateField } from "@/utils/recordTypes";
+import { labelForMotherType, MOTHER_TEMPLATES, type RecordTemplate } from "@/utils/motherRecordTypes";
 
 const recordId = ref(0);
 const record = ref<MotherRecordItem | null>(null);
 const attachments = ref<AttachmentItem[]>([]);
+const showOptional = ref(false);
+
+const currentTemplate = computed<RecordTemplate | undefined>(() => {
+  const r = record.value;
+  if (!r) return undefined;
+  return MOTHER_TEMPLATES.find((t) => t.value === r.record_type);
+});
+
+const payload = computed(() => (record.value?.payload || {}) as Record<string, unknown>);
+
+const recommendedFields = computed(() => currentTemplate.value?.recommendedFields ?? []);
+const optionalFields = computed(() => currentTemplate.value?.optionalFields ?? []);
+
+const detailTitle = computed(() => {
+  const label = currentTemplate.value?.label;
+  return label ? `${label} · 详情` : "记录详情";
+});
+
+const headDesc = computed(() => {
+  const t = currentTemplate.value;
+  const r = record.value;
+  if (!t || !r) return "";
+  if (t.mode === "standard" && t.summaryPlaceholder) return t.summaryPlaceholder;
+  if (t.mode === "quick" && r.summary) return r.summary;
+  return "";
+});
+
+function displayFor(field: TemplateField): string {
+  return formatFieldValueForDisplay(field, payload.value) ?? "—";
+}
 
 onLoad((query: Record<string, string | undefined>) => {
   recordId.value = Number(query.id || 0);
+});
+
+/** 从编辑页返回时页面不重建，onLoad 不会再次执行，需在每次展示时拉取最新数据 */
+onShow(() => {
   if (recordId.value) {
-    refresh();
+    void refresh();
   }
 });
 
@@ -114,6 +190,14 @@ function goEdit() {
   uni.navigateTo({ url: `/pages/mom/record-edit?id=${recordId.value}&mother_id=${record.value.mother_id}` });
 }
 
+function goNewWithDraft() {
+  const r = record.value;
+  if (!r) return;
+  uni.navigateTo({
+    url: `/pages/mom/record-edit?mother_id=${r.mother_id}&type=${encodeURIComponent(r.record_type)}`,
+  });
+}
+
 function removeRecord() {
   uni.showModal({
     title: "确认删除？",
@@ -135,7 +219,25 @@ function removeRecord() {
   padding: $cj-page-pad-y $cj-page-pad-x 56rpx;
 }
 
-.hero,
+.head {
+  margin-bottom: $cj-gap-lg;
+}
+
+.head-title {
+  display: block;
+  font-size: 42rpx;
+  font-weight: $cj-fw-display;
+  color: $cj-ink;
+}
+
+.head-desc {
+  display: block;
+  margin-top: $cj-gap-sm;
+  font-size: 26rpx;
+  color: $cj-text-secondary;
+  line-height: 1.6;
+}
+
 .section {
   background: $cj-surface;
   border-radius: $cj-radius-lg;
@@ -145,71 +247,116 @@ function removeRecord() {
   margin-bottom: $cj-gap-md;
 }
 
-.hero {
-  background: linear-gradient(155deg, $cj-surface 0%, $cj-primary-soft 100%);
-}
-
-.section-head,
-.actions {
-  display: flex;
-}
-
-.section-head {
-  align-items: center;
-  justify-content: space-between;
-  gap: $cj-gap-sm;
-}
-
-.type-name,
-.section-title {
-  font-size: 30rpx;
-  color: $cj-ink;
-  font-weight: $cj-fw-display;
-}
-
-.date-line,
-.section-hint {
+.section-label {
   display: block;
-  margin-top: 10rpx;
+  margin-bottom: $cj-gap-md;
+  font-size: 22rpx;
   color: $cj-text-muted;
+  letter-spacing: 3rpx;
+}
+
+.optional-toggle {
+  padding: 4rpx 0;
+}
+
+.optional-toggle-text {
+  font-size: 24rpx;
+  color: $cj-primary;
+}
+
+.field {
+  margin-bottom: $cj-gap-md;
+}
+
+.field:last-child {
+  margin-bottom: 0;
+}
+
+.field--optional {
+  margin-top: 24rpx;
+}
+
+.picker-k,
+.lab {
+  display: block;
+  margin-bottom: 10rpx;
+  font-size: 24rpx;
+  color: $cj-text-muted;
+}
+
+.unit-text {
   font-size: 22rpx;
 }
 
-.summary {
-  display: block;
-  margin-top: $cj-gap-md;
-  color: $cj-text-secondary;
+.picker-input,
+.area {
+  width: 100%;
+  box-sizing: border-box;
+  background: $cj-surface-2;
+  border: 1rpx solid $cj-border-light;
+  border-radius: $cj-radius-md;
+  padding: $cj-gap-md;
+  color: $cj-text;
   font-size: 28rpx;
-  line-height: 1.7;
 }
 
-.placeholder {
-  padding: 30rpx 0;
-  text-align: center;
+.picker-input {
+  min-height: 108rpx;
+  line-height: 1.55;
+  padding-top: 26rpx;
+  padding-bottom: 26rpx;
+  display: flex;
+  align-items: center;
+}
+
+.picker-input.readonly {
+  color: $cj-text-secondary;
+}
+
+.area.readonly {
+  min-height: 120rpx;
+  line-height: 1.55;
+  padding-top: 28rpx;
+  padding-bottom: 28rpx;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.section-hint {
+  display: block;
+  margin-top: 8rpx;
+  font-size: 22rpx;
   color: $cj-text-muted;
-  font-size: 24rpx;
+  line-height: 1.5;
 }
 
-.gallery {
+.photo-placeholder {
+  margin-top: $cj-gap-md;
+  padding: 28rpx 0;
+  text-align: center;
+  font-size: 24rpx;
+  color: $cj-text-muted;
+}
+
+.photo-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 16rpx;
   margin-top: $cj-gap-md;
 }
 
-.gallery-item {
+.photo-cell {
   position: relative;
   width: calc((100% - 32rpx) / 3);
   box-sizing: border-box;
 }
 
-.img {
+.photo-img {
   display: block;
   width: 100%;
   height: 200rpx;
   border-radius: $cj-radius-md;
   background: $cj-surface-2;
-  overflow: hidden;
 }
 
 .photo-remove {
@@ -231,17 +378,24 @@ function removeRecord() {
   line-height: 1;
 }
 
-.main-btn,
-.ghost-btn,
-.danger-btn {
+.add-photo-btn {
+  margin-top: $cj-gap-md;
   border-radius: $cj-radius-pill !important;
+  background: $cj-surface !important;
+  color: $cj-text !important;
+  border: 1rpx solid $cj-border-light !important;
 }
 
-.main-btn {
+.actions-row {
+  display: flex;
+  gap: $cj-gap-sm;
   margin-top: $cj-gap-md;
-  background: linear-gradient(165deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%) !important;
-  color: #fffefb !important;
-  border: none !important;
+}
+
+.action-btn {
+  flex: 1;
+  margin: 0 !important;
+  border-radius: $cj-radius-pill !important;
 }
 
 .ghost-btn {
@@ -250,14 +404,15 @@ function removeRecord() {
   border: 1rpx solid $cj-border-light !important;
 }
 
-.actions {
-  flex-direction: column;
-  gap: $cj-gap-sm;
-}
-
 .danger-btn {
   background: $cj-danger-bg !important;
   color: $cj-danger-text !important;
   border: 1rpx solid rgba(143, 61, 54, 0.2) !important;
+}
+
+.danger-full {
+  width: 100%;
+  margin-top: $cj-gap-sm !important;
+  border-radius: $cj-radius-pill !important;
 }
 </style>
