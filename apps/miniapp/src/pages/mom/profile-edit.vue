@@ -157,7 +157,6 @@ function toNumber(value: string): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-/** 将历史或简写血型对齐到选项值，无法识别则保留原文以便展示与保存 */
 function coerceBloodTypeFromServer(raw: string): string {
   const t = (raw || "").trim();
   if (!t) return "";

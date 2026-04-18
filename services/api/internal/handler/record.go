@@ -71,7 +71,7 @@ func (h *Handler) ListRecords(c *gin.Context) {
 
 	q := h.DB.Where("baby_id = ?", babyID).Order("occurred_at DESC, id DESC")
 	if cursor != "" {
-		t, id, err := DecodeCursor(cursor)
+		t, id, err := decodeCursor(cursor)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "bad cursor"})
 			return
@@ -88,7 +88,7 @@ func (h *Handler) ListRecords(c *gin.Context) {
 	next := ""
 	if len(rows) > limit {
 		last := rows[limit-1]
-		next = EncodeCursor(last.OccurredAt, last.ID)
+		next = encodeCursor(last.OccurredAt, last.ID)
 		rows = rows[:limit]
 	}
 

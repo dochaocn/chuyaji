@@ -17,7 +17,6 @@ import (
 	"gorm.io/gorm"
 )
 
-// UploadAttachment 接收 multipart 字段 file，写入 CHUYAJI_UPLOAD_DIR，并登记附件（外链带随机 token）。
 func (h *Handler) UploadAttachment(c *gin.Context) {
 	h.uploadAttachmentByOwner(c, "baby_record")
 }
@@ -118,7 +117,6 @@ func (h *Handler) uploadAttachmentByOwner(c *gin.Context, ownerType string) {
 	c.JSON(http.StatusCreated, attachmentToOut(&a))
 }
 
-// PublicAttachment 通过不可猜测 token 读取本机托管附件（小程序 image 可直接使用该 URL）。
 func (h *Handler) PublicAttachment(c *gin.Context) {
 	token := c.Param("token")
 	if token == "" {

@@ -25,10 +25,7 @@
             </view>
           </template>
           <template v-else>
-            <!--
-              安卓微信小程序：对 reactive 动态 key 的 v-model 常不生效。
-              使用 ref + 整对象替换；@input/@blur 统一从 detail 取 value（兼容 mp 包装）。
-            -->
+            
             <input
               :value="fieldValues[field.key] ?? ''"
               class="field-input"
@@ -76,20 +73,16 @@ const emit = defineEmits<{
   (e: "saved", payload: Record<string, unknown>, summary: string): void;
 }>();
 
-/** 用 ref + 替换对象，避免安卓端 reactive[key] 不触发渲染 */
 const fieldValues = ref<Record<string, string>>({});
 const noteText = ref("");
 const showNote = ref(false);
 const loading = ref(false);
 
-/** 键盘与光标最小间距（px），微信 input 文档：cursor-spacing */
 const inputCursorSpacing = 120;
 
-/** 键盘弹起高度（px），用于整体上移底栏，避免固定底栏被数字键盘遮挡 */
 const keyboardHeightPx = ref(0);
 let offKeyboardHeight: (() => void) | undefined;
 
-/** 在系统上报高度基础上再抬高一点，留足输入框与键盘之间的可视间隙 */
 const KEYBOARD_EXTRA_LIFT_PX = 32;
 
 const sheetLiftStyle = computed(() => {
@@ -109,7 +102,7 @@ function bindKeyboardHeightListener() {
   offKeyboardHeight = uni.onKeyboardHeightChange((res) => {
     const n = typeof res.height === "number" ? res.height : 0;
     keyboardHeightPx.value = n;
-  });
+  }) as unknown as (() => void) | undefined;
 }
 
 function seedFields() {
@@ -146,7 +139,6 @@ function setSelect(key: string, value: string) {
   fieldValues.value = { ...fieldValues.value, [key]: value };
 }
 
-/** 兼容 uni-app / 微信小程序对 input 事件的封装 */
 function pickInputValue(e: unknown): string {
   if (e == null || typeof e !== "object") return "";
   const ex = e as Record<string, unknown>;

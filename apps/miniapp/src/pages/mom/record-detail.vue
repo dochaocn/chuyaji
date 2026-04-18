@@ -131,7 +131,6 @@ onLoad((query: Record<string, string | undefined>) => {
   recordId.value = Number(query.id || 0);
 });
 
-/** 从编辑页返回时页面不重建，onLoad 不会再次执行，需在每次展示时拉取最新数据 */
 onShow(() => {
   if (recordId.value) {
     void refresh();

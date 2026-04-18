@@ -94,7 +94,6 @@ onLoad((query: Record<string, string | undefined>) => {
   if (babyId.value) {
     loadExisting();
   } else {
-    // 新建宝宝档案：若已有宝妈档案（postpartum/parenting 且有 delivery_date），自动预填出生日期与医院
     prefillFromMother();
   }
 });
@@ -103,7 +102,6 @@ async function prefillFromMother() {
   if (!session.motherId) return;
   try {
     const mother = await apiGetMother(session.motherId);
-    // 仅在宝妈已分娩（postpartum/parenting）且有分娩日期时才预填
     if (
       (mother.status === "postpartum" || mother.status === "parenting") &&
       mother.delivery_date
@@ -111,10 +109,8 @@ async function prefillFromMother() {
       birth.value = mother.delivery_date.slice(0, 10);
     }
     if (mother.note && !birthHospital.value) {
-      // 医院信息在宝妈档案里没有独立字段，此处不强制预填，保留空值
     }
   } catch {
-    // 无宝妈档案或加载失败时静默忽略，不影响建档流程
   }
 }
 
@@ -130,7 +126,6 @@ function toNumber(value: string): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-/** 末次月经首日 +280 天（孕 40 周），用于推算预产期 */
 function eddFromLmp(lmpYmd: string): string {
   const t = (lmpYmd || "").trim();
   if (!t) return "";

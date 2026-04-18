@@ -1,14 +1,14 @@
 <template>
   <view class="page">
 
-    <!-- 隐私检查 -->
+    
     <view v-if="!session.privacyOk" class="notice">
       <text class="notice-title">先阅读隐私说明</text>
       <text class="notice-desc">记录只保存在你的账号范围内，进入正式记录前先确认使用说明。</text>
       <button size="mini" class="notice-btn" @click="goPrivacy">去阅读</button>
     </view>
 
-    <!-- 未登录 -->
+    
     <view v-if="!auth.token" class="empty-card">
       <text class="empty-title">先登录后再开始记录</text>
       <text class="empty-desc">登录后会自动加载当前宝宝档案与最近记录。</text>
@@ -17,24 +17,30 @@
 
     <template v-else>
 
-      <!-- ① 阶段头部 -->
+      
       <view class="hero">
         <view class="hero-top">
           <text class="hero-kicker">宝宝工作台</text>
-          <text v-if="dashboard?.profile" class="hero-name">{{ dashboard.profile.nickname || "未命名宝宝" }}</text>
+          <text v-if="dashboard?.profile" :class="['stage-badge', babyStageBadgeClass]">{{ babyStageLabel }}</text>
         </view>
-        <text class="hero-title">{{ stageTitle }}</text>
+        <view class="hero-headline">
+          <text v-if="dashboard?.profile" class="hero-name">{{ dashboard.profile.nickname || "未命名宝宝" }}</text>
+          <text
+            class="hero-title"
+            :class="{ 'hero-title--solo': !dashboard?.profile }"
+          >{{ stageTitle }}</text>
+        </view>
         <text class="hero-desc">{{ stageDesc }}</text>
       </view>
 
-      <!-- ② 下一步卡片（按需出现，三种情况触发） -->
+      
       <view v-if="nextStep.type !== 'none'" class="next-card">
         <text class="next-label">现在可以做</text>
         <text class="next-title">{{ nextStepTitle }}</text>
         <button class="next-btn" @click="onNextStepAction">{{ nextStepBtnLabel }}</button>
       </view>
 
-      <!-- ③ 快捷记录区 -->
+      
       <view v-if="dashboard?.profile" class="shortcut-section">
         <text class="section-label">快速记录</text>
         <view class="shortcut-grid">
@@ -50,7 +56,7 @@
         </view>
       </view>
 
-      <!-- ④A 趋势摘要（成长期） -->
+      
       <view v-if="isPostnatalStage && hasTrendData" class="trend-section">
         <text class="section-label">近况</text>
         <view class="summary-grid">
@@ -74,7 +80,7 @@
         </view>
       </view>
 
-      <!-- ④B 最近记录 -->
+      
       <view v-if="dashboard?.profile" class="section">
         <view class="section-head">
           <text class="section-title">最近记录</text>
@@ -89,26 +95,39 @@
         <view v-else-if="!dashboard?.latest_records?.length" class="placeholder">
           还没有记录，从推荐模板开始。
         </view>
-        <view
-          v-for="item in dashboard?.latest_records?.slice(0, 4) || []"
-          :key="item.id"
-          class="record-card"
-          @click="openRecord(item.id)"
-        >
-          <view class="record-top">
-            <text :class="['record-tag', item.phase === 'prenatal' ? 'pre' : 'post']">
-              {{ item.phase === "prenatal" ? "怀孕期" : "成长期" }}
-            </text>
-            <text class="record-type">{{ labelForType(item.phase, item.record_type) }}</text>
-            <text class="record-date">{{ item.occurred_at.slice(0, 10) }}</text>
+        <view v-else class="record-list">
+          <view
+            v-for="row in recentBabyRecordsWithPreview"
+            :key="row.item.id"
+            class="record-card"
+            @click="openRecord(row.item.id)"
+          >
+            <view class="record-card-head">
+              <view class="record-card-head-row">
+                <text class="record-type">{{ labelForType(row.item.phase, row.item.record_type) }}</text>
+                <text class="record-date">{{ row.item.occurred_at.slice(0, 10) }}</text>
+              </view>
+              <view class="record-card-tags">
+                <text :class="['record-tag', row.item.phase === 'prenatal' ? 'pre' : 'post']">
+                  {{ row.item.phase === "prenatal" ? "怀孕期" : "成长期" }}
+                </text>
+              </view>
+            </view>
+            <view v-if="row.keyRows.length" class="record-body">
+              <view v-for="(kv, ki) in row.keyRows" :key="ki" class="record-kv-row">
+                <view class="record-key-label">{{ kv.label }}</view>
+                <view class="record-key-value">{{ kv.value }}</view>
+              </view>
+            </view>
+            <text v-else class="record-summary">{{ row.item.summary?.trim() || "未填写内容" }}</text>
+            <text v-if="row.showSummaryNote" class="record-summary-note">{{ row.item.summary }}</text>
           </view>
-          <text class="record-summary">{{ item.summary || "未填写摘要" }}</text>
         </view>
       </view>
 
     </template>
 
-    <!-- QuickRecordSheet -->
+    
     <QuickRecordSheet
       v-if="quickTemplate"
       :visible="showQuickSheet"
@@ -128,7 +147,13 @@ import { apiBabyDashboard, apiCreateRecord } from "@/api/chuyaji";
 import type { RecordItem } from "@/api/chuyaji";
 import { useAuthStore } from "@/store/auth";
 import { useSessionStore } from "@/store/session";
-import { labelForType, BABY_TEMPLATES, type RecordTemplate } from "@/utils/recordTypes";
+import {
+  labelForType,
+  BABY_TEMPLATES,
+  getBabyRecordPreviewRows,
+  templateForType,
+  type RecordTemplate,
+} from "@/utils/recordTypes";
 import { calcGestation, calcAgeDays, calcAgeMonths, isPostnatal } from "@/utils/gestation";
 import { getBabyNextStep, getBabyPostnatalShortcuts } from "@/utils/homeRules";
 import QuickRecordSheet from "@/components/QuickRecordSheet.vue";
@@ -150,17 +175,16 @@ const dashboard = ref<{
   growth_summary?: Record<string, unknown>;
 } | null>(null);
 
-// quick sheet 状态
 const showQuickSheet = ref(false);
 const quickTemplate = ref<RecordTemplate | null>(null);
-
-// ---------------------------------------------------------------------------
-// 阶段判断
-// ---------------------------------------------------------------------------
 
 const isPostnatalStage = computed(() => {
   return isPostnatal(dashboard.value?.profile?.birth_date);
 });
+
+/** 与「最近记录」阶段标签一致，样式对齐宝妈工作台时期徽章 */
+const babyStageLabel = computed(() => (isPostnatalStage.value ? "成长期" : "怀孕期"));
+const babyStageBadgeClass = computed(() => (isPostnatalStage.value ? "badge--post" : "badge--pre"));
 
 const ageDays = computed(() => calcAgeDays(dashboard.value?.profile?.birth_date));
 const ageMonths = computed(() => calcAgeMonths(dashboard.value?.profile?.birth_date));
@@ -189,10 +213,6 @@ const stageDesc = computed(() => {
   return "继续把每次检查安心记下。";
 });
 
-// ---------------------------------------------------------------------------
-// 快捷入口
-// ---------------------------------------------------------------------------
-
 const shortcuts = computed<RecordTemplate[]>(() => {
   if (!dashboard.value?.profile) return [];
   if (isPostnatalStage.value) {
@@ -201,16 +221,26 @@ const shortcuts = computed<RecordTemplate[]>(() => {
       .map((t) => BABY_TEMPLATES.postnatal.find((tmpl) => tmpl.value === t))
       .filter((t): t is RecordTemplate => !!t);
   }
-  // 怀孕期：产检、B 超、症状、用药
-  const prenatalKeys = ["prenatal_checkup", "ultrasound", "symptom", "medication"];
+  const prenatalKeys = ["prenatal_checkup", "ultrasound", "screening"];
   return prenatalKeys
     .map((t) => BABY_TEMPLATES.prenatal.find((tmpl) => tmpl.value === t))
     .filter((t): t is RecordTemplate => !!t);
 });
 
-// ---------------------------------------------------------------------------
-// 下一步卡片
-// ---------------------------------------------------------------------------
+const recentBabyRecordsWithPreview = computed(() => {
+  const list = dashboard.value?.latest_records?.slice(0, 4) ?? [];
+  return list.map((item) => {
+    const keyRows = getBabyRecordPreviewRows({
+      phase: item.phase,
+      record_type: item.record_type,
+      payload: item.payload as Record<string, unknown>,
+    });
+    const tmpl = templateForType(item.phase, item.record_type);
+    const sum = item.summary?.trim() || "";
+    const showSummaryNote = tmpl?.mode === "standard" && !!sum && keyRows.length > 0;
+    return { item, keyRows, showSummaryNote };
+  });
+});
 
 const nextStep = computed(() => {
   const hasProfile = !!dashboard.value?.profile;
@@ -235,10 +265,6 @@ const nextStepBtnLabel = computed(() => {
     default: return "";
   }
 });
-
-// ---------------------------------------------------------------------------
-// 趋势摘要
-// ---------------------------------------------------------------------------
 
 const latestWeightLabel = computed(() => {
   const value = dashboard.value?.growth_summary?.latest_weight_g;
@@ -272,10 +298,6 @@ const latestMilestone = computed(() => {
 const hasTrendData = computed(() => {
   return !!latestWeightLabel.value || monthlyCount.value > 0;
 });
-
-// ---------------------------------------------------------------------------
-// 事件
-// ---------------------------------------------------------------------------
 
 onShow(() => {
   auth.loadToken();
@@ -463,7 +485,6 @@ function goTimeline() {
   border: none !important;
 }
 
-/* ① 阶段头部 */
 .hero {
   margin-bottom: $cj-gap-lg;
 }
@@ -472,7 +493,8 @@ function goTimeline() {
   display: flex;
   align-items: center;
   gap: 16rpx;
-  margin-bottom: 12rpx;
+  flex-wrap: wrap;
+  margin-bottom: 8rpx;
 }
 
 .hero-kicker {
@@ -481,17 +503,54 @@ function goTimeline() {
   color: $cj-primary;
 }
 
+.stage-badge {
+  padding: 6rpx 18rpx;
+  border-radius: $cj-radius-pill;
+  font-size: 20rpx;
+  font-weight: 500;
+}
+
+.badge--pre {
+  background: $cj-tag-prenatal-bg;
+  color: $cj-tag-prenatal-text;
+}
+
+.badge--post {
+  background: $cj-tag-postnatal-bg;
+  color: $cj-tag-postnatal-text;
+}
+
+.hero-headline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28rpx;
+  min-width: 0;
+}
+
 .hero-name {
-  font-size: 22rpx;
-  color: $cj-text-muted;
+  flex-shrink: 0;
+  max-width: 48%;
+  font-size: 36rpx;
+  font-weight: $cj-fw-title;
+  color: $cj-primary-dark;
+  letter-spacing: 1rpx;
 }
 
 .hero-title {
-  display: block;
+  flex: 1;
+  min-width: 0;
   font-size: 40rpx;
   line-height: 1.35;
   color: $cj-ink;
   font-weight: $cj-fw-display;
+  text-align: right;
+}
+
+.hero-title--solo {
+  flex: none;
+  width: 100%;
+  text-align: left;
 }
 
 .hero-desc {
@@ -502,7 +561,6 @@ function goTimeline() {
   line-height: 1.6;
 }
 
-/* ② 下一步卡片 */
 .next-card {
   background: $cj-warn-bg;
   border: 1rpx solid $cj-border-light;
@@ -538,7 +596,6 @@ function goTimeline() {
   line-height: 72rpx !important;
 }
 
-/* ③ 快捷记录区 */
 .shortcut-section,
 .trend-section,
 .section {
@@ -583,7 +640,6 @@ function goTimeline() {
   color: $cj-text-muted;
 }
 
-/* ④A 趋势摘要 */
 .summary-grid {
   display: flex;
   flex-wrap: wrap;
@@ -635,7 +691,6 @@ function goTimeline() {
   color: $cj-primary;
 }
 
-/* ④B 最近记录 */
 .section {
   background: $cj-surface;
   border: 1rpx solid $cj-border-light;
@@ -669,21 +724,37 @@ function goTimeline() {
   font-size: 24rpx;
 }
 
-.record-card {
-  padding: $cj-gap-md;
-  background: $cj-surface-2;
-  border-radius: $cj-radius-md;
-  margin-top: $cj-gap-sm;
+.record-list {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
 }
 
-.record-top {
+.record-card {
+  padding: 24rpx 26rpx;
+  background: $cj-surface;
+  border-radius: $cj-radius-lg;
+  border: 1rpx solid $cj-border-light;
+  box-shadow: $cj-shadow-soft;
+}
+
+.record-card-head {
+  margin-bottom: 2rpx;
+}
+
+.record-card-head-row {
   display: flex;
-  align-items: center;
-  gap: $cj-gap-sm;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.record-card-tags {
+  margin-top: 12rpx;
 }
 
 .record-tag {
-  padding: 6rpx 16rpx;
+  padding: 6rpx 18rpx;
   border-radius: $cj-radius-pill;
   font-size: 20rpx;
   font-weight: $cj-fw-title;
@@ -700,23 +771,85 @@ function goTimeline() {
 }
 
 .record-type {
-  font-size: 28rpx;
+  flex: 1;
+  min-width: 0;
+  font-size: 30rpx;
   color: $cj-ink;
-  font-weight: $cj-fw-title;
+  font-weight: $cj-fw-display;
+  line-height: 1.4;
 }
 
 .record-date {
-  margin-left: auto;
   flex-shrink: 0;
+  padding-top: 4rpx;
   font-size: 22rpx;
   color: $cj-text-muted;
+  letter-spacing: 0.5rpx;
+}
+
+.record-body {
+  margin-top: 16rpx;
+  padding: 6rpx 18rpx 4rpx;
+  background: $cj-surface-2;
+  border-radius: $cj-radius-md;
+  border: 1rpx solid rgba(234, 217, 204, 0.55);
+}
+
+.record-kv-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 16rpx;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid rgba(234, 217, 204, 0.45);
+}
+
+.record-kv-row:last-child {
+  border-bottom: none;
+  padding-bottom: 12rpx;
+}
+
+.record-kv-row:first-child {
+  padding-top: 12rpx;
+}
+
+.record-key-label {
+  flex-shrink: 0;
+  width: 148rpx;
+  font-size: 22rpx;
+  color: $cj-text-muted;
+  line-height: 1.5;
+}
+
+.record-key-value {
+  flex: 1;
+  min-width: 0;
+  font-size: 26rpx;
+  color: $cj-text;
+  line-height: 1.55;
+  word-break: break-word;
 }
 
 .record-summary {
   display: block;
-  margin-top: 10rpx;
-  font-size: 25rpx;
+  margin-top: 14rpx;
+  padding: 16rpx 18rpx;
+  background: $cj-surface-2;
+  border-radius: $cj-radius-md;
+  border: 1rpx solid rgba(234, 217, 204, 0.45);
+  font-size: 26rpx;
   color: $cj-text-secondary;
-  line-height: 1.6;
+  line-height: 1.65;
+}
+
+.record-summary-note {
+  display: block;
+  margin-top: 12rpx;
+  padding-top: 14rpx;
+  border-top: 1rpx solid rgba(234, 217, 204, 0.55);
+  font-size: 23rpx;
+  color: $cj-text-muted;
+  line-height: 1.55;
 }
 </style>

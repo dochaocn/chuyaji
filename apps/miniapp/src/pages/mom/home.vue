@@ -15,18 +15,23 @@
 
     <template v-else>
 
-      <!-- ① 阶段头部 -->
+      
       <view class="hero">
         <view class="hero-top">
           <text class="hero-kicker">宝妈工作台</text>
-          <text v-if="dashboard?.profile" class="hero-name">{{ dashboard.profile.name || "宝妈" }}</text>
           <text v-if="dashboard?.profile" :class="['stage-badge', stageBadgeClass]">{{ statusLabel }}</text>
         </view>
-        <text class="hero-title">{{ stageTitle }}</text>
+        <view class="hero-headline">
+          <text v-if="dashboard?.profile" class="hero-name">{{ dashboard.profile.name || "宝妈" }}</text>
+          <text
+            class="hero-title"
+            :class="{ 'hero-title--solo': !dashboard?.profile }"
+          >{{ stageTitle }}</text>
+        </view>
         <text class="hero-desc">{{ stageDesc }}</text>
       </view>
 
-      <!-- ② 下一步卡片（按需）；未建档时由下方空状态统一承接，避免与「创建档案」重复 -->
+      
       <view
         v-if="nextStep.type !== 'none' && !(nextStep.type === 'create_profile' && !dashboard?.profile)"
         class="next-card"
@@ -36,7 +41,7 @@
         <button class="next-btn" @click="onNextStepAction">{{ nextStepBtnLabel }}</button>
       </view>
 
-      <!-- 未建档：宝宝 / 宝妈二选一（加载中也保留卡片区域，避免空白） -->
+      
       <view v-if="!dashboard?.profile" class="empty-card">
         <template v-if="loading">
           <text class="empty-title">加载中…</text>
@@ -52,7 +57,7 @@
         </template>
       </view>
 
-      <!-- ③ 快捷记录区 -->
+      
       <view v-if="dashboard?.profile" class="shortcut-section">
         <text class="section-label">快速记录</text>
         <view class="shortcut-grid">
@@ -68,49 +73,90 @@
         </view>
       </view>
 
-      <!-- ④A 健康摘要：固定 4 格，一行 2 个 -->
+      
       <view v-if="dashboard?.profile && hasSummaryData" class="summary-section">
         <text class="section-label">近况</text>
         <view class="summary-grid">
           <view
             class="summary-card"
-            :class="{ 'summary-card--empty': !lastCheckupDate }"
+            :class="{ 'summary-card--empty': !lastCheckupRecord }"
             @click="lastCheckupRecord?.id && openSummaryRecord(lastCheckupRecord.id)"
           >
-            <text class="summary-label">最近产检</text>
-            <text class="summary-value">{{ lastCheckupDate || "暂无" }}</text>
+            <view class="summary-card-top">
+              <text class="summary-label">最近产检</text>
+              <text v-if="lastCheckupRecord && lastCheckupDate" class="summary-hint-inline">{{ lastCheckupDate }}</text>
+            </view>
+            <view v-if="lastCheckupPreview.length" class="summary-key-grid">
+              <view v-for="(kv, ki) in lastCheckupPreview" :key="ki" class="summary-key-chip">
+                <view class="summary-key-label">{{ kv.label }}</view>
+                <view class="summary-key-value">{{ kv.value }}</view>
+              </view>
+            </view>
+            <text v-else-if="lastCheckupFallback" class="summary-value">{{ lastCheckupFallback }}</text>
+            <text v-else-if="lastCheckupRecord" class="summary-value">未填写内容</text>
+            <text v-else class="summary-value">暂无</text>
           </view>
           <view
             class="summary-card"
-            :class="{ 'summary-card--empty': !lastMetricLabel }"
+            :class="{ 'summary-card--empty': !lastMetricRecord }"
             @click="lastMetricRecord?.id && openSummaryRecord(lastMetricRecord.id)"
           >
-            <text class="summary-label">身体指标</text>
-            <text class="summary-value">{{ lastMetricLabel || "暂无" }}</text>
-            <text v-if="lastMetricLabel && lastMetricDate" class="summary-hint">{{ lastMetricDate }}</text>
+            <view class="summary-card-top">
+              <text class="summary-label">身体指标</text>
+              <text v-if="lastMetricRecord && lastMetricDate" class="summary-hint-inline">{{ lastMetricDate }}</text>
+            </view>
+            <view v-if="lastMetricPreview.length" class="summary-key-grid">
+              <view v-for="(kv, ki) in lastMetricPreview" :key="ki" class="summary-key-chip">
+                <view class="summary-key-label">{{ kv.label }}</view>
+                <view class="summary-key-value">{{ kv.value }}</view>
+              </view>
+            </view>
+            <text v-else-if="lastMetricFallback" class="summary-value">{{ lastMetricFallback }}</text>
+            <text v-else-if="lastMetricRecord" class="summary-value">未填写内容</text>
+            <text v-else class="summary-value">暂无</text>
           </view>
           <view
             class="summary-card"
-            :class="{ 'summary-card--empty': !lastMoodLabel }"
+            :class="{ 'summary-card--empty': !lastMoodRecord }"
             @click="lastMoodRecord?.id && openSummaryRecord(lastMoodRecord.id)"
           >
-            <text class="summary-label">最近心情</text>
-            <text class="summary-value">{{ lastMoodLabel || "暂无" }}</text>
-            <text v-if="lastMoodLabel && lastMoodDate" class="summary-hint">{{ lastMoodDate }}</text>
+            <view class="summary-card-top">
+              <text class="summary-label">最近心情</text>
+              <text v-if="lastMoodRecord && lastMoodDate" class="summary-hint-inline">{{ lastMoodDate }}</text>
+            </view>
+            <view v-if="lastMoodPreview.length" class="summary-key-grid">
+              <view v-for="(kv, ki) in lastMoodPreview" :key="ki" class="summary-key-chip">
+                <view class="summary-key-label">{{ kv.label }}</view>
+                <view class="summary-key-value">{{ kv.value }}</view>
+              </view>
+            </view>
+            <text v-else-if="lastMoodFallback" class="summary-value">{{ lastMoodFallback }}</text>
+            <text v-else-if="lastMoodRecord" class="summary-value">未填写内容</text>
+            <text v-else class="summary-value">暂无</text>
           </view>
           <view
             class="summary-card"
-            :class="{ 'summary-card--empty': !lastSymptomLabel }"
+            :class="{ 'summary-card--empty': !lastSymptomRecord }"
             @click="lastSymptomRecord?.id && openSummaryRecord(lastSymptomRecord.id)"
           >
-            <text class="summary-label">最近症状</text>
-            <text class="summary-value">{{ lastSymptomLabel || "暂无" }}</text>
-            <text v-if="lastSymptomLabel && lastSymptomDate" class="summary-hint">{{ lastSymptomDate }}</text>
+            <view class="summary-card-top">
+              <text class="summary-label">最近不适</text>
+              <text v-if="lastSymptomRecord && lastSymptomDate" class="summary-hint-inline">{{ lastSymptomDate }}</text>
+            </view>
+            <view v-if="lastSymptomPreview.length" class="summary-key-grid">
+              <view v-for="(kv, ki) in lastSymptomPreview" :key="ki" class="summary-key-chip">
+                <view class="summary-key-label">{{ kv.label }}</view>
+                <view class="summary-key-value">{{ kv.value }}</view>
+              </view>
+            </view>
+            <text v-else-if="lastSymptomFallback" class="summary-value">{{ lastSymptomFallback }}</text>
+            <text v-else-if="lastSymptomRecord" class="summary-value">未填写内容</text>
+            <text v-else class="summary-value">暂无</text>
           </view>
         </view>
       </view>
 
-      <!-- ④B 最近记录 -->
+      
       <view v-if="dashboard?.profile" class="section">
         <view class="section-head">
           <text class="section-title">最近记录</text>
@@ -125,24 +171,37 @@
         <view v-else-if="!dashboard?.latest_records?.length" class="placeholder">
           还没有记录，可以从产检或身体状态开始。
         </view>
-        <view
-          v-for="item in dashboard?.latest_records?.slice(0, 3) || []"
-          :key="item.id"
-          class="record-card"
-          @click="openRecord(item.id)"
-        >
-          <view class="record-top">
-            <text class="record-tag record-tag--mom">宝妈</text>
-            <text class="record-type">{{ labelForMotherType(item.record_type) }}</text>
-            <text class="record-date">{{ item.occurred_at.slice(0, 10) }}</text>
+        <view v-else class="record-list">
+          <view
+            v-for="row in recentMomRecordsWithPreview"
+            :key="row.item.id"
+            class="record-card"
+            @click="openRecord(row.item.id)"
+          >
+            <view class="record-card-head">
+              <view class="record-card-head-row">
+                <text class="record-type">{{ labelForMotherType(row.item.record_type) }}</text>
+                <text class="record-date">{{ row.item.occurred_at.slice(0, 10) }}</text>
+              </view>
+              <view class="record-card-tags">
+                <text :class="['stage-badge', stageBadgeClass]">{{ statusLabel }}</text>
+              </view>
+            </view>
+            <view v-if="row.keyRows.length" class="record-body">
+              <view v-for="(kv, ki) in row.keyRows" :key="ki" class="record-kv-row">
+                <view class="record-key-label">{{ kv.label }}</view>
+                <view class="record-key-value">{{ kv.value }}</view>
+              </view>
+            </view>
+            <text v-else class="record-summary">{{ row.item.summary?.trim() || "未填写内容" }}</text>
+            <text v-if="row.showSummaryNote" class="record-summary-note">{{ row.item.summary }}</text>
           </view>
-          <text class="record-summary">{{ item.summary || "未填写摘要" }}</text>
         </view>
       </view>
 
     </template>
 
-    <!-- QuickRecordSheet -->
+    
     <QuickRecordSheet
       v-if="quickTemplate"
       :visible="showQuickSheet"
@@ -151,7 +210,7 @@
       @saved="onQuickSaved"
     />
 
-    <!-- 身体指标选择弹层 -->
+    
     <view v-if="showMetricPicker" class="sheet-mask" @click.self="showMetricPicker = false">
       <view class="picker-sheet">
         <text class="picker-title">选择指标类型</text>
@@ -181,9 +240,16 @@ import {
   labelForMotherType,
   MOTHER_TEMPLATES,
   BODY_METRIC_TYPES,
+  getMotherRecordPreviewRows,
+  templateForMotherType,
   type RecordTemplate,
 } from "@/utils/motherRecordTypes";
-import { getMotherNextStep, getPreferredBodyMetricType } from "@/utils/homeRules";
+import {
+  getMotherNextStep,
+  getPreferredBodyMetricType,
+  motherStageBadgeClass,
+  motherStageLabel,
+} from "@/utils/homeRules";
 import QuickRecordSheet from "@/components/QuickRecordSheet.vue";
 
 const auth = useAuthStore();
@@ -206,21 +272,9 @@ const showQuickSheet = ref(false);
 const quickTemplate = ref<RecordTemplate | null>(null);
 const showMetricPicker = ref(false);
 
-// ---------------------------------------------------------------------------
-// 阶段
-// ---------------------------------------------------------------------------
+const statusLabel = computed(() => motherStageLabel(dashboard.value?.profile?.status));
 
-const statusLabel = computed(() => {
-  const status = dashboard.value?.profile?.status;
-  if (status === "postpartum") return "产后恢复";
-  if (status === "parenting") return "育儿期";
-  return "怀孕中";
-});
-
-const stageBadgeClass = computed(() => {
-  const status = dashboard.value?.profile?.status;
-  return status === "pregnant" ? "badge--pre" : "badge--post";
-});
+const stageBadgeClass = computed(() => motherStageBadgeClass(dashboard.value?.profile?.status));
 
 const stageTitle = computed(() => {
   const status = dashboard.value?.profile?.status;
@@ -238,12 +292,7 @@ const stageDesc = computed(() => {
   return "这一阶段最重要的是把检查、身体感受和情绪稳稳记下。";
 });
 
-// ---------------------------------------------------------------------------
-// 固定 4 个快捷入口（不按阶段替换）
-// 产检/复查（standard）、症状（standard）、心情（quick）、身体指标（quick 代理）
-// ---------------------------------------------------------------------------
-
-const SHORTCUT_KEYS = ["checkup", "symptom", "mood", "__body_metric__"];
+const SHORTCUT_KEYS = ["checkup", "symptom", "medication", "mood", "__body_metric__"];
 
 const shortcuts = computed(() => {
   return SHORTCUT_KEYS.map((k) => {
@@ -261,14 +310,28 @@ const shortcuts = computed(() => {
   }).filter(Boolean);
 });
 
-const metricOptions = BODY_METRIC_TYPES.map((v) => ({
-  value: v,
-  label: labelForMotherType(v),
-}));
+/** 始终列出三种指标；最近记录过的类型排在最前，便于一键延续，同时不会隐藏体重/血压 */
+const metricOptions = computed(() => {
+  const preferred = getPreferredBodyMetricType(dashboard.value?.latest_records ?? []);
+  const rest = BODY_METRIC_TYPES.filter((v) => v !== preferred);
+  const order = [preferred, ...rest];
+  return order.map((v) => ({
+    value: v,
+    label: labelForMotherType(v),
+  }));
+});
 
-// ---------------------------------------------------------------------------
-// 下一步卡片
-// ---------------------------------------------------------------------------
+/** 最近记录：优先展示模板关键字段行，摘要仅在无字段或标准记录补充说明时展示 */
+const recentMomRecordsWithPreview = computed(() => {
+  const list = dashboard.value?.latest_records?.slice(0, 3) ?? [];
+  return list.map((item) => {
+    const keyRows = getMotherRecordPreviewRows(item);
+    const tmpl = templateForMotherType(item.record_type);
+    const sum = item.summary?.trim() || "";
+    const showSummaryNote = tmpl?.mode === "standard" && !!sum && keyRows.length > 0;
+    return { item, keyRows, showSummaryNote };
+  });
+});
 
 const nextStep = computed(() => {
   const hasProfile = !!dashboard.value?.profile;
@@ -294,69 +357,74 @@ const nextStepBtnLabel = computed(() => {
   }
 });
 
-// ---------------------------------------------------------------------------
-// 健康摘要
-// ---------------------------------------------------------------------------
+const SUMMARY_CARD_PREVIEW_MAX = 3;
+
+function motherSummaryFallbackText(r: MotherRecordItem | null, previewLen: number): string | null {
+  if (!r || previewLen > 0) return null;
+  return r.summary?.trim() || null;
+}
 
 const lastCheckupRecord = computed(() =>
   dashboard.value?.latest_records?.find((r) => r.record_type === "checkup") ?? null
 );
 const lastCheckupDate = computed(() => lastCheckupRecord.value?.occurred_at.slice(0, 10) ?? null);
+const lastCheckupPreview = computed(() => {
+  const r = lastCheckupRecord.value;
+  if (!r) return [];
+  return getMotherRecordPreviewRows(r).slice(0, SUMMARY_CARD_PREVIEW_MAX);
+});
+const lastCheckupFallback = computed(() =>
+  motherSummaryFallbackText(lastCheckupRecord.value, lastCheckupPreview.value.length)
+);
 
 const lastMetricRecord = computed(() => {
   const metricTypes = ["weight", "blood_pressure", "blood_sugar"];
   return dashboard.value?.latest_records?.find((r) => metricTypes.includes(r.record_type)) ?? null;
 });
-
-const lastMetricLabel = computed(() => {
-  const rec = lastMetricRecord.value;
-  if (!rec) return null;
-  const p = rec.payload as Record<string, unknown>;
-  if (rec.record_type === "weight" && p.kg) return `${p.kg} kg`;
-  if (rec.record_type === "blood_pressure" && p.systolic && p.diastolic) return `${p.systolic}/${p.diastolic}`;
-  if (rec.record_type === "blood_sugar" && p.mmol_l) return `${p.mmol_l} mmol/L`;
-  return rec.summary || labelForMotherType(rec.record_type);
-});
-
 const lastMetricDate = computed(() => lastMetricRecord.value?.occurred_at.slice(0, 10) ?? null);
+const lastMetricPreview = computed(() => {
+  const r = lastMetricRecord.value;
+  if (!r) return [];
+  return getMotherRecordPreviewRows(r).slice(0, SUMMARY_CARD_PREVIEW_MAX);
+});
+const lastMetricFallback = computed(() =>
+  motherSummaryFallbackText(lastMetricRecord.value, lastMetricPreview.value.length)
+);
 
 const lastMoodRecord = computed(() => {
   return dashboard.value?.latest_records?.find((r) => r.record_type === "mood") ?? null;
 });
-
-const lastMoodLabel = computed(() => {
-  const rec = lastMoodRecord.value;
-  if (!rec) return null;
-  const score = (rec.payload as Record<string, unknown>)?.score;
-  return typeof score === "number" ? `${score}/10` : rec.summary || "已记录";
-});
-
 const lastMoodDate = computed(() => lastMoodRecord.value?.occurred_at.slice(0, 10) ?? null);
+const lastMoodPreview = computed(() => {
+  const r = lastMoodRecord.value;
+  if (!r) return [];
+  return getMotherRecordPreviewRows(r).slice(0, SUMMARY_CARD_PREVIEW_MAX);
+});
+const lastMoodFallback = computed(() =>
+  motherSummaryFallbackText(lastMoodRecord.value, lastMoodPreview.value.length)
+);
 
 const lastSymptomRecord = computed(() =>
   dashboard.value?.latest_records?.find((r) => r.record_type === "symptom") ?? null
 );
-
-const lastSymptomLabel = computed(() => {
-  const rec = lastSymptomRecord.value;
-  if (!rec) return null;
-  return rec.summary?.trim() || "已记录";
-});
-
 const lastSymptomDate = computed(() => lastSymptomRecord.value?.occurred_at.slice(0, 10) ?? null);
+const lastSymptomPreview = computed(() => {
+  const r = lastSymptomRecord.value;
+  if (!r) return [];
+  return getMotherRecordPreviewRows(r).slice(0, SUMMARY_CARD_PREVIEW_MAX);
+});
+const lastSymptomFallback = computed(() =>
+  motherSummaryFallbackText(lastSymptomRecord.value, lastSymptomPreview.value.length)
+);
 
 const hasSummaryData = computed(() =>
   !!(
-    lastCheckupDate.value ||
-    lastMetricLabel.value ||
-    lastMoodLabel.value ||
-    lastSymptomLabel.value
+    lastCheckupRecord.value ||
+    lastMetricRecord.value ||
+    lastMoodRecord.value ||
+    lastSymptomRecord.value
   )
 );
-
-// ---------------------------------------------------------------------------
-// 事件
-// ---------------------------------------------------------------------------
 
 onShow(() => {
   auth.loadToken();
@@ -386,15 +454,7 @@ function onNextStepAction() {
 
 function onShortcut(tmpl: RecordTemplate) {
   if (tmpl.value === "__body_metric__") {
-    // 直接进入最近常用指标，无历史则默认体重
-    const preferred = getPreferredBodyMetricType(dashboard.value?.latest_records ?? []);
-    const preferredTmpl = MOTHER_TEMPLATES.find((t) => t.value === preferred);
-    if (preferredTmpl) {
-      quickTemplate.value = preferredTmpl;
-      showQuickSheet.value = true;
-    } else {
-      showMetricPicker.value = true;
-    }
+    showMetricPicker.value = true;
     return;
   }
   if (tmpl.mode === "quick") {
@@ -575,7 +635,6 @@ function openSummaryRecord(id: number | undefined) {
   padding: 0 12rpx !important;
 }
 
-/* ① 阶段头部 */
 .hero {
   margin-bottom: $cj-gap-lg;
 }
@@ -585,7 +644,7 @@ function openSummaryRecord(id: number | undefined) {
   align-items: center;
   gap: 16rpx;
   flex-wrap: wrap;
-  margin-bottom: 12rpx;
+  margin-bottom: 8rpx;
 }
 
 .hero-kicker {
@@ -594,9 +653,21 @@ function openSummaryRecord(id: number | undefined) {
   color: $cj-primary;
 }
 
+.hero-headline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 28rpx;
+  min-width: 0;
+}
+
 .hero-name {
-  font-size: 22rpx;
-  color: $cj-text-muted;
+  flex-shrink: 0;
+  max-width: 48%;
+  font-size: 36rpx;
+  font-weight: $cj-fw-title;
+  color: $cj-primary-dark;
+  letter-spacing: 1rpx;
 }
 
 .stage-badge {
@@ -617,11 +688,19 @@ function openSummaryRecord(id: number | undefined) {
 }
 
 .hero-title {
-  display: block;
+  flex: 1;
+  min-width: 0;
   font-size: 40rpx;
   line-height: 1.35;
   color: $cj-ink;
   font-weight: $cj-fw-display;
+  text-align: right;
+}
+
+.hero-title--solo {
+  flex: none;
+  width: 100%;
+  text-align: left;
 }
 
 .hero-desc {
@@ -632,7 +711,6 @@ function openSummaryRecord(id: number | undefined) {
   line-height: 1.6;
 }
 
-/* ② 下一步卡片 */
 .next-card {
   background: $cj-warn-bg;
   border: 1rpx solid $cj-border-light;
@@ -668,7 +746,6 @@ function openSummaryRecord(id: number | undefined) {
   line-height: 72rpx !important;
 }
 
-/* ③ 快捷入口 */
 .shortcut-section,
 .summary-section,
 .section {
@@ -713,7 +790,6 @@ function openSummaryRecord(id: number | undefined) {
   color: $cj-text-muted;
 }
 
-/* ④A 健康摘要：2 列 × 2 行 */
 .summary-grid {
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -722,6 +798,7 @@ function openSummaryRecord(id: number | undefined) {
 
 .summary-card {
   min-width: 0;
+  box-sizing: border-box;
   padding: $cj-gap-md;
   background: $cj-surface;
   border: 1rpx solid $cj-border-light;
@@ -741,28 +818,79 @@ function openSummaryRecord(id: number | undefined) {
   }
 }
 
+.summary-card-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16rpx;
+  min-width: 0;
+}
+
 .summary-label {
-  display: block;
+  flex: 1;
+  min-width: 0;
   color: $cj-text-muted;
   font-size: 22rpx;
+}
+
+.summary-hint-inline {
+  flex-shrink: 0;
+  font-size: 20rpx;
+  color: $cj-text-muted;
 }
 
 .summary-value {
   display: block;
   margin-top: 10rpx;
   color: $cj-ink;
-  font-size: 30rpx;
+  font-size: 28rpx;
   font-weight: $cj-fw-display;
+  line-height: 1.5;
+  word-break: break-word;
 }
 
-.summary-hint {
-  display: block;
-  margin-top: 6rpx;
+/* 横向排列、自动换行，避免左标签右大空的纵向行布局 */
+.summary-key-grid {
+  margin-top: 10rpx;
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 10rpx 12rpx;
+}
+
+.summary-key-chip {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 8rpx 14rpx;
+  background: $cj-surface-2;
+  border: 1rpx solid $cj-border-light;
+  border-radius: $cj-radius-md;
+  gap: 8rpx;
+}
+
+.summary-key-label {
+  flex-shrink: 0;
+  max-width: 46%;
   font-size: 20rpx;
   color: $cj-text-muted;
+  line-height: 1.45;
 }
 
-/* ④B 最近记录 */
+.summary-key-value {
+  flex: 1;
+  min-width: 0;
+  font-size: 22rpx;
+  color: $cj-ink;
+  font-weight: 500;
+  line-height: 1.45;
+  word-break: break-word;
+}
+
 .section {
   background: $cj-surface;
   border: 1rpx solid $cj-border-light;
@@ -796,53 +924,118 @@ function openSummaryRecord(id: number | undefined) {
   font-size: 24rpx;
 }
 
-.record-card {
-  padding: $cj-gap-md;
-  background: $cj-surface-2;
-  border-radius: $cj-radius-md;
-  margin-top: $cj-gap-sm;
-}
-
-.record-top {
+.record-list {
   display: flex;
-  align-items: center;
-  gap: $cj-gap-sm;
+  flex-direction: column;
+  gap: 20rpx;
 }
 
-.record-tag {
-  padding: 6rpx 16rpx;
-  border-radius: $cj-radius-pill;
-  font-size: 20rpx;
-  font-weight: $cj-fw-title;
+.record-card {
+  padding: 24rpx 26rpx;
+  background: $cj-surface;
+  border-radius: $cj-radius-lg;
+  border: 1rpx solid $cj-border-light;
+  box-shadow: $cj-shadow-soft;
 }
 
-.record-tag--mom {
-  background: $cj-mint-soft;
-  color: $cj-text-secondary;
+.record-card-head {
+  margin-bottom: 2rpx;
+}
+
+.record-card-head-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.record-card-tags {
+  margin-top: 12rpx;
 }
 
 .record-type {
-  font-size: 28rpx;
+  flex: 1;
+  min-width: 0;
+  font-size: 30rpx;
   color: $cj-ink;
-  font-weight: $cj-fw-title;
+  font-weight: $cj-fw-display;
+  line-height: 1.4;
 }
 
 .record-date {
-  margin-left: auto;
   flex-shrink: 0;
+  padding-top: 4rpx;
   font-size: 22rpx;
   color: $cj-text-muted;
+  letter-spacing: 0.5rpx;
+}
+
+.record-body {
+  margin-top: 16rpx;
+  padding: 6rpx 18rpx 4rpx;
+  background: $cj-surface-2;
+  border-radius: $cj-radius-md;
+  border: 1rpx solid rgba(234, 217, 204, 0.55);
+}
+
+.record-kv-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 16rpx;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid rgba(234, 217, 204, 0.45);
+}
+
+.record-kv-row:last-child {
+  border-bottom: none;
+  padding-bottom: 12rpx;
+}
+
+.record-kv-row:first-child {
+  padding-top: 12rpx;
+}
+
+.record-key-label {
+  flex-shrink: 0;
+  width: 148rpx;
+  font-size: 22rpx;
+  color: $cj-text-muted;
+  line-height: 1.5;
+}
+
+.record-key-value {
+  flex: 1;
+  min-width: 0;
+  font-size: 26rpx;
+  color: $cj-text;
+  line-height: 1.55;
+  word-break: break-word;
 }
 
 .record-summary {
   display: block;
-  margin-top: 10rpx;
-  font-size: 25rpx;
+  margin-top: 14rpx;
+  padding: 16rpx 18rpx;
+  background: $cj-surface-2;
+  border-radius: $cj-radius-md;
+  border: 1rpx solid rgba(234, 217, 204, 0.45);
+  font-size: 26rpx;
   color: $cj-text-secondary;
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
-/* 身体指标选择弹层 */
+.record-summary-note {
+  display: block;
+  margin-top: 12rpx;
+  padding-top: 14rpx;
+  border-top: 1rpx solid rgba(234, 217, 204, 0.55);
+  font-size: 23rpx;
+  color: $cj-text-muted;
+  line-height: 1.55;
+}
+
 .sheet-mask {
   position: fixed;
   inset: 0;

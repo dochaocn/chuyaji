@@ -1,10 +1,11 @@
-import type { RecordTemplate, TemplateField } from "./recordTypes";
+import {
+  formatFieldValueForDisplay,
+  previewValueForTemplateField,
+  type RecordTemplate,
+  type TemplateField,
+} from "./recordTypes";
 
 export type { RecordTemplate, TemplateField };
-
-// ---------------------------------------------------------------------------
-// 宝妈模板注册表
-// ---------------------------------------------------------------------------
 
 const motherTemplates: RecordTemplate[] = [
   {
@@ -112,8 +113,8 @@ const motherTemplates: RecordTemplate[] = [
   },
   {
     value: "symptom",
-    label: "症状",
-    entryLabel: "症状",
+    label: "不适",
+    entryLabel: "不适",
     mode: "standard",
     recommendedFields: [
       { key: "type", label: "症状类型", type: "text", placeholder: "例如恶心、水肿、腰酸" },
@@ -234,7 +235,6 @@ const motherTemplates: RecordTemplate[] = [
 
 export const MOTHER_TEMPLATES: RecordTemplate[] = motherTemplates;
 
-/** @deprecated 旧格式保留兼容，新代码请用 MOTHER_TEMPLATES */
 export const MOTHER_RECORD_TYPES = motherTemplates.map((t) => ({ value: t.value, label: t.label }));
 
 export function labelForMotherType(type: string): string {
@@ -246,9 +246,26 @@ export function templateForMotherType(type: string): RecordTemplate | undefined 
   return motherTemplates.find((t) => t.value === type);
 }
 
-/**
- * 宝妈"身体指标"快捷入口支持的类型，按此顺序检测最近常用项。
- * 优先级：根据最近使用历史，没有历史则默认进入 weight。
- */
+const MOTHER_RECORD_PREVIEW_MAX_FIELDS = 5;
+
+/** 首页/列表用：按模板把已填关键字段排成行，便于扫读 */
+export function getMotherRecordPreviewRows(record: {
+  record_type: string;
+  payload: Record<string, unknown>;
+}): { label: string; value: string }[] {
+  const tmpl = templateForMotherType(record.record_type);
+  if (!tmpl) return [];
+  const payload = (record.payload || {}) as Record<string, unknown>;
+  const rows: { label: string; value: string }[] = [];
+  const fields = [...tmpl.recommendedFields, ...tmpl.optionalFields];
+  for (const field of fields) {
+    if (rows.length >= MOTHER_RECORD_PREVIEW_MAX_FIELDS) break;
+    const raw = formatFieldValueForDisplay(field, payload);
+    if (raw === null) continue;
+    rows.push({ label: field.label, value: previewValueForTemplateField(field, raw) });
+  }
+  return rows;
+}
+
 export const BODY_METRIC_TYPES = ["weight", "blood_pressure", "blood_sugar"] as const;
 export type BodyMetricType = (typeof BODY_METRIC_TYPES)[number];

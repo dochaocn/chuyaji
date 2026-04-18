@@ -1,4 +1,3 @@
-/** 模板字段定义 */
 export type TemplateField = {
   key: string;
   label: string;
@@ -8,38 +7,18 @@ export type TemplateField = {
   options?: { value: string; label: string }[];
 };
 
-/** 记录模板注册表条目 */
 export type RecordTemplate = {
   value: string;
-  /** 记录类型展示名 */
   label: string;
-  /** 首页快捷入口文案 */
   entryLabel: string;
-  /** quick: 底部面板一键记录；standard: 完整模板页 */
   mode: "quick" | "standard";
-  /** 默认展示的推荐字段（1-3 个） */
   recommendedFields: TemplateField[];
-  /** 折叠在"更多"里的可选字段 */
   optionalFields: TemplateField[];
-  /** standard 模式下摘要输入框的提示文案 */
   summaryPlaceholder?: string;
-  /**
-   * quick 模式下保存时由系统生成摘要，不要求用户填写。
-   * payload 为该条记录的 payload 对象。
-   */
   autoSummary?: (payload: Record<string, unknown>) => string;
-  /** 附件上传提示文案 */
   attachmentHint?: string;
-  /**
-   * 用于后续趋势图/指标提取的 payload 字段 key 列表。
-   * 保存在此方便后续趋势功能直接复用，一期暂不消费。
-   */
   metricKeys?: string[];
 };
-
-// ---------------------------------------------------------------------------
-// 怀孕期模板（全部 standard）
-// ---------------------------------------------------------------------------
 
 const prenatalTemplates: RecordTemplate[] = [
   {
@@ -130,59 +109,7 @@ const prenatalTemplates: RecordTemplate[] = [
     attachmentHint: "可上传化验单",
     metricKeys: ["fasting", "one_hour", "two_hour"],
   },
-  {
-    value: "symptom",
-    label: "不适",
-    entryLabel: "症状",
-    mode: "standard",
-    recommendedFields: [
-      { key: "type", label: "症状类型", type: "text", placeholder: "例如恶心、头晕、腰酸" },
-      {
-        key: "severity",
-        label: "严重程度",
-        type: "select",
-        options: [
-          { value: "mild", label: "轻微" },
-          { value: "moderate", label: "中等" },
-          { value: "severe", label: "严重" },
-        ],
-      },
-    ],
-    optionalFields: [
-      { key: "duration", label: "持续时间", type: "text", placeholder: "例如 2 小时" },
-      {
-        key: "saw_doctor",
-        label: "是否就医",
-        type: "select",
-        options: [
-          { value: "no", label: "未就医" },
-          { value: "yes", label: "已就医" },
-        ],
-      },
-    ],
-    summaryPlaceholder: "今天最明显的不适是什么？",
-  },
-  {
-    value: "medication",
-    label: "用药",
-    entryLabel: "用药",
-    mode: "standard",
-    recommendedFields: [
-      { key: "name", label: "药名", type: "text", placeholder: "例如叶酸" },
-      { key: "purpose", label: "用途", type: "text", placeholder: "例如补充叶酸、止吐" },
-    ],
-    optionalFields: [
-      { key: "dose", label: "剂量", type: "text", placeholder: "例如 0.4mg" },
-      { key: "start_date", label: "开始日期", type: "date" },
-      { key: "doctor_advice", label: "医生建议", type: "text", placeholder: "有无医嘱" },
-    ],
-    summaryPlaceholder: "因为什么开始用药？效果如何？",
-  },
 ];
-
-// ---------------------------------------------------------------------------
-// 成长期模板
-// ---------------------------------------------------------------------------
 
 const postnatalTemplates: RecordTemplate[] = [
   {
@@ -377,24 +304,18 @@ const postnatalTemplates: RecordTemplate[] = [
   },
 ];
 
-// ---------------------------------------------------------------------------
-// 导出合并结构，保持旧消费方（labelForType 等）向后兼容
-// ---------------------------------------------------------------------------
-
 export const BABY_TEMPLATES = {
   prenatal: prenatalTemplates,
   postnatal: postnatalTemplates,
 } as const;
 
-/** @deprecated 旧格式保留兼容，新代码请用 BABY_TEMPLATES */
 export const RECORD_TYPES = {
   prenatal: prenatalTemplates.map((t) => ({ value: t.value, label: t.label })),
   postnatal: postnatalTemplates.map((t) => ({ value: t.value, label: t.label })),
 } as const;
 
 export function labelForType(phase: "prenatal" | "postnatal", type: string): string {
-  const list = BABY_TEMPLATES[phase];
-  const hit = list.find((x) => x.value === type);
+  const hit = BABY_TEMPLATES[phase].find((x) => x.value === type);
   return hit ? hit.label : type;
 }
 
@@ -405,7 +326,6 @@ export function templateForType(
   return BABY_TEMPLATES[phase].find((t) => t.value === type);
 }
 
-/** 详情页只读展示：与编辑页同一套模板字段 */
 export function formatFieldValueForDisplay(
   field: TemplateField,
   payload: Record<string, unknown>
@@ -417,4 +337,38 @@ export function formatFieldValueForDisplay(
     return hit?.label ?? String(raw);
   }
   return String(raw);
+}
+
+/** 列表/卡片预览：日期截断、数字带单位（与宝妈记录预览一致） */
+export function previewValueForTemplateField(field: TemplateField, display: string): string {
+  if (field.type === "date") {
+    const s = display.trim();
+    return s.length >= 10 ? s.slice(0, 10) : s;
+  }
+  if (field.unit && field.type === "number") {
+    return `${display}${field.unit.startsWith("/") ? "" : " "}${field.unit}`;
+  }
+  return display;
+}
+
+const BABY_RECORD_PREVIEW_MAX_FIELDS = 5;
+
+/** 宝宝记录首页/列表：按阶段模板展示已填关键字段 */
+export function getBabyRecordPreviewRows(record: {
+  phase: "prenatal" | "postnatal";
+  record_type: string;
+  payload: Record<string, unknown>;
+}): { label: string; value: string }[] {
+  const tmpl = templateForType(record.phase, record.record_type);
+  if (!tmpl) return [];
+  const payload = (record.payload || {}) as Record<string, unknown>;
+  const rows: { label: string; value: string }[] = [];
+  const fields = [...tmpl.recommendedFields, ...tmpl.optionalFields];
+  for (const field of fields) {
+    if (rows.length >= BABY_RECORD_PREVIEW_MAX_FIELDS) break;
+    const raw = formatFieldValueForDisplay(field, payload);
+    if (raw === null) continue;
+    rows.push({ label: field.label, value: previewValueForTemplateField(field, raw) });
+  }
+  return rows;
 }

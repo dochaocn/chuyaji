@@ -5,7 +5,7 @@
       <text v-if="headDesc" class="head-desc">{{ headDesc }}</text>
     </view>
 
-    <!-- 与编辑页：阶段与类型 -->
+    
     <view class="section">
       <text class="section-label">阶段与类型</text>
       <view class="phase-type-stack">
@@ -144,7 +144,6 @@ onLoad((query: Record<string, string | undefined>) => {
   recordId.value = Number(query.id || 0);
 });
 
-/** 从编辑页返回时页面不重建，onLoad 不会再次执行，需在每次展示时拉取最新数据 */
 onShow(() => {
   if (recordId.value) {
     void refresh();
@@ -203,7 +202,6 @@ function goEdit() {
   uni.navigateTo({ url: `/pages/baby/record-edit?id=${recordId.value}&baby_id=${record.value.baby_id}` });
 }
 
-/** 新建同阶段/同类型记录页并载入本地草稿（与编辑页草稿键一致） */
 function goNewWithDraft() {
   const r = record.value;
   if (!r) return;

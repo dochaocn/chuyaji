@@ -5,7 +5,7 @@
       <text v-if="currentTemplate?.summaryPlaceholder" class="head-desc">{{ currentTemplate.summaryPlaceholder }}</text>
     </view>
 
-    <!-- 类型选择 -->
+    
     <view class="section">
       <text class="section-label">类型</text>
       <picker :range="typeLabels" :value="typeIndex" @change="onType">
@@ -15,7 +15,7 @@
       </picker>
     </view>
 
-    <!-- 日期 -->
+    
     <view class="section">
       <text class="section-label">日期</text>
       <view class="field">
@@ -26,7 +26,7 @@
       </view>
     </view>
 
-    <!-- 推荐字段 -->
+    
     <view v-if="recommendedFields.length" class="section">
       <text class="section-label">关键信息</text>
       <view v-for="field in recommendedFields" :key="field.key" class="field">
@@ -52,7 +52,7 @@
       </view>
     </view>
 
-    <!-- 摘要（standard 模式） -->
+    
     <view v-if="currentTemplate?.mode === 'standard'" class="section">
       <text class="section-label">摘要</text>
       <view class="field">
@@ -64,7 +64,7 @@
       </view>
     </view>
 
-    <!-- 可选字段（折叠） -->
+    
     <view v-if="optionalFields.length" class="section">
       <view class="optional-toggle" @click="showOptional = !showOptional">
         <text class="optional-toggle-text">{{ showOptional ? "收起更多信息" : "展开更多信息" }}</text>
@@ -94,7 +94,7 @@
       </template>
     </view>
 
-    <!-- 图片 -->
+    
     <view class="section">
       <text class="section-label">图片补充</text>
       <text v-if="currentTemplate?.attachmentHint" class="section-hint">{{ currentTemplate.attachmentHint }}</text>
@@ -223,7 +223,7 @@ type DraftCache = { occurredAt?: string; summary?: string; pendingPaths?: { key:
 function persistDraft() {
   if (recordId.value) return;
   try { uni.setStorageSync(draftKey(), JSON.stringify({ occurredAt: occurredAt.value, summary: summary.value, pendingPaths: pendingPaths.value })); }
-  catch { /* ignore */ }
+  catch {  }
 }
 
 async function loadExisting() {
@@ -235,7 +235,6 @@ async function loadExisting() {
     const pl = item.payload || {};
     serverPayload.value = { ...pl };
     for (const key of Object.keys(extras)) delete extras[key];
-    // 全量合并 payload 进 extras，保证所有已存字段都能回显
     for (const [key, val] of Object.entries(pl)) {
       if (val != null && val !== "") extras[key] = String(val);
     }
@@ -320,7 +319,6 @@ async function save() {
   loading.value = true;
   try {
     const freshPayload = buildPayload();
-    // 编辑时与服务端原有 payload 合并，避免 PATCH 整段替换丢掉未出现在当前模板的键
     const payload = recordId.value ? { ...serverPayload.value, ...freshPayload } : freshPayload;
     const finalSummary = buildSummary(payload);
     const body = { record_type: recordType.value, occurred_at: new Date(`${occurredAt.value}T12:00:00`).toISOString(), summary: finalSummary, payload };

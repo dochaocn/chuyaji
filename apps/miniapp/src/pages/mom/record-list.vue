@@ -1,7 +1,7 @@
 <template>
   <view class="page">
 
-    <!-- 顶部筛选 -->
+    
     <view class="filter-bar">
       <scroll-view scroll-x class="filter-scroll" :show-scrollbar="false">
         <view class="filter-inner">
@@ -17,7 +17,7 @@
       </scroll-view>
     </view>
 
-    <!-- 记录列表 -->
+    
     <scroll-view
       scroll-y
       class="list-scroll"
@@ -34,31 +34,38 @@
 
         <template v-else>
           <template v-for="(group, gi) in groupedRecords" :key="gi">
-            <!-- 月份分组标题 -->
+            
             <view class="group-header">
               <text class="group-title">{{ group.label }}</text>
               <text class="group-count">{{ group.items.length }} 条</text>
             </view>
 
-            <!-- 记录卡片 -->
+            
             <view
-              v-for="item in group.items"
-              :key="item.id"
+              v-for="entry in group.items"
+              :key="entry.item.id"
               class="record-row"
-              @click="openRecord(item.id)"
+              @click="openRecord(entry.item.id)"
             >
               <view class="record-body">
                 <view class="record-head">
-                  <text class="tag">宝妈</text>
-                  <text class="record-type">{{ labelForMotherType(item.record_type) }}</text>
-                  <text class="record-date">{{ formatDate(item.occurred_at) }}</text>
+                  <text :class="['stage-badge', periodBadgeClass]">{{ periodLabel }}</text>
+                  <text class="record-type">{{ labelForMotherType(entry.item.record_type) }}</text>
+                  <text class="record-date">{{ formatDate(entry.item.occurred_at) }}</text>
                 </view>
-                <text class="record-summary">{{ item.summary || "未填写摘要" }}</text>
+                <view v-if="entry.keyRows.length" class="record-key-grid">
+                  <view v-for="(kv, ki) in entry.keyRows" :key="ki" class="record-key-line">
+                    <text class="record-key-label">{{ kv.label }}</text>
+                    <text class="record-key-value">{{ kv.value }}</text>
+                  </view>
+                </view>
+                <text v-else class="record-summary">{{ entry.item.summary?.trim() || "未填写内容" }}</text>
+                <text v-if="entry.showSummaryNote" class="record-summary-note">{{ entry.item.summary }}</text>
               </view>
             </view>
           </template>
 
-          <!-- 加载更多 -->
+          
           <view class="load-more">
             <text v-if="loadingMore" class="load-more-text">加载中…</text>
             <text v-else-if="!hasMore" class="load-more-text">已到底部</text>
@@ -73,10 +80,12 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
-import { apiListMotherRecords, type MotherRecordItem } from "@/api/chuyaji";
-import { labelForMotherType } from "@/utils/motherRecordTypes";
+import { apiGetMother, apiListMotherRecords, type MotherRecordItem } from "@/api/chuyaji";
+import { motherStageBadgeClass, motherStageLabel } from "@/utils/homeRules";
+import { getMotherRecordPreviewRows, labelForMotherType, templateForMotherType } from "@/utils/motherRecordTypes";
 
 const motherId = ref(0);
+const motherStatus = ref<"pregnant" | "postpartum" | "parenting" | undefined>(undefined);
 const records = ref<MotherRecordItem[]>([]);
 const nextCursor = ref<string | undefined>(undefined);
 const hasMore = ref(true);
@@ -84,57 +93,71 @@ const loading = ref(false);
 const loadingMore = ref(false);
 const refreshing = ref(false);
 
-// ---------------------------------------------------------------------------
-// 筛选
-// ---------------------------------------------------------------------------
-
 const filterOptions = [
   { value: "all", label: "全部" },
   { value: "checkup", label: "产检" },
   { value: "weight", label: "体重" },
   { value: "blood_pressure", label: "血压" },
   { value: "blood_sugar", label: "血糖" },
-  { value: "symptom", label: "症状" },
+  { value: "symptom", label: "不适" },
+  { value: "medication", label: "用药" },
   { value: "mood", label: "心情" },
 ];
 const activeFilter = ref("all");
+
+const periodLabel = computed(() => motherStageLabel(motherStatus.value));
+const periodBadgeClass = computed(() => motherStageBadgeClass(motherStatus.value));
 
 const filteredRecords = computed(() => {
   if (activeFilter.value === "all") return records.value;
   return records.value.filter((r) => r.record_type === activeFilter.value);
 });
 
+type MomListEntry = {
+  item: MotherRecordItem;
+  keyRows: ReturnType<typeof getMotherRecordPreviewRows>;
+  showSummaryNote: boolean;
+};
+
 function setFilter(val: string) {
   activeFilter.value = val;
 }
 
-// ---------------------------------------------------------------------------
-// 分组：按年月
-// ---------------------------------------------------------------------------
-
 const groupedRecords = computed(() => {
-  const map = new Map<string, { label: string; items: MotherRecordItem[] }>();
+  const map = new Map<string, { label: string; items: MomListEntry[] }>();
   for (const r of filteredRecords.value) {
     const key = r.occurred_at.slice(0, 7);
     if (!map.has(key)) {
       const [y, m] = key.split("-");
       map.set(key, { label: `${y} 年 ${Number(m)} 月`, items: [] });
     }
-    map.get(key)!.items.push(r);
+    const keyRows = getMotherRecordPreviewRows(r);
+    const tmpl = templateForMotherType(r.record_type);
+    const sum = r.summary?.trim() || "";
+    const showSummaryNote = tmpl?.mode === "standard" && !!sum && keyRows.length > 0;
+    map.get(key)!.items.push({ item: r, keyRows, showSummaryNote });
   }
   return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([, v]) => v);
 });
 
-// ---------------------------------------------------------------------------
-// 数据加载
-// ---------------------------------------------------------------------------
-
 onLoad((query: Record<string, string | undefined>) => {
   motherId.value = Number(query.mother_id || 0);
   if (motherId.value) {
+    void loadMotherMeta();
     loadRecords(true);
   }
 });
+
+async function loadMotherMeta() {
+  if (!motherId.value) return;
+  try {
+    const m = await apiGetMother(motherId.value);
+    motherStatus.value = m.status;
+  } catch (e) {
+    console.error(e);
+    motherStatus.value = undefined;
+  }
+}
 
 async function loadRecords(reset = false) {
   if (!motherId.value) return;
@@ -169,16 +192,13 @@ async function loadRecords(reset = false) {
 
 async function onPullRefresh() {
   refreshing.value = true;
+  await loadMotherMeta();
   await loadRecords(true);
 }
 
 function onScrollToBottom() {
   loadRecords(false);
 }
-
-// ---------------------------------------------------------------------------
-// 工具
-// ---------------------------------------------------------------------------
 
 function formatDate(iso: string) {
   const d = iso.slice(0, 10);
@@ -203,7 +223,6 @@ function openRecord(id: number) {
   background: $cj-page-bg;
 }
 
-/* 筛选栏 */
 .filter-bar {
   flex-shrink: 0;
   padding: 16rpx $cj-page-pad-x 0;
@@ -245,7 +264,6 @@ function openRecord(id: number) {
   color: $cj-text-secondary;
 }
 
-/* 滚动区：padding 放在内层，避免小程序 scroll-view 子节点宽度溢出屏幕 */
 .list-scroll {
   flex: 1;
   min-width: 0;
@@ -262,7 +280,6 @@ function openRecord(id: number) {
   padding: 0 $cj-page-pad-x;
 }
 
-/* 占位 */
 .placeholder {
   padding: 80rpx 0;
   text-align: center;
@@ -270,7 +287,6 @@ function openRecord(id: number) {
   font-size: 26rpx;
 }
 
-/* 月份分组 */
 .group-header {
   display: flex;
   align-items: baseline;
@@ -312,14 +328,22 @@ function openRecord(id: number) {
   min-width: 0;
 }
 
-.tag {
+.stage-badge {
   flex-shrink: 0;
-  padding: 4rpx 14rpx;
+  padding: 6rpx 18rpx;
   border-radius: $cj-radius-pill;
   font-size: 20rpx;
-  font-weight: $cj-fw-title;
-  background: $cj-mint-soft;
-  color: $cj-text-secondary;
+  font-weight: 500;
+}
+
+.badge--pre {
+  background: $cj-tag-prenatal-bg;
+  color: $cj-tag-prenatal-text;
+}
+
+.badge--post {
+  background: $cj-tag-postnatal-bg;
+  color: $cj-tag-postnatal-text;
 }
 
 .record-type {
@@ -349,7 +373,46 @@ function openRecord(id: number) {
   word-break: break-word;
 }
 
-/* 加载更多 */
+.record-key-grid {
+  margin-top: 12rpx;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.record-key-line {
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+}
+
+.record-key-label {
+  flex-shrink: 0;
+  width: 152rpx;
+  font-size: 22rpx;
+  color: $cj-text-muted;
+  line-height: 1.5;
+}
+
+.record-key-value {
+  flex: 1;
+  min-width: 0;
+  font-size: 26rpx;
+  color: $cj-text-secondary;
+  line-height: 1.55;
+  word-break: break-word;
+}
+
+.record-summary-note {
+  display: block;
+  margin-top: 10rpx;
+  padding-top: 10rpx;
+  border-top: 1rpx solid $cj-border-light;
+  font-size: 24rpx;
+  color: $cj-text-muted;
+  line-height: 1.55;
+}
+
 .load-more {
   padding: 32rpx 0 16rpx;
   text-align: center;

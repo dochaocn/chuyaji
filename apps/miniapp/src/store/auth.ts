@@ -18,17 +18,13 @@ export const useAuthStore = defineStore("auth", {
       this.token = t;
       try {
         uni.setStorageSync("chuyaji_token", t);
-      } catch {
-        /* ignore */
-      }
+      } catch {}
     },
     loadToken() {
       try {
         const t = uni.getStorageSync("chuyaji_token") as string;
         if (t) this.token = t;
-      } catch {
-        /* ignore */
-      }
+      } catch {}
     },
     async loginWithWeChatCode(code: string) {
       const data = await request<LoginResp>({
@@ -49,9 +45,7 @@ export const useAuthStore = defineStore("auth", {
         uni.removeStorageSync("chuyaji_token");
         uni.removeStorageSync("chuyaji_baby_id");
         uni.removeStorageSync("chuyaji_mother_id");
-      } catch {
-        /* ignore */
-      }
+      } catch {}
     },
   },
 });

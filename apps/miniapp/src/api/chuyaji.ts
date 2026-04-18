@@ -5,7 +5,6 @@ export interface Baby {
   user_id: number;
   nickname: string;
   gender?: string;
-  avatar_url?: string;
   lmp_date?: string;
   edd_date?: string;
   birth_date?: string;
@@ -31,7 +30,6 @@ export interface Mother {
   note?: string;
 }
 
-// gestational_weeks / gestational_days 已移入 payload，不再作为顶层字段返回
 export interface RecordItem {
   id: number;
   baby_id: number;

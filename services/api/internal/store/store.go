@@ -42,6 +42,9 @@ func Open(dbPath string) (*gorm.DB, error) {
 	if err := migrateGestationalColsToPayload(db); err != nil {
 		return nil, err
 	}
+	if err := migrateDropBabyAvatarURL(db); err != nil {
+		return nil, err
+	}
 	return db, nil
 }
 
@@ -86,9 +89,6 @@ func migrateLegacyBabyOwnership(db *gorm.DB) error {
 	`).Error
 }
 
-// migrateGestationalColsToPayload moves gestational_weeks/gestational_days column
-// values into the payload JSON and then drops those columns. These fields were
-// redundant with the template payload keys used by the front end.
 func migrateGestationalColsToPayload(db *gorm.DB) error {
 	hasGW, err := hasColumn(db, "records", "gestational_weeks")
 	if err != nil {
@@ -138,6 +138,17 @@ func migrateGestationalColsToPayload(db *gorm.DB) error {
 		return err
 	}
 	return db.Exec("ALTER TABLE records DROP COLUMN gestational_days").Error
+}
+
+func migrateDropBabyAvatarURL(db *gorm.DB) error {
+	has, err := hasColumn(db, "babies", "avatar_url")
+	if err != nil {
+		return err
+	}
+	if !has {
+		return nil
+	}
+	return db.Exec(`ALTER TABLE babies DROP COLUMN avatar_url`).Error
 }
 
 func migrateLegacyAttachmentOwners(db *gorm.DB) error {

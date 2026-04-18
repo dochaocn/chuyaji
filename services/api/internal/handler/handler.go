@@ -61,13 +61,12 @@ func (h *Handler) canAccessMotherRecord(uid, recordID uint64) (bool, error) {
 	return h.canAccessMother(uid, r.MotherID)
 }
 
-// EncodeCursor packs occurred_at + id for keyset pagination (records sorted by occurred_at DESC, id DESC).
-func EncodeCursor(t time.Time, id uint64) string {
+func encodeCursor(t time.Time, id uint64) string {
 	raw := fmt.Sprintf("%s|%d", t.UTC().Format(time.RFC3339Nano), id)
 	return base64.URLEncoding.EncodeToString([]byte(raw))
 }
 
-func DecodeCursor(s string) (time.Time, uint64, error) {
+func decodeCursor(s string) (time.Time, uint64, error) {
 	b, err := base64.URLEncoding.DecodeString(s)
 	if err != nil {
 		return time.Time{}, 0, err
