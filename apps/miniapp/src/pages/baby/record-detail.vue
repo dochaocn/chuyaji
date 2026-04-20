@@ -79,9 +79,8 @@
 
     <view class="actions-row">
       <button class="ghost-btn action-btn" @click="goEdit">编辑本条</button>
-      <button class="ghost-btn action-btn" @click="goNewWithDraft">载入草稿</button>
+      <button class="danger-btn action-btn" @click="removeRecord">删除记录</button>
     </view>
-    <button class="danger-btn danger-full" @click="removeRecord">删除记录</button>
   </view>
 </template>
 
@@ -200,14 +199,6 @@ function pickImage() {
 function goEdit() {
   if (!record.value) return;
   uni.navigateTo({ url: `/pages/baby/record-edit?id=${recordId.value}&baby_id=${record.value.baby_id}` });
-}
-
-function goNewWithDraft() {
-  const r = record.value;
-  if (!r) return;
-  uni.navigateTo({
-    url: `/pages/baby/record-edit?baby_id=${r.baby_id}&phase=${r.phase}&type=${encodeURIComponent(r.record_type)}`,
-  });
 }
 
 function removeRecord() {
@@ -427,9 +418,4 @@ function removeRecord() {
   border: 1rpx solid rgba(143, 61, 54, 0.2) !important;
 }
 
-.danger-full {
-  width: 100%;
-  margin-top: $cj-gap-sm !important;
-  border-radius: $cj-radius-pill !important;
-}
 </style>

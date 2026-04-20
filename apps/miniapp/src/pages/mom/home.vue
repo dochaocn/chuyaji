@@ -74,127 +74,182 @@
       </view>
 
       
-      <view v-if="dashboard?.profile && hasSummaryData" class="summary-section">
-        <text class="section-label">近况</text>
-        <view class="summary-grid">
-          <view
-            class="summary-card"
-            :class="{ 'summary-card--empty': !lastCheckupRecord }"
-            @click="lastCheckupRecord?.id && openSummaryRecord(lastCheckupRecord.id)"
-          >
-            <view class="summary-card-top">
-              <text class="summary-label">最近产检</text>
-              <text v-if="lastCheckupRecord && lastCheckupDate" class="summary-hint-inline">{{ lastCheckupDate }}</text>
-            </view>
-            <view v-if="lastCheckupPreview.length" class="summary-key-grid">
-              <view v-for="(kv, ki) in lastCheckupPreview" :key="ki" class="summary-key-chip">
-                <view class="summary-key-label">{{ kv.label }}</view>
-                <view class="summary-key-value">{{ kv.value }}</view>
-              </view>
-            </view>
-            <text v-else-if="lastCheckupFallback" class="summary-value">{{ lastCheckupFallback }}</text>
-            <text v-else-if="lastCheckupRecord" class="summary-value">未填写内容</text>
-            <text v-else class="summary-value">暂无</text>
+      <view v-if="dashboard?.profile && hasSummaryData" class="summary-section mom-snapshot-panel">
+        <view class="panel-head panel-head--inline">
+          <view class="panel-head-text">
+            <text class="panel-kicker">身体与情绪</text>
+            <text class="panel-title">近况</text>
           </view>
+          <view class="panel-head-rule" />
+        </view>
+        <view class="summary-grid summary-grid--stack">
           <view
-            class="summary-card"
+            class="summary-card summary-card--mom summary-card--metric"
             :class="{ 'summary-card--empty': !lastMetricRecord }"
             @click="lastMetricRecord?.id && openSummaryRecord(lastMetricRecord.id)"
           >
+            <view class="summary-card-glow summary-card-glow--sage" />
             <view class="summary-card-top">
               <text class="summary-label">身体指标</text>
               <text v-if="lastMetricRecord && lastMetricDate" class="summary-hint-inline">{{ lastMetricDate }}</text>
             </view>
-            <view v-if="lastMetricPreview.length" class="summary-key-grid">
-              <view v-for="(kv, ki) in lastMetricPreview" :key="ki" class="summary-key-chip">
-                <view class="summary-key-label">{{ kv.label }}</view>
-                <view class="summary-key-value">{{ kv.value }}</view>
+            <scroll-view
+              v-if="lastMetricPreview.length"
+              class="summary-key-scroll"
+              scroll-x
+              :show-scrollbar="false"
+              enable-flex
+            >
+              <view class="summary-key-row">
+                <view v-for="(kv, ki) in lastMetricPreview" :key="ki" class="summary-key-chip">
+                  <view class="summary-key-label">{{ kv.label }}</view>
+                  <view class="summary-key-value">{{ kv.value }}</view>
+                </view>
               </view>
-            </view>
-            <text v-else-if="lastMetricFallback" class="summary-value">{{ lastMetricFallback }}</text>
-            <text v-else-if="lastMetricRecord" class="summary-value">未填写内容</text>
-            <text v-else class="summary-value">暂无</text>
+            </scroll-view>
+            <text v-else-if="lastMetricFallback" class="summary-value summary-value--single">{{ lastMetricFallback }}</text>
+            <text v-else-if="lastMetricRecord" class="summary-value summary-value--single">未填写内容</text>
+            <text v-else class="summary-value summary-value--single">暂无</text>
           </view>
           <view
-            class="summary-card"
-            :class="{ 'summary-card--empty': !lastMoodRecord }"
-            @click="lastMoodRecord?.id && openSummaryRecord(lastMoodRecord.id)"
+            class="summary-card summary-card--mom summary-card--checkup"
+            :class="{ 'summary-card--empty': !lastCheckupRecord }"
+            @click="lastCheckupRecord?.id && openSummaryRecord(lastCheckupRecord.id)"
           >
+            <view class="summary-card-glow summary-card-glow--rose" />
             <view class="summary-card-top">
-              <text class="summary-label">最近心情</text>
-              <text v-if="lastMoodRecord && lastMoodDate" class="summary-hint-inline">{{ lastMoodDate }}</text>
+              <text class="summary-label">最近产检</text>
+              <text v-if="lastCheckupRecord && lastCheckupDate" class="summary-hint-inline">{{ lastCheckupDate }}</text>
             </view>
-            <view v-if="lastMoodPreview.length" class="summary-key-grid">
-              <view v-for="(kv, ki) in lastMoodPreview" :key="ki" class="summary-key-chip">
-                <view class="summary-key-label">{{ kv.label }}</view>
-                <view class="summary-key-value">{{ kv.value }}</view>
+            <scroll-view
+              v-if="lastCheckupPreview.length"
+              class="summary-key-scroll"
+              scroll-x
+              :show-scrollbar="false"
+              enable-flex
+            >
+              <view class="summary-key-row">
+                <view v-for="(kv, ki) in lastCheckupPreview" :key="ki" class="summary-key-chip">
+                  <view class="summary-key-label">{{ kv.label }}</view>
+                  <view class="summary-key-value">{{ kv.value }}</view>
+                </view>
               </view>
-            </view>
-            <text v-else-if="lastMoodFallback" class="summary-value">{{ lastMoodFallback }}</text>
-            <text v-else-if="lastMoodRecord" class="summary-value">未填写内容</text>
-            <text v-else class="summary-value">暂无</text>
+            </scroll-view>
+            <text v-else-if="lastCheckupFallback" class="summary-value summary-value--single">{{ lastCheckupFallback }}</text>
+            <text v-else-if="lastCheckupRecord" class="summary-value summary-value--single">未填写内容</text>
+            <text v-else class="summary-value summary-value--single">暂无</text>
           </view>
           <view
-            class="summary-card"
+            class="summary-card summary-card--mom summary-card--symptom"
             :class="{ 'summary-card--empty': !lastSymptomRecord }"
             @click="lastSymptomRecord?.id && openSummaryRecord(lastSymptomRecord.id)"
           >
+            <view class="summary-card-glow summary-card-glow--clay" />
             <view class="summary-card-top">
               <text class="summary-label">最近不适</text>
               <text v-if="lastSymptomRecord && lastSymptomDate" class="summary-hint-inline">{{ lastSymptomDate }}</text>
             </view>
-            <view v-if="lastSymptomPreview.length" class="summary-key-grid">
-              <view v-for="(kv, ki) in lastSymptomPreview" :key="ki" class="summary-key-chip">
-                <view class="summary-key-label">{{ kv.label }}</view>
-                <view class="summary-key-value">{{ kv.value }}</view>
+            <scroll-view
+              v-if="lastSymptomPreview.length"
+              class="summary-key-scroll"
+              scroll-x
+              :show-scrollbar="false"
+              enable-flex
+            >
+              <view class="summary-key-row">
+                <view v-for="(kv, ki) in lastSymptomPreview" :key="ki" class="summary-key-chip">
+                  <view class="summary-key-label">{{ kv.label }}</view>
+                  <view class="summary-key-value">{{ kv.value }}</view>
+                </view>
               </view>
+            </scroll-view>
+            <text v-else-if="lastSymptomFallback" class="summary-value summary-value--single">{{ lastSymptomFallback }}</text>
+            <text v-else-if="lastSymptomRecord" class="summary-value summary-value--single">未填写内容</text>
+            <text v-else class="summary-value summary-value--single">暂无</text>
+          </view>
+          <view
+            class="summary-card summary-card--mom summary-card--mood"
+            :class="{ 'summary-card--empty': !lastMoodRecord }"
+            @click="lastMoodRecord?.id && openSummaryRecord(lastMoodRecord.id)"
+          >
+            <view class="summary-card-glow summary-card-glow--sun" />
+            <view class="summary-card-top">
+              <text class="summary-label">最近心情</text>
+              <text v-if="lastMoodRecord && lastMoodDate" class="summary-hint-inline">{{ lastMoodDate }}</text>
             </view>
-            <text v-else-if="lastSymptomFallback" class="summary-value">{{ lastSymptomFallback }}</text>
-            <text v-else-if="lastSymptomRecord" class="summary-value">未填写内容</text>
-            <text v-else class="summary-value">暂无</text>
+            <scroll-view
+              v-if="lastMoodPreview.length"
+              class="summary-key-scroll"
+              scroll-x
+              :show-scrollbar="false"
+              enable-flex
+            >
+              <view class="summary-key-row">
+                <view v-for="(kv, ki) in lastMoodPreview" :key="ki" class="summary-key-chip">
+                  <view class="summary-key-label">{{ kv.label }}</view>
+                  <view class="summary-key-value">{{ kv.value }}</view>
+                </view>
+              </view>
+            </scroll-view>
+            <text v-else-if="lastMoodFallback" class="summary-value summary-value--single">{{ lastMoodFallback }}</text>
+            <text v-else-if="lastMoodRecord" class="summary-value summary-value--single">未填写内容</text>
+            <text v-else class="summary-value summary-value--single">暂无</text>
           </view>
         </view>
       </view>
 
       
-      <view v-if="dashboard?.profile" class="section">
-        <view class="section-head">
-          <text class="section-title">最近记录</text>
+      <view v-if="dashboard?.profile" class="section records-panel">
+        <view class="panel-head panel-head--inline">
+          <view class="panel-head-text">
+            <text class="panel-kicker">随记</text>
+            <text class="panel-title">最近记录</text>
+          </view>
+          <view class="panel-head-rule" />
           <view v-if="(dashboard?.latest_records?.length || 0) > 0" class="section-meta">
-            <text class="section-meta-hint" @click="goRecordList">查看全部时间线</text>
+            <text class="section-meta-hint" @click="goRecordList">查看全部</text>
           </view>
           <view v-else-if="!loading" class="section-meta">
             <text class="section-meta-hint">在快速记录里新增一条</text>
           </view>
         </view>
         <view v-if="loading" class="placeholder">加载中…</view>
-        <view v-else-if="!dashboard?.latest_records?.length" class="placeholder">
+        <view v-else-if="!dashboard?.latest_records?.length" class="placeholder placeholder--soft">
           还没有记录，可以从产检或身体状态开始。
         </view>
-        <view v-else class="record-list">
+        <view v-else class="record-timeline">
           <view
-            v-for="row in recentMomRecordsWithPreview"
+            v-for="(row, idx) in recentMomRecordsWithPreview"
             :key="row.item.id"
-            class="record-card"
+            class="record-timeline-row"
             @click="openRecord(row.item.id)"
           >
-            <view class="record-card-head">
-              <view class="record-card-head-row">
-                <text class="record-type">{{ labelForMotherType(row.item.record_type) }}</text>
-                <text class="record-date">{{ row.item.occurred_at.slice(0, 10) }}</text>
-              </view>
-              <view class="record-card-tags">
-                <text :class="['stage-badge', stageBadgeClass]">{{ statusLabel }}</text>
-              </view>
+            <view class="record-rail">
+              <view class="record-dot record-dot--mom" />
+              <view
+                v-if="idx < recentMomRecordsWithPreview.length - 1"
+                class="record-line record-line--mom"
+              />
             </view>
-            <view v-if="row.keyRows.length" class="record-body">
-              <view v-for="(kv, ki) in row.keyRows" :key="ki" class="record-kv-row">
-                <view class="record-key-label">{{ kv.label }}</view>
-                <view class="record-key-value">{{ kv.value }}</view>
+            <view class="record-card record-card--timeline">
+              <view class="record-card-head">
+                <view class="record-card-head-row">
+                  <view class="record-type-row">
+                    <text class="record-type">{{ labelForMotherType(row.item.record_type) }}</text>
+                    <text :class="['stage-badge', 'stage-badge--inline', stageBadgeClass]">{{ statusLabel }}</text>
+                  </view>
+                  <text class="record-date">{{ row.item.occurred_at.slice(0, 10) }}</text>
+                </view>
               </view>
+              <view v-if="row.keyRows.length" class="record-body">
+                <view v-for="(kv, ki) in row.keyRows" :key="ki" class="record-kv-row">
+                  <view class="record-key-label">{{ kv.label }}</view>
+                  <view class="record-key-value">{{ kv.value }}</view>
+                </view>
+              </view>
+              <text v-else class="record-summary">{{ row.item.summary?.trim() || "未填写内容" }}</text>
+              <text v-if="row.showSummaryNote" class="record-summary-note">{{ row.item.summary }}</text>
             </view>
-            <text v-else class="record-summary">{{ row.item.summary?.trim() || "未填写内容" }}</text>
-            <text v-if="row.showSummaryNote" class="record-summary-note">{{ row.item.summary }}</text>
           </view>
         </view>
       </view>
@@ -677,6 +732,11 @@ function openSummaryRecord(id: number | undefined) {
   font-weight: 500;
 }
 
+.stage-badge--inline {
+  flex-shrink: 0;
+  align-self: center;
+}
+
 .badge--pre {
   background: $cj-tag-prenatal-bg;
   color: $cj-tag-prenatal-text;
@@ -752,6 +812,88 @@ function openSummaryRecord(id: number | undefined) {
   margin-bottom: $cj-gap-md;
 }
 
+.mom-snapshot-panel {
+  position: relative;
+  padding: $cj-gap-md $cj-gap-md calc($cj-gap-md + 4rpx);
+  background: linear-gradient(155deg, rgba(255, 253, 249, 0.98) 0%, rgba(255, 246, 238, 0.94) 55%, rgba(232, 242, 238, 0.35) 100%);
+  border: 1rpx solid $cj-border-light;
+  border-radius: $cj-radius-lg;
+  box-shadow: $cj-shadow-card;
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0.85;
+    background:
+      radial-gradient(ellipse 100% 70% at 0% 0%, rgba(201, 107, 92, 0.09) 0%, transparent 55%),
+      radial-gradient(ellipse 80% 60% at 100% 100%, rgba(143, 184, 168, 0.12) 0%, transparent 50%);
+  }
+
+  .summary-card-top {
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+
+  .summary-label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+  }
+
+  .summary-hint-inline {
+    white-space: nowrap;
+  }
+}
+
+.panel-head {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: $cj-gap-sm;
+  margin-bottom: $cj-gap-md;
+}
+
+.panel-head--inline {
+  align-items: center;
+}
+
+.panel-head-text {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.panel-kicker {
+  font-size: 20rpx;
+  letter-spacing: 6rpx;
+  text-transform: uppercase;
+  color: $cj-text-muted;
+}
+
+.panel-title {
+  font-size: 34rpx;
+  font-weight: $cj-fw-display;
+  color: $cj-ink;
+  letter-spacing: 1rpx;
+}
+
+.panel-head-rule {
+  flex: 1;
+  height: 1rpx;
+  background: linear-gradient(90deg, $cj-border 0%, rgba(234, 217, 204, 0.2) 100%);
+  margin-bottom: 10rpx;
+}
+
+.panel-head--inline .panel-head-rule {
+  margin-bottom: 0;
+}
+
 .section-label {
   display: block;
   font-size: 22rpx;
@@ -791,12 +933,19 @@ function openSummaryRecord(id: number | undefined) {
 }
 
 .summary-grid {
+  position: relative;
+  z-index: 1;
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: $cj-gap-sm;
 }
 
+.summary-grid--stack {
+  grid-template-columns: 1fr;
+}
+
 .summary-card {
+  position: relative;
   min-width: 0;
   box-sizing: border-box;
   padding: $cj-gap-md;
@@ -818,7 +967,62 @@ function openSummaryRecord(id: number | undefined) {
   }
 }
 
+.summary-card--mom {
+  overflow: hidden;
+  border: 1rpx solid rgba(234, 217, 204, 0.55);
+  background: rgba(255, 253, 249, 0.94);
+}
+
+.summary-card-glow {
+  position: absolute;
+  width: 180rpx;
+  height: 180rpx;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0.55;
+  top: -72rpx;
+  right: -56rpx;
+}
+
+.summary-card-glow--rose {
+  background: radial-gradient(circle, rgba(201, 107, 92, 0.22) 0%, transparent 68%);
+}
+
+.summary-card-glow--sage {
+  background: radial-gradient(circle, rgba(143, 184, 168, 0.28) 0%, transparent 68%);
+}
+
+.summary-card-glow--sun {
+  background: radial-gradient(circle, rgba(212, 165, 116, 0.26) 0%, transparent 68%);
+}
+
+.summary-card-glow--clay {
+  background: radial-gradient(circle, rgba(168, 79, 66, 0.14) 0%, transparent 70%);
+}
+
+.summary-card--checkup .summary-label {
+  color: $cj-primary-dark;
+  font-weight: $cj-fw-title;
+}
+
+.summary-card--metric .summary-label {
+  color: #2d5a48;
+  font-weight: $cj-fw-title;
+}
+
+.summary-card--mood .summary-label {
+  color: #7a5a32;
+  font-weight: $cj-fw-title;
+}
+
+.summary-card--symptom .summary-label {
+  color: #6b4a42;
+  font-weight: $cj-fw-title;
+}
+
 .summary-card-top {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: baseline;
   justify-content: space-between;
@@ -840,6 +1044,8 @@ function openSummaryRecord(id: number | undefined) {
 }
 
 .summary-value {
+  position: relative;
+  z-index: 1;
   display: block;
   margin-top: 10rpx;
   color: $cj-ink;
@@ -849,93 +1055,178 @@ function openSummaryRecord(id: number | undefined) {
   word-break: break-word;
 }
 
-/* 横向排列、自动换行，避免左标签右大空的纵向行布局 */
-.summary-key-grid {
+.summary-value--single {
+  word-break: keep-all;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 近况：单行横向排列，超出可横滑，不换行 */
+.summary-key-scroll {
+  position: relative;
+  z-index: 1;
+  width: 100%;
   margin-top: 10rpx;
+  white-space: nowrap;
+}
+
+.summary-key-row {
   display: flex;
   flex-direction: row;
-  flex-wrap: wrap;
-  align-items: flex-start;
-  gap: 10rpx 12rpx;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 12rpx;
+  padding: 4rpx 2rpx 8rpx;
+  box-sizing: border-box;
 }
 
 .summary-key-chip {
   display: flex;
   flex-direction: row;
   flex-wrap: nowrap;
-  align-items: flex-start;
-  max-width: 100%;
+  align-items: center;
+  flex-shrink: 0;
   box-sizing: border-box;
   padding: 8rpx 14rpx;
   background: $cj-surface-2;
   border: 1rpx solid $cj-border-light;
   border-radius: $cj-radius-md;
   gap: 8rpx;
+  max-width: 85vw;
 }
 
 .summary-key-label {
   flex-shrink: 0;
-  max-width: 46%;
-  font-size: 20rpx;
-  color: $cj-text-muted;
-  line-height: 1.45;
+  max-width: none;
+  white-space: nowrap;
 }
 
 .summary-key-value {
   flex: 1;
   min-width: 0;
-  font-size: 22rpx;
-  color: $cj-ink;
-  font-weight: 500;
-  line-height: 1.45;
-  word-break: break-word;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-.section {
-  background: $cj-surface;
+.records-panel {
+  position: relative;
+  background: linear-gradient(180deg, $cj-surface 0%, rgba(255, 253, 249, 0.97) 100%);
   border: 1rpx solid $cj-border-light;
   border-radius: $cj-radius-lg;
   box-shadow: $cj-shadow-card;
-  padding: $cj-gap-md;
+  padding: $cj-gap-md $cj-gap-md $cj-gap-lg;
+  overflow: hidden;
+
+  &::after {
+    content: "";
+    position: absolute;
+    left: -56rpx;
+    bottom: -64rpx;
+    width: 220rpx;
+    height: 220rpx;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(143, 184, 168, 0.12) 0%, transparent 70%);
+    pointer-events: none;
+  }
 }
 
-.section-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: $cj-gap-sm;
+.records-panel .panel-head {
+  margin-bottom: $cj-gap-md;
 }
 
-.section-title {
-  font-size: 28rpx;
-  font-weight: $cj-fw-display;
-  color: $cj-ink;
+.records-panel .section-meta {
+  flex-shrink: 0;
 }
 
 .section-meta-hint {
   font-size: 22rpx;
   color: $cj-primary;
+  padding: 8rpx 20rpx;
+  border-radius: $cj-radius-pill;
+  background: rgba(201, 107, 92, 0.08);
 }
 
 .placeholder {
+  position: relative;
+  z-index: 1;
   padding: 36rpx 0;
   text-align: center;
   color: $cj-text-muted;
   font-size: 24rpx;
 }
 
-.record-list {
+.placeholder--soft {
+  padding: 48rpx 24rpx;
+  background: $cj-surface-2;
+  border-radius: $cj-radius-md;
+  border: 1rpx dashed rgba(234, 217, 204, 0.85);
+}
+
+.record-timeline {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
+  gap: 8rpx;
+}
+
+.record-timeline-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
   gap: 20rpx;
 }
 
+.record-rail {
+  flex-shrink: 0;
+  width: 28rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 28rpx;
+}
+
+.record-dot {
+  width: 18rpx;
+  height: 18rpx;
+  border-radius: 50%;
+  border: 3rpx solid $cj-surface;
+  box-shadow: 0 0 0 2rpx rgba(234, 217, 204, 0.9);
+}
+
+.record-dot--mom {
+  background: linear-gradient(145deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%);
+}
+
+.record-line {
+  flex: 1;
+  width: 2rpx;
+  min-height: 32rpx;
+  margin-top: 8rpx;
+  border-radius: 2rpx;
+  background: linear-gradient(180deg, rgba(234, 217, 204, 0.95) 0%, rgba(234, 217, 204, 0.15) 100%);
+}
+
+.record-line--mom {
+  background: linear-gradient(180deg, rgba(201, 107, 92, 0.32) 0%, rgba(234, 217, 204, 0.18) 100%);
+}
+
 .record-card {
+  flex: 1;
+  min-width: 0;
   padding: 24rpx 26rpx;
   background: $cj-surface;
   border-radius: $cj-radius-lg;
   border: 1rpx solid $cj-border-light;
   box-shadow: $cj-shadow-soft;
+}
+
+.record-card--timeline {
+  background: linear-gradient(165deg, rgba(255, 253, 249, 0.98) 0%, rgba(255, 248, 240, 0.92) 100%);
+  border: 1rpx solid rgba(234, 217, 204, 0.55);
+  box-shadow: 0 14rpx 36rpx rgba(42, 36, 32, 0.06);
 }
 
 .record-card-head {
@@ -949,8 +1240,22 @@ function openSummaryRecord(id: number | undefined) {
   gap: 20rpx;
 }
 
-.record-card-tags {
-  margin-top: 12rpx;
+.record-type-row {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 12rpx;
+}
+
+.record-type-row .record-type {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .record-type {
@@ -1000,18 +1305,11 @@ function openSummaryRecord(id: number | undefined) {
 .record-key-label {
   flex-shrink: 0;
   width: 148rpx;
-  font-size: 22rpx;
-  color: $cj-text-muted;
-  line-height: 1.5;
 }
 
 .record-key-value {
   flex: 1;
   min-width: 0;
-  font-size: 26rpx;
-  color: $cj-text;
-  line-height: 1.55;
-  word-break: break-word;
 }
 
 .record-summary {
@@ -1071,5 +1369,23 @@ function openSummaryRecord(id: number | undefined) {
 .picker-item-text {
   font-size: 30rpx;
   color: $cj-ink;
+}
+
+@import "@/styles/cj-record-kv-fields.scss";
+
+/* 覆盖公共 KV 的 word-break，保证近况 chip 内不换行 */
+.mom-snapshot-panel .summary-key-label,
+.mom-snapshot-panel .summary-key-value {
+  word-break: normal;
+}
+
+.mom-snapshot-panel .summary-key-label {
+  white-space: nowrap;
+}
+
+.mom-snapshot-panel .summary-key-value {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 </style>

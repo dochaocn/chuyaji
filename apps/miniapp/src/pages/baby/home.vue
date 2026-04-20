@@ -57,70 +57,99 @@
       </view>
 
       
-      <view v-if="isPostnatalStage && hasTrendData" class="trend-section">
-        <text class="section-label">近况</text>
-        <view class="summary-grid">
-          <view v-if="latestWeightLabel" class="summary-card">
+      <view v-if="isPostnatalStage && hasTrendData" class="trend-section trend-panel">
+        <view class="panel-head panel-head--inline">
+          <view class="panel-head-text">
+            <text class="panel-kicker">成长快照</text>
+            <text class="panel-title">近况</text>
+          </view>
+          <view class="panel-head-rule" />
+        </view>
+        <view class="summary-grid summary-grid--baby">
+          <view v-if="latestWeightLabel" class="summary-card summary-card--baby summary-card--weight">
+            <view class="summary-card-accent summary-card-accent--coral" />
             <text class="summary-label">最近体重</text>
             <text class="summary-value">{{ latestWeightLabel }}</text>
             <text v-if="weightAgeDays !== null" class="summary-hint">{{ weightAgeDays }} 天前</text>
           </view>
-          <view class="summary-card">
+          <view class="summary-card summary-card--baby summary-card--count">
+            <view class="summary-card-accent summary-card-accent--mint" />
             <text class="summary-label">本月记录</text>
             <text class="summary-value">{{ monthlyCount }}</text>
             <text class="summary-hint">条</text>
           </view>
-          <view v-if="latestMilestone" class="summary-card">
+          <view v-if="latestMilestone" class="summary-card summary-card--baby summary-card--milestone">
+            <view class="summary-card-accent summary-card-accent--gold" />
             <text class="summary-label">最近里程碑</text>
             <text class="summary-value milestone-value">{{ latestMilestone }}</text>
           </view>
         </view>
         <view class="growth-link" @click="goGrowth">
           <text class="growth-link-text">查看生长趋势</text>
+          <text class="growth-link-chev">›</text>
         </view>
       </view>
 
       
-      <view v-if="dashboard?.profile" class="section">
-        <view class="section-head">
-          <text class="section-title">最近记录</text>
+      <view v-if="dashboard?.profile" class="section records-panel">
+        <view class="panel-head panel-head--inline">
+          <view class="panel-head-text">
+            <text class="panel-kicker">时间线</text>
+            <text class="panel-title">最近记录</text>
+          </view>
+          <view class="panel-head-rule" />
           <view v-if="(dashboard?.latest_records?.length || 0) > 0" class="section-meta">
-            <text class="section-meta-hint" @click="goTimeline">查看全部时间线</text>
+            <text class="section-meta-hint" @click="goTimeline">查看全部</text>
           </view>
           <view v-else-if="!loading" class="section-meta">
             <text class="section-meta-hint">在快速记录里新增一条</text>
           </view>
         </view>
         <view v-if="loading" class="placeholder">加载中…</view>
-        <view v-else-if="!dashboard?.latest_records?.length" class="placeholder">
+        <view v-else-if="!dashboard?.latest_records?.length" class="placeholder placeholder--soft">
           还没有记录，从推荐模板开始。
         </view>
-        <view v-else class="record-list">
+        <view v-else class="record-timeline">
           <view
-            v-for="row in recentBabyRecordsWithPreview"
+            v-for="(row, idx) in recentBabyRecordsWithPreview"
             :key="row.item.id"
-            class="record-card"
+            class="record-timeline-row"
             @click="openRecord(row.item.id)"
           >
-            <view class="record-card-head">
-              <view class="record-card-head-row">
-                <text class="record-type">{{ labelForType(row.item.phase, row.item.record_type) }}</text>
-                <text class="record-date">{{ row.item.occurred_at.slice(0, 10) }}</text>
-              </view>
-              <view class="record-card-tags">
-                <text :class="['record-tag', row.item.phase === 'prenatal' ? 'pre' : 'post']">
-                  {{ row.item.phase === "prenatal" ? "怀孕期" : "成长期" }}
-                </text>
-              </view>
+            <view class="record-rail">
+              <view
+                :class="[
+                  'record-dot',
+                  row.item.phase === 'prenatal' ? 'record-dot--pre' : 'record-dot--post',
+                ]"
+              />
+              <view
+                v-if="idx < recentBabyRecordsWithPreview.length - 1"
+                class="record-line"
+                :class="row.item.phase === 'prenatal' ? 'record-line--pre' : 'record-line--post'"
+              />
             </view>
-            <view v-if="row.keyRows.length" class="record-body">
-              <view v-for="(kv, ki) in row.keyRows" :key="ki" class="record-kv-row">
-                <view class="record-key-label">{{ kv.label }}</view>
-                <view class="record-key-value">{{ kv.value }}</view>
+            <view class="record-card record-card--timeline">
+              <view class="record-card-head">
+                <view class="record-card-head-row">
+                  <view class="record-type-row">
+                    <text class="record-type">{{ labelForType(row.item.phase, row.item.record_type) }}</text>
+                    <text :class="['record-tag', row.item.phase === 'prenatal' ? 'pre' : 'post']">
+                      {{ row.item.phase === "prenatal" ? "怀孕期" : "成长期" }}
+                    </text>
+                  </view>
+                  <text class="record-date">{{ row.item.occurred_at.slice(0, 10) }}</text>
+                </view>
               </view>
+              <view v-if="row.keyRows.length" class="record-body">
+                <view v-for="(kv, ki) in row.keyRows" :key="ki" class="record-kv-row">
+                  <view class="record-key-label">{{ kv.label }}</view>
+                  <view class="record-key-value">{{ kv.value }}</view>
+                </view>
+              </view>
+              <text v-else class="record-summary">{{ row.item.summary?.trim() || "未填写内容" }}</text>
+              <text v-if="row.showSummaryNote" class="record-summary-note">{{ row.item.summary }}</text>
             </view>
-            <text v-else class="record-summary">{{ row.item.summary?.trim() || "未填写内容" }}</text>
-            <text v-if="row.showSummaryNote" class="record-summary-note">{{ row.item.summary }}</text>
           </view>
         </view>
       </view>
@@ -602,6 +631,72 @@ function goTimeline() {
   margin-bottom: $cj-gap-md;
 }
 
+.trend-panel {
+  position: relative;
+  padding: $cj-gap-md $cj-gap-md calc($cj-gap-md + 4rpx);
+  background: linear-gradient(165deg, rgba(255, 253, 249, 0.96) 0%, rgba(255, 246, 238, 0.92) 100%);
+  border: 1rpx solid $cj-border-light;
+  border-radius: $cj-radius-lg;
+  box-shadow: $cj-shadow-card;
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 120% 80% at 100% 0%, rgba(232, 184, 150, 0.22) 0%, transparent 55%),
+      radial-gradient(ellipse 90% 60% at 0% 100%, rgba(143, 184, 168, 0.14) 0%, transparent 50%);
+    opacity: 0.9;
+  }
+}
+
+.panel-head {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: $cj-gap-sm;
+  margin-bottom: $cj-gap-md;
+}
+
+.panel-head--inline {
+  align-items: center;
+}
+
+.panel-head-text {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.panel-kicker {
+  font-size: 20rpx;
+  letter-spacing: 6rpx;
+  text-transform: uppercase;
+  color: $cj-text-muted;
+}
+
+.panel-title {
+  font-size: 34rpx;
+  font-weight: $cj-fw-display;
+  color: $cj-ink;
+  letter-spacing: 1rpx;
+}
+
+.panel-head-rule {
+  flex: 1;
+  height: 1rpx;
+  background: linear-gradient(90deg, $cj-border 0%, rgba(234, 217, 204, 0.2) 100%);
+  margin-bottom: 10rpx;
+}
+
+.panel-head--inline .panel-head-rule {
+  margin-bottom: 0;
+}
+
 .section-label {
   display: block;
   font-size: 22rpx;
@@ -646,6 +741,11 @@ function goTimeline() {
   gap: $cj-gap-sm;
 }
 
+.summary-grid--baby {
+  position: relative;
+  z-index: 1;
+}
+
 .summary-card {
   flex: 1;
   min-width: 180rpx;
@@ -654,6 +754,39 @@ function goTimeline() {
   border: 1rpx solid $cj-border-light;
   border-radius: $cj-radius-lg;
   box-shadow: $cj-shadow-card;
+}
+
+.summary-card--baby {
+  position: relative;
+  overflow: hidden;
+  border: 1rpx solid rgba(234, 217, 204, 0.5);
+  background: rgba(255, 253, 249, 0.92);
+}
+
+.summary-card-accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6rpx;
+  border-radius: $cj-radius-lg 0 0 $cj-radius-lg;
+}
+
+.summary-card-accent--coral {
+  background: linear-gradient(180deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%);
+}
+
+.summary-card-accent--mint {
+  background: linear-gradient(180deg, $cj-mint 0%, #6a9e8c 100%);
+}
+
+.summary-card-accent--gold {
+  background: linear-gradient(180deg, $cj-accent-warm 0%, $cj-accent 100%);
+}
+
+.summary-card--milestone {
+  flex: 1 1 100%;
+  min-width: 100%;
 }
 
 .summary-label {
@@ -682,60 +815,153 @@ function goTimeline() {
 }
 
 .growth-link {
-  margin-top: $cj-gap-sm;
-  text-align: right;
+  position: relative;
+  z-index: 1;
+  margin-top: $cj-gap-md;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6rpx;
 }
 
 .growth-link-text {
   font-size: 24rpx;
-  color: $cj-primary;
+  color: $cj-primary-dark;
+  font-weight: 500;
 }
 
-.section {
-  background: $cj-surface;
+.growth-link-chev {
+  font-size: 28rpx;
+  color: $cj-primary;
+  line-height: 1;
+  opacity: 0.85;
+}
+
+.records-panel {
+  position: relative;
+  background: linear-gradient(180deg, $cj-surface 0%, rgba(255, 253, 249, 0.97) 100%);
   border: 1rpx solid $cj-border-light;
   border-radius: $cj-radius-lg;
   box-shadow: $cj-shadow-card;
-  padding: $cj-gap-md;
+  padding: $cj-gap-md $cj-gap-md $cj-gap-lg;
+  overflow: hidden;
+
+  &::after {
+    content: "";
+    position: absolute;
+    right: -40rpx;
+    top: -48rpx;
+    width: 200rpx;
+    height: 200rpx;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(201, 107, 92, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
 }
 
-.section-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: $cj-gap-sm;
+.records-panel .panel-head {
+  margin-bottom: $cj-gap-md;
 }
 
-.section-title {
-  font-size: 28rpx;
-  font-weight: $cj-fw-display;
-  color: $cj-ink;
+.records-panel .section-meta {
+  flex-shrink: 0;
 }
 
 .section-meta-hint {
   font-size: 22rpx;
   color: $cj-primary;
+  padding: 8rpx 20rpx;
+  border-radius: $cj-radius-pill;
+  background: rgba(201, 107, 92, 0.08);
 }
 
 .placeholder {
+  position: relative;
+  z-index: 1;
   padding: 36rpx 0;
   text-align: center;
   color: $cj-text-muted;
   font-size: 24rpx;
 }
 
-.record-list {
+.placeholder--soft {
+  padding: 48rpx 24rpx;
+  background: $cj-surface-2;
+  border-radius: $cj-radius-md;
+  border: 1rpx dashed rgba(234, 217, 204, 0.85);
+}
+
+.record-timeline {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
+  gap: 8rpx;
+}
+
+.record-timeline-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
   gap: 20rpx;
 }
 
+.record-rail {
+  flex-shrink: 0;
+  width: 28rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 28rpx;
+}
+
+.record-dot {
+  width: 18rpx;
+  height: 18rpx;
+  border-radius: 50%;
+  border: 3rpx solid $cj-surface;
+  box-shadow: 0 0 0 2rpx rgba(234, 217, 204, 0.9);
+}
+
+.record-dot--pre {
+  background: linear-gradient(145deg, #e8c4d4 0%, #b87a92 100%);
+}
+
+.record-dot--post {
+  background: linear-gradient(145deg, #b8e0d0 0%, #5a9d82 100%);
+}
+
+.record-line {
+  flex: 1;
+  width: 2rpx;
+  min-height: 32rpx;
+  margin-top: 8rpx;
+  border-radius: 2rpx;
+  background: linear-gradient(180deg, rgba(234, 217, 204, 0.95) 0%, rgba(234, 217, 204, 0.15) 100%);
+}
+
+.record-line--pre {
+  background: linear-gradient(180deg, rgba(184, 122, 146, 0.35) 0%, rgba(234, 217, 204, 0.2) 100%);
+}
+
+.record-line--post {
+  background: linear-gradient(180deg, rgba(90, 157, 130, 0.35) 0%, rgba(234, 217, 204, 0.2) 100%);
+}
+
 .record-card {
+  flex: 1;
+  min-width: 0;
   padding: 24rpx 26rpx;
   background: $cj-surface;
   border-radius: $cj-radius-lg;
   border: 1rpx solid $cj-border-light;
   box-shadow: $cj-shadow-soft;
+}
+
+.record-card--timeline {
+  background: linear-gradient(165deg, rgba(255, 253, 249, 0.98) 0%, rgba(255, 248, 240, 0.92) 100%);
+  border: 1rpx solid rgba(234, 217, 204, 0.55);
+  box-shadow: 0 14rpx 36rpx rgba(42, 36, 32, 0.06);
 }
 
 .record-card-head {
@@ -749,8 +975,26 @@ function goTimeline() {
   gap: 20rpx;
 }
 
-.record-card-tags {
-  margin-top: 12rpx;
+.record-type-row {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 12rpx;
+}
+
+.record-type-row .record-type {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.record-type-row .record-tag {
+  flex-shrink: 0;
 }
 
 .record-tag {
@@ -817,18 +1061,11 @@ function goTimeline() {
 .record-key-label {
   flex-shrink: 0;
   width: 148rpx;
-  font-size: 22rpx;
-  color: $cj-text-muted;
-  line-height: 1.5;
 }
 
 .record-key-value {
   flex: 1;
   min-width: 0;
-  font-size: 26rpx;
-  color: $cj-text;
-  line-height: 1.55;
-  word-break: break-word;
 }
 
 .record-summary {
@@ -852,4 +1089,6 @@ function goTimeline() {
   color: $cj-text-muted;
   line-height: 1.55;
 }
+
+@import "@/styles/cj-record-kv-fields.scss";
 </style>

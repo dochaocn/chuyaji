@@ -122,11 +122,7 @@
       <button class="add-photo-btn" @click="pickImages">添加图片</button>
     </view>
 
-    <view v-if="!recordId" class="save-draft-row">
-      <button class="main-btn row-btn" :loading="loading" @click="save">保存记录</button>
-      <button class="ghost-btn row-btn" @click="tapLoadDraft">载入草稿</button>
-    </view>
-    <button v-else class="main-btn" :loading="loading" @click="save">保存记录</button>
+    <button class="main-btn" :loading="loading" @click="save">保存记录</button>
   </view>
 </template>
 
@@ -214,7 +210,8 @@ watch(
     recordType.value = BABY_TEMPLATES[phase.value][0].value;
     for (const key of Object.keys(extras)) delete extras[key];
     showOptional.value = false;
-  }
+  },
+  { flush: "sync" }
 );
 
 watch(
@@ -222,7 +219,8 @@ watch(
   () => {
     for (const key of Object.keys(extras)) delete extras[key];
     showOptional.value = false;
-  }
+  },
+  { flush: "sync" }
 );
 
 onLoad((query: Record<string, string | undefined>) => {
@@ -233,7 +231,6 @@ onLoad((query: Record<string, string | undefined>) => {
   const now = new Date();
   occurredAt.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   if (recordId.value) loadExisting();
-  else loadDraft({ silent: true });
 });
 
 function onPhase(event: { detail: { value: string } }) {
@@ -247,19 +244,6 @@ function onType(event: { detail: { value: string } }) {
 
 function onOccurredAtChange(event: { detail: { value: string } }) {
   occurredAt.value = event.detail.value || "";
-}
-
-function draftKey() {
-  return `draft_record_${babyId.value}_${phase.value}_${recordType.value}`;
-}
-
-type DraftCache = { occurredAt?: string; summary?: string; pendingPaths?: { key: string; path: string }[] };
-
-function persistDraft() {
-  if (recordId.value) return;
-  try {
-    uni.setStorageSync(draftKey(), JSON.stringify({ occurredAt: occurredAt.value, summary: summary.value, pendingPaths: pendingPaths.value }));
-  } catch {  }
 }
 
 async function loadExisting() {
@@ -283,21 +267,6 @@ async function loadExisting() {
     uni.showToast({ title: "加载失败", icon: "none" });
   }
 }
-
-function loadDraft(options?: { silent?: boolean }) {
-  const silent = options?.silent ?? true;
-  try {
-    const raw = uni.getStorageSync(draftKey()) as string;
-    if (!raw) { if (!silent) uni.showToast({ title: "暂无草稿", icon: "none" }); return; }
-    const cached = JSON.parse(raw) as DraftCache;
-    occurredAt.value = cached.occurredAt || occurredAt.value;
-    summary.value = cached.summary || "";
-    pendingPaths.value = Array.isArray(cached.pendingPaths) ? [...cached.pendingPaths] : [];
-    if (!silent) uni.showToast({ title: "已载入草稿", icon: "success" });
-  } catch { if (!silent) uni.showToast({ title: "载入失败", icon: "none" }); }
-}
-
-function tapLoadDraft() { loadDraft({ silent: false }); }
 
 function buildPayload(): Record<string, unknown> {
   const base: Record<string, unknown> = {};
@@ -365,18 +334,14 @@ async function save() {
     } else {
       const created = await apiCreateRecord(babyId.value, body);
       await uploadPendingForRecord(created.id);
-      uni.removeStorageSync(draftKey());
     }
     uni.showToast({ title: "已保存", icon: "success" });
     setTimeout(() => uni.navigateBack(), 250);
   } catch (error) {
     console.error(error);
     uni.showToast({ title: "保存失败", icon: "none" });
-    persistDraft();
   } finally { loading.value = false; }
 }
-
-watch([occurredAt, summary, pendingPaths], () => { persistDraft(); }, { deep: true });
 </script>
 
 <style lang="scss" scoped>
@@ -455,15 +420,5 @@ watch([occurredAt, summary, pendingPaths], () => { persistDraft(); }, { deep: tr
 
 .main-btn, .ghost-btn { border-radius: $cj-radius-pill !important; }
 .main-btn { margin-top: $cj-gap-sm; background: linear-gradient(165deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%) !important; color: #fffefb !important; border: none !important; }
-.save-draft-row {
-  display: flex;
-  gap: $cj-gap-sm;
-  margin-top: $cj-gap-sm;
-  align-items: stretch;
-}
-.save-draft-row .row-btn {
-  flex: 1;
-  margin-top: 0 !important;
-}
 .ghost-btn { background: $cj-surface !important; color: $cj-text !important; border: 1rpx solid $cj-border-light !important; }
 </style>

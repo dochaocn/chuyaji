@@ -388,19 +388,12 @@ function openRecord(id: number) {
 
 .record-key-label {
   flex-shrink: 0;
-  width: 152rpx;
-  font-size: 22rpx;
-  color: $cj-text-muted;
-  line-height: 1.5;
+  width: 148rpx;
 }
 
 .record-key-value {
   flex: 1;
   min-width: 0;
-  font-size: 26rpx;
-  color: $cj-text-secondary;
-  line-height: 1.55;
-  word-break: break-word;
 }
 
 .record-summary-note {
@@ -422,4 +415,6 @@ function openRecord(id: number) {
   font-size: 24rpx;
   color: $cj-text-muted;
 }
+
+@import "@/styles/cj-record-kv-fields.scss";
 </style>
