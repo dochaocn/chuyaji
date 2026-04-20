@@ -3,12 +3,17 @@ import { onLaunch, onShow, onHide } from "@dcloudio/uni-app";
 import { useAuthStore } from "@/store/auth";
 import { useSessionStore } from "@/store/session";
 
-onLaunch(() => {
-  useAuthStore().loadToken();
+onLaunch(async () => {
+  const auth = useAuthStore();
+  auth.loadToken();
   useSessionStore().load();
+  if (!auth.token) {
+    await auth.ensureWeChatSession();
+  }
 });
 onShow(() => {
-  useAuthStore().loadToken();
+  const auth = useAuthStore();
+  auth.loadToken();
   useSessionStore().load();
 });
 onHide(() => {

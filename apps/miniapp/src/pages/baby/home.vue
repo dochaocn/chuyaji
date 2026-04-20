@@ -8,14 +8,18 @@
       <button size="mini" class="notice-btn" @click="goPrivacy">去阅读</button>
     </view>
 
-    
-    <view v-if="!auth.token" class="empty-card">
-      <text class="empty-title">先登录后再开始记录</text>
-      <text class="empty-desc">登录后会自动加载当前宝宝档案与最近记录。</text>
-      <button class="main-btn" @click="onLogin">微信登录</button>
+    <view v-if="!auth.token && auth.sessionBooting" class="empty-card">
+      <text class="empty-title">正在准备运行环境…</text>
+      <text class="empty-desc">请稍候，完成环境与内容加载后即可使用。</text>
     </view>
 
-    <template v-else>
+    <view v-else-if="!auth.token && auth.sessionBootError" class="empty-card">
+      <text class="empty-title">{{ auth.sessionBootError }}</text>
+      <text class="empty-desc">请检查网络设置后重试。</text>
+      <button class="main-btn" @click="retryWeChatSession">重试</button>
+    </view>
+
+    <template v-else-if="auth.token">
 
       
       <view class="hero">
@@ -172,7 +176,6 @@
 <script setup lang="ts">
 import { onShow } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
-import { isDevWechatLogin } from "@/api/config";
 import { apiBabyDashboard, apiCreateRecord } from "@/api/chuyaji";
 import type { RecordItem } from "@/api/chuyaji";
 import { useAuthStore } from "@/store/auth";
@@ -329,13 +332,23 @@ const hasTrendData = computed(() => {
   return !!latestWeightLabel.value || monthlyCount.value > 0;
 });
 
-onShow(() => {
+onShow(async () => {
   auth.loadToken();
   session.load();
+  if (!auth.token) {
+    await auth.ensureWeChatSession();
+  }
   if (auth.token) {
     loadDashboard();
   }
 });
+
+async function retryWeChatSession() {
+  await auth.ensureWeChatSession();
+  if (auth.token) {
+    await loadDashboard();
+  }
+}
 
 async function loadDashboard() {
   loading.value = true;
@@ -403,41 +416,6 @@ async function onQuickSaved(payload: Record<string, unknown>, summary: string) {
 
 function goPrivacy() {
   uni.navigateTo({ url: "/pages/privacy/privacy" });
-}
-
-async function onLogin() {
-  if (isDevWechatLogin()) {
-    try {
-      await auth.loginWithWeChatCode("dev");
-      await loadDashboard();
-      uni.showToast({ title: "登录成功", icon: "success" });
-    } catch (error) {
-      console.error(error);
-      uni.showToast({ title: "登录失败", icon: "none" });
-    }
-    return;
-  }
-  uni.login({
-    provider: "weixin",
-    success: async (res) => {
-      if (!res.code) {
-        uni.showToast({ title: "缺少登录 code", icon: "none" });
-        return;
-      }
-      try {
-        await auth.loginWithWeChatCode(res.code);
-        await loadDashboard();
-        uni.showToast({ title: "登录成功", icon: "success" });
-      } catch (error) {
-        console.error(error);
-        uni.showToast({ title: "登录失败", icon: "none" });
-      }
-    },
-    fail: (error) => {
-      console.error(error);
-      uni.showToast({ title: "登录失败", icon: "none" });
-    },
-  });
 }
 
 function goProfileEdit() {
