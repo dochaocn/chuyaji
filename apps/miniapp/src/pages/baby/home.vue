@@ -22,6 +22,7 @@
         <view class="hero-top">
           <text class="hero-kicker">宝宝工作台</text>
           <text v-if="dashboard?.profile" :class="['stage-badge', babyStageBadgeClass]">{{ babyStageLabel }}</text>
+          <text v-if="dashboard?.profile" class="hero-edit-link" @click="goProfileEdit">编辑档案</text>
         </view>
         <view class="hero-headline">
           <text v-if="dashboard?.profile" class="hero-name">{{ dashboard.profile.nickname || "未命名宝宝" }}</text>
@@ -547,6 +548,13 @@ function goTimeline() {
 .badge--post {
   background: $cj-tag-postnatal-bg;
   color: $cj-tag-postnatal-text;
+}
+
+.hero-edit-link {
+  margin-left: auto;
+  font-size: 24rpx;
+  color: $cj-primary;
+  padding: 8rpx 0;
 }
 
 .hero-headline {

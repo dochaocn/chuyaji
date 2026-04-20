@@ -20,6 +20,7 @@
         <view class="hero-top">
           <text class="hero-kicker">宝妈工作台</text>
           <text v-if="dashboard?.profile" :class="['stage-badge', stageBadgeClass]">{{ statusLabel }}</text>
+          <text v-if="dashboard?.profile" class="hero-edit-link" @click="goProfileEdit">编辑档案</text>
         </view>
         <view class="hero-headline">
           <text v-if="dashboard?.profile" class="hero-name">{{ dashboard.profile.name || "宝妈" }}</text>
@@ -745,6 +746,13 @@ function openSummaryRecord(id: number | undefined) {
 .badge--post {
   background: $cj-tag-postnatal-bg;
   color: $cj-tag-postnatal-text;
+}
+
+.hero-edit-link {
+  margin-left: auto;
+  font-size: 24rpx;
+  color: $cj-primary;
+  padding: 8rpx 0;
 }
 
 .hero-title {
