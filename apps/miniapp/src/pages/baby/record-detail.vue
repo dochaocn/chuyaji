@@ -96,6 +96,7 @@ import {
   type RecordItem,
 } from "@/api/chuyaji";
 import { uploadRecordAttachment } from "@/api/upload";
+import { ensureImageUnderMaxBytes } from "@/utils/imageCompress";
 import { resolvePublicMediaUrl } from "@/utils/mediaUrl";
 import {
   formatFieldValueForDisplay,
@@ -182,11 +183,12 @@ async function removeAttachment(id: number) {
 function pickImage() {
   uni.chooseImage({
     count: 9,
-    sizeType: ["compressed"],
+    sizeType: ["original"],
     success: async (result) => {
       for (const file of result.tempFilePaths) {
         try {
-          await uploadRecordAttachment(recordId.value, file);
+          const path = await ensureImageUnderMaxBytes(file);
+          await uploadRecordAttachment(recordId.value, path);
         } catch (error) {
           console.error(error);
         }

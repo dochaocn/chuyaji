@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"crypto/rand"
 	"errors"
+	"fmt"
 	"io"
 	"mime"
 	"net/http"
@@ -9,11 +11,11 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/dochaocn/chuyaji/services/api/internal/middleware"
 	"github.com/dochaocn/chuyaji/services/api/internal/model"
 	"github.com/gin-gonic/gin"
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -50,6 +52,38 @@ func (h *Handler) uploadAttachmentByOwner(c *gin.Context, ownerType string) {
 		return
 	}
 
+	var babyOrMotherID uint64
+	var recordType string
+	switch ownerType {
+	case "baby_record":
+		var rec model.Record
+		if err := h.DB.First(&rec, ownerID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "db"})
+			}
+			return
+		}
+		babyOrMotherID = rec.BabyID
+		recordType = rec.RecordType
+	case "mother_record":
+		var rec model.MotherRecord
+		if err := h.DB.First(&rec, ownerID).Error; err != nil {
+			if errors.Is(err, gorm.ErrRecordNotFound) {
+				c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			} else {
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "db"})
+			}
+			return
+		}
+		babyOrMotherID = rec.MotherID
+		recordType = rec.RecordType
+	default:
+		c.JSON(http.StatusBadRequest, gin.H{"error": "bad owner"})
+		return
+	}
+
 	fh, err := c.FormFile("file")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing file"})
@@ -66,7 +100,27 @@ func (h *Handler) uploadAttachmentByOwner(c *gin.Context, ownerType string) {
 	if ext == "" {
 		ext = ".bin"
 	}
-	token := uuid.NewString()
+	var token string
+	for attempt := 0; attempt < 8; attempt++ {
+		tk, errGen := attachmentShareToken(babyOrMotherID, ownerID, recordType)
+		if errGen != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "name"})
+			return
+		}
+		var cnt int64
+		if err := h.DB.Model(&model.Attachment{}).Where("share_token = ?", tk).Count(&cnt).Error; err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "db"})
+			return
+		}
+		if cnt == 0 {
+			token = tk
+			break
+		}
+	}
+	if token == "" {
+		c.JSON(http.StatusServiceUnavailable, gin.H{"error": "name collision"})
+		return
+	}
 	dirName := "records"
 	if ownerType == "mother_record" {
 		dirName = "mother-records"
@@ -139,4 +193,72 @@ func (h *Handler) PublicAttachment(c *gin.Context) {
 	c.Header("Content-Type", ct)
 	c.Header("Cache-Control", "public, max-age=86400")
 	c.File(a.LocalPath)
+}
+
+const maxShareTokenLen = 64
+
+func sanitizeRecordTypeSegment(s string) string {
+	var b strings.Builder
+	for _, r := range s {
+		switch {
+		case r >= 'a' && r <= 'z', r >= 'A' && r <= 'Z', r >= '0' && r <= '9':
+			b.WriteRune(r)
+		case r == '_', r == '-':
+			b.WriteRune(r)
+		default:
+			b.WriteByte('_')
+		}
+	}
+	out := strings.Trim(b.String(), "_-")
+	if out == "" {
+		return "type"
+	}
+	return out
+}
+
+func randomAlnum5() (string, error) {
+	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
+	buf := make([]byte, 5)
+	if _, err := rand.Read(buf); err != nil {
+		return "", err
+	}
+	out := make([]byte, 5)
+	for i := range out {
+		out[i] = letters[int(buf[i])%len(letters)]
+	}
+	return string(out), nil
+}
+
+func truncateUTF8ByMaxBytes(s string, maxBytes int) string {
+	if maxBytes <= 0 {
+		return ""
+	}
+	if len(s) <= maxBytes {
+		return s
+	}
+	s = s[:maxBytes]
+	for !utf8.ValidString(s) {
+		s = s[:len(s)-1]
+		if len(s) == 0 {
+			return ""
+		}
+	}
+	return s
+}
+
+func attachmentShareToken(profileID, recordID uint64, recordType string) (string, error) {
+	safe := sanitizeRecordTypeSegment(recordType)
+	a := strconv.FormatUint(profileID, 10)
+	b := strconv.FormatUint(recordID, 10)
+	suf, err := randomAlnum5()
+	if err != nil {
+		return "", err
+	}
+	overhead := len(a) + len(b) + len(suf) + 3
+	maxSafe := maxShareTokenLen - overhead
+	if maxSafe < 1 {
+		maxSafe = 1
+	}
+	safe = truncateUTF8ByMaxBytes(safe, maxSafe)
+	return fmt.Sprintf("%s_%s_%s_%s", a, b, safe, suf), nil
 }

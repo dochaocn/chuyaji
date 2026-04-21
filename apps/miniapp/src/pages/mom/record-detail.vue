@@ -88,6 +88,7 @@ import {
   type MotherRecordItem,
 } from "@/api/chuyaji";
 import { uploadMotherRecordAttachment } from "@/api/upload";
+import { ensureImageUnderMaxBytes } from "@/utils/imageCompress";
 import { resolvePublicMediaUrl } from "@/utils/mediaUrl";
 import { formatFieldValueForDisplay, type TemplateField } from "@/utils/recordTypes";
 import { labelForMotherType, MOTHER_TEMPLATES, type RecordTemplate } from "@/utils/motherRecordTypes";
@@ -169,11 +170,12 @@ async function removeAttachment(id: number) {
 function pickImage() {
   uni.chooseImage({
     count: 9,
-    sizeType: ["compressed"],
+    sizeType: ["original"],
     success: async (result) => {
       for (const file of result.tempFilePaths) {
         try {
-          await uploadMotherRecordAttachment(recordId.value, file);
+          const path = await ensureImageUnderMaxBytes(file);
+          await uploadMotherRecordAttachment(recordId.value, path);
         } catch (error) {
           console.error(error);
         }

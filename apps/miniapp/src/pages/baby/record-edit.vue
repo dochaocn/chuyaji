@@ -134,6 +134,7 @@ import {
   type AttachmentItem,
 } from "@/api/chuyaji";
 import { uploadRecordAttachment } from "@/api/upload";
+import { ensureImageUnderMaxBytes } from "@/utils/imageCompress";
 import { resolvePublicMediaUrl } from "@/utils/mediaUrl";
 import { BABY_TEMPLATES, labelForType, type RecordTemplate, type TemplateField } from "@/utils/recordTypes";
 
@@ -297,8 +298,19 @@ function pickImages() {
   const remain = 27 - displayPhotos.value.length;
   if (remain <= 0) { uni.showToast({ title: "图片数量已达上限", icon: "none" }); return; }
   uni.chooseImage({
-    count: Math.min(9, remain), sizeType: ["compressed"],
-    success: (res) => { for (const path of res.tempFilePaths) pendingPaths.value.push({ key: `p-${Date.now()}-${Math.random().toString(36).slice(2)}`, path }); },
+    count: Math.min(9, remain),
+    sizeType: ["original"],
+    success: async (res) => {
+      for (const path of res.tempFilePaths) {
+        try {
+          const finalPath = await ensureImageUnderMaxBytes(path);
+          pendingPaths.value.push({ key: `p-${Date.now()}-${Math.random().toString(36).slice(2)}`, path: finalPath });
+        } catch (e) {
+          console.error(e);
+          uni.showToast({ title: "图片处理失败", icon: "none" });
+        }
+      }
+    },
   });
 }
 
