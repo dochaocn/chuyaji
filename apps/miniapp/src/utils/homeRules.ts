@@ -43,13 +43,6 @@ export function getMotherNextStep(
   return { type: "none" };
 }
 
-export function getBabyPostnatalShortcuts(ageMonths: number): string[] {
-  if (ageMonths < 6) {
-    return ["feeding", "sleep", "diaper", "growth"];
-  }
-  return ["feeding", "sleep", "growth", "vaccine"];
-}
-
 export function getPreferredBodyMetricType(
   recentMotherRecords: { record_type: string }[]
 ): BodyMetricType {

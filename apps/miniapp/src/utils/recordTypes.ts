@@ -61,22 +61,6 @@ const prenatalTemplates: RecordTemplate[] = [
     attachmentHint: "可上传 B 超单、影像照片",
   },
   {
-    value: "nt",
-    label: "NT",
-    entryLabel: "NT",
-    mode: "standard",
-    recommendedFields: [
-      { key: "nt_mm", label: "NT 值", type: "number", placeholder: "例如 1.2", unit: "mm" },
-      { key: "conclusion", label: "结论", type: "text", placeholder: "低风险 / 高风险" },
-    ],
-    optionalFields: [
-      { key: "hospital", label: "医院", type: "text", placeholder: "可选" },
-      { key: "gestational_weeks", label: "孕周", type: "number", placeholder: "例如 12", unit: "周" },
-    ],
-    summaryPlaceholder: "NT 检查结果如何？",
-    attachmentHint: "可上传检查报告",
-  },
-  {
     value: "screening",
     label: "筛查",
     entryLabel: "筛查",
@@ -91,6 +75,23 @@ const prenatalTemplates: RecordTemplate[] = [
     ],
     summaryPlaceholder: "筛查结果和医生建议是什么？",
     attachmentHint: "可上传报告单",
+  },
+  {
+    value: "ultrasound_4d",
+    label: "四维",
+    entryLabel: "四维",
+    mode: "standard",
+    recommendedFields: [
+      { key: "gestational_weeks", label: "孕周", type: "number", placeholder: "例如 24", unit: "周" },
+      { key: "doctor_conclusion", label: "医生结论", type: "text", placeholder: "结构筛查 / 总体情况" },
+    ],
+    optionalFields: [
+      { key: "hospital", label: "医院", type: "text", placeholder: "可选" },
+      { key: "estimated_weight_g", label: "胎儿估重", type: "number", placeholder: "例如 800", unit: "g" },
+      { key: "note", label: "备注", type: "text", placeholder: "例如面部成像、配合度等" },
+    ],
+    summaryPlaceholder: "四维检查印象最深的是什么？",
+    attachmentHint: "可上传四维报告或影像截图",
   },
   {
     value: "glucose_test",
@@ -109,25 +110,25 @@ const prenatalTemplates: RecordTemplate[] = [
     attachmentHint: "可上传化验单",
     metricKeys: ["fasting", "one_hour", "two_hour"],
   },
+  {
+    value: "nt",
+    label: "NT",
+    entryLabel: "NT",
+    mode: "standard",
+    recommendedFields: [
+      { key: "nt_mm", label: "NT 值", type: "number", placeholder: "例如 1.2", unit: "mm" },
+      { key: "conclusion", label: "结论", type: "text", placeholder: "低风险 / 高风险" },
+    ],
+    optionalFields: [
+      { key: "hospital", label: "医院", type: "text", placeholder: "可选" },
+      { key: "gestational_weeks", label: "孕周", type: "number", placeholder: "例如 12", unit: "周" },
+    ],
+    summaryPlaceholder: "NT 检查结果如何？",
+    attachmentHint: "可上传检查报告",
+  },
 ];
 
 const postnatalTemplates: RecordTemplate[] = [
-  {
-    value: "growth",
-    label: "生长",
-    entryLabel: "生长",
-    mode: "standard",
-    recommendedFields: [
-      { key: "weight_g", label: "体重", type: "number", placeholder: "例如 5200", unit: "g" },
-      { key: "height_cm", label: "身长", type: "number", placeholder: "例如 58", unit: "cm" },
-    ],
-    optionalFields: [
-      { key: "head_circumference_cm", label: "头围", type: "number", placeholder: "例如 38", unit: "cm" },
-      { key: "method", label: "记录方式", type: "text", placeholder: "例如医院测量、家中体重秤" },
-    ],
-    summaryPlaceholder: "今天测得的生长数据如何？",
-    metricKeys: ["weight_g", "height_cm", "head_circumference_cm"],
-  },
   {
     value: "feeding",
     label: "喂养",
@@ -224,6 +225,51 @@ const postnatalTemplates: RecordTemplate[] = [
     },
   },
   {
+    value: "growth",
+    label: "生长",
+    entryLabel: "生长",
+    mode: "standard",
+    recommendedFields: [
+      { key: "weight_g", label: "体重", type: "number", placeholder: "例如 5200", unit: "g" },
+      { key: "height_cm", label: "身长", type: "number", placeholder: "例如 58", unit: "cm" },
+    ],
+    optionalFields: [
+      { key: "head_circumference_cm", label: "头围", type: "number", placeholder: "例如 38", unit: "cm" },
+      { key: "method", label: "记录方式", type: "text", placeholder: "例如医院测量、家中体重秤" },
+    ],
+    summaryPlaceholder: "今天测得的生长数据如何？",
+    metricKeys: ["weight_g", "height_cm", "head_circumference_cm"],
+  },
+  {
+    value: "development",
+    label: "发育",
+    entryLabel: "发育",
+    mode: "standard",
+    recommendedFields: [
+      {
+        key: "milestone",
+        label: "里程碑类型",
+        type: "select",
+        options: [
+          { value: "smile", label: "第一次微笑" },
+          { value: "head_up", label: "抬头" },
+          { value: "roll", label: "翻身" },
+          { value: "sit", label: "独坐" },
+          { value: "crawl", label: "爬行" },
+          { value: "stand", label: "扶站" },
+          { value: "walk", label: "行走" },
+          { value: "first_word", label: "第一个词" },
+          { value: "other", label: "其他" },
+        ],
+      },
+      { key: "milestone_date", label: "出现日期", type: "date" },
+    ],
+    optionalFields: [
+      { key: "description", label: "表现描述", type: "text", placeholder: "详细描述这个里程碑" },
+    ],
+    summaryPlaceholder: "今天出现了什么新的成长表现？",
+  },
+  {
     value: "checkup",
     label: "体检",
     entryLabel: "体检",
@@ -273,35 +319,6 @@ const postnatalTemplates: RecordTemplate[] = [
     summaryPlaceholder: "这次生病主要情况是什么？",
     metricKeys: ["temperature_celsius"],
   },
-  {
-    value: "development",
-    label: "发育",
-    entryLabel: "发育",
-    mode: "standard",
-    recommendedFields: [
-      {
-        key: "milestone",
-        label: "里程碑类型",
-        type: "select",
-        options: [
-          { value: "smile", label: "第一次微笑" },
-          { value: "head_up", label: "抬头" },
-          { value: "roll", label: "翻身" },
-          { value: "sit", label: "独坐" },
-          { value: "crawl", label: "爬行" },
-          { value: "stand", label: "扶站" },
-          { value: "walk", label: "行走" },
-          { value: "first_word", label: "第一个词" },
-          { value: "other", label: "其他" },
-        ],
-      },
-      { key: "milestone_date", label: "出现日期", type: "date" },
-    ],
-    optionalFields: [
-      { key: "description", label: "表现描述", type: "text", placeholder: "详细描述这个里程碑" },
-    ],
-    summaryPlaceholder: "今天出现了什么新的成长表现？",
-  },
 ];
 
 export const BABY_TEMPLATES = {
@@ -313,6 +330,28 @@ export const RECORD_TYPES = {
   prenatal: prenatalTemplates.map((t) => ({ value: t.value, label: t.label })),
   postnatal: postnatalTemplates.map((t) => ({ value: t.value, label: t.label })),
 } as const;
+
+export const BABY_PHASE_FILTER_OPTIONS: { value: "all" | "prenatal" | "postnatal"; label: string }[] = [
+  { value: "all", label: "全部" },
+  { value: "prenatal", label: "怀孕期" },
+  { value: "postnatal", label: "成长期" },
+];
+
+export const BABY_RECORD_TYPE_FILTER_OPTIONS: { value: string; label: string }[] = [
+  ...RECORD_TYPES.prenatal,
+  ...RECORD_TYPES.postnatal,
+];
+
+export const BABY_HOME_PRENATAL_SHORTCUT_ORDER: readonly string[] = [
+  "prenatal_checkup",
+  "ultrasound",
+  "screening",
+];
+
+export function babyHomePostnatalShortcutOrder(ageMonths: number): string[] {
+  if (ageMonths < 6) return ["feeding", "sleep", "diaper", "growth"];
+  return ["feeding", "sleep", "growth", "vaccine"];
+}
 
 export function labelForType(phase: "prenatal" | "postnatal", type: string): string {
   const hit = BABY_TEMPLATES[phase].find((x) => x.value === type);

@@ -183,12 +183,14 @@ import { useSessionStore } from "@/store/session";
 import {
   labelForType,
   BABY_TEMPLATES,
+  BABY_HOME_PRENATAL_SHORTCUT_ORDER,
+  babyHomePostnatalShortcutOrder,
   getBabyRecordPreviewRows,
   templateForType,
   type RecordTemplate,
 } from "@/utils/recordTypes";
 import { calcGestation, calcAgeDays, calcAgeMonths, isPostnatal } from "@/utils/gestation";
-import { getBabyNextStep, getBabyPostnatalShortcuts } from "@/utils/homeRules";
+import { getBabyNextStep } from "@/utils/homeRules";
 import QuickRecordSheet from "@/components/QuickRecordSheet.vue";
 
 const auth = useAuthStore();
@@ -249,19 +251,18 @@ const stageDesc = computed(() => {
 const shortcuts = computed<RecordTemplate[]>(() => {
   if (!dashboard.value?.profile) return [];
   if (isPostnatalStage.value) {
-    const types = getBabyPostnatalShortcuts(ageMonths.value ?? 0);
+    const types = babyHomePostnatalShortcutOrder(ageMonths.value ?? 0);
     return types
       .map((t) => BABY_TEMPLATES.postnatal.find((tmpl) => tmpl.value === t))
       .filter((t): t is RecordTemplate => !!t);
   }
-  const prenatalKeys = ["prenatal_checkup", "ultrasound", "screening"];
-  return prenatalKeys
-    .map((t) => BABY_TEMPLATES.prenatal.find((tmpl) => tmpl.value === t))
-    .filter((t): t is RecordTemplate => !!t);
+  return BABY_HOME_PRENATAL_SHORTCUT_ORDER.map((t) => BABY_TEMPLATES.prenatal.find((tmpl) => tmpl.value === t)).filter(
+    (t): t is RecordTemplate => !!t
+  );
 });
 
 const recentBabyRecordsWithPreview = computed(() => {
-  const list = dashboard.value?.latest_records?.slice(0, 4) ?? [];
+  const list = dashboard.value?.latest_records?.slice(0, 3) ?? [];
   return list.map((item) => {
     const keyRows = getBabyRecordPreviewRows({
       phase: item.phase,

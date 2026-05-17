@@ -6,10 +6,22 @@
       <scroll-view scroll-x class="filter-scroll" :show-scrollbar="false">
         <view class="filter-inner">
           <view
-            v-for="opt in filterOptions"
-            :key="opt.value"
-            :class="['filter-chip', activeFilter === opt.value && 'active']"
-            @click="setFilter(opt.value)"
+            v-for="opt in phaseFilterOptions"
+            :key="`p-${opt.value}`"
+            :class="['filter-chip', phaseChipActive(opt.value) && 'active']"
+            @click="togglePhaseFilter(opt.value)"
+          >
+            <text class="filter-chip-text">{{ opt.label }}</text>
+          </view>
+        </view>
+      </scroll-view>
+      <scroll-view scroll-x class="filter-scroll filter-scroll--types" :show-scrollbar="false">
+        <view class="filter-inner">
+          <view
+            v-for="opt in typeFilterOptions"
+            :key="`t-${opt.value}`"
+            :class="['filter-chip', typeChipActive(opt.value) && 'active']"
+            @click="toggleTypeFilter(opt.value)"
           >
             <text class="filter-chip-text">{{ opt.label }}</text>
           </view>
@@ -81,9 +93,20 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { onLoad } from "@dcloudio/uni-app";
-import { apiListRecords, type RecordItem } from "@/api/chuyaji";
-import { getBabyRecordPreviewRows, labelForType, templateForType } from "@/utils/recordTypes";
+import { onLoad, onShow } from "@dcloudio/uni-app";
+import { apiGetBaby, apiListRecords, type RecordItem } from "@/api/chuyaji";
+import { isPostnatal } from "@/utils/gestation";
+import {
+  BABY_PHASE_FILTER_OPTIONS,
+  BABY_RECORD_TYPE_FILTER_OPTIONS,
+  RECORD_TYPES,
+  getBabyRecordPreviewRows,
+  labelForType,
+  templateForType,
+} from "@/utils/recordTypes";
+
+/** 首屏与每次触底加载条数 */
+const PAGE_SIZE = 30;
 
 const babyId = ref(0);
 const records = ref<RecordItem[]>([]);
@@ -93,16 +116,53 @@ const loading = ref(false);
 const loadingMore = ref(false);
 const refreshing = ref(false);
 
-const filterOptions = [
-  { value: "all" as const, label: "全部" },
-  { value: "prenatal" as const, label: "怀孕期" },
-  { value: "postnatal" as const, label: "成长期" },
-];
-const activeFilter = ref<"all" | "prenatal" | "postnatal">("all");
+const filtersPrimed = ref(false);
+
+/** 未出生的宝宝：筛选条优先展示怀孕期及孕期类型；已出生则成长期优先 */
+const preferPostnatalFirst = ref(false);
+
+type BabyPhase = "prenatal" | "postnatal";
+type PhaseChipValue = "all" | BabyPhase;
+
+/** 阶段单选：全部 / 怀孕期 / 成长期（chip 顺序随宝宝阶段调整） */
+const selectedPhase = ref<PhaseChipValue>("all");
+const selectedTypes = ref<Set<string>>(new Set());
+
+const phaseFilterOptions = computed(() => {
+  const opts = BABY_PHASE_FILTER_OPTIONS;
+  if (preferPostnatalFirst.value) {
+    return [opts[0], opts[2], opts[1]];
+  }
+  return [...opts];
+});
+
+/** 二级联动：「全部」下展示所有类型（顺序随宝宝阶段）；选定某一时期后仅展示该期类型（类型可多选） */
+const typeFilterOptions = computed(() => {
+  if (selectedPhase.value === "all") {
+    if (preferPostnatalFirst.value) {
+      return [...RECORD_TYPES.postnatal, ...RECORD_TYPES.prenatal];
+    }
+    return BABY_RECORD_TYPE_FILTER_OPTIONS;
+  }
+  if (selectedPhase.value === "prenatal") return [...RECORD_TYPES.prenatal];
+  return [...RECORD_TYPES.postnatal];
+});
+
+function pruneSelectedTypesToPhase() {
+  const allowed = new Set(typeFilterOptions.value.map((o) => o.value));
+  const next = new Set<string>();
+  for (const t of selectedTypes.value) {
+    if (allowed.has(t)) next.add(t);
+  }
+  selectedTypes.value = next;
+}
 
 const filteredRecords = computed(() => {
-  if (activeFilter.value === "all") return records.value;
-  return records.value.filter((r) => r.phase === activeFilter.value);
+  return records.value.filter((r) => {
+    const phaseOk = selectedPhase.value === "all" || r.phase === selectedPhase.value;
+    const typeOk = selectedTypes.value.size === 0 || selectedTypes.value.has(r.record_type);
+    return phaseOk && typeOk;
+  });
 });
 
 type BabyListEntry = {
@@ -111,8 +171,47 @@ type BabyListEntry = {
   showSummaryNote: boolean;
 };
 
-function setFilter(val: "all" | "prenatal" | "postnatal") {
-  activeFilter.value = val;
+function phaseChipActive(val: PhaseChipValue) {
+  return selectedPhase.value === val;
+}
+
+function togglePhaseFilter(val: PhaseChipValue) {
+  if (val === "all") {
+    selectedPhase.value = "all";
+    selectedTypes.value = new Set();
+    return;
+  }
+  if (selectedPhase.value === val) return;
+  selectedPhase.value = val;
+  pruneSelectedTypesToPhase();
+}
+
+function typeChipActive(val: string) {
+  return selectedTypes.value.has(val);
+}
+
+function toggleTypeFilter(val: string) {
+  const next = new Set(selectedTypes.value);
+  if (next.has(val)) next.delete(val);
+  else next.add(val);
+  selectedTypes.value = next;
+}
+
+async function primeDefaultFilters() {
+  if (!babyId.value || filtersPrimed.value) return;
+  try {
+    const baby = await apiGetBaby(babyId.value);
+    const post = isPostnatal(baby.birth_date);
+    preferPostnatalFirst.value = post;
+    selectedPhase.value = post ? "postnatal" : "prenatal";
+  } catch (e) {
+    console.error(e);
+    preferPostnatalFirst.value = false;
+    selectedPhase.value = "all";
+    selectedTypes.value = new Set();
+  } finally {
+    filtersPrimed.value = true;
+  }
 }
 
 const groupedRecords = computed(() => {
@@ -138,9 +237,12 @@ const groupedRecords = computed(() => {
 
 onLoad((query: Record<string, string | undefined>) => {
   babyId.value = Number(query.baby_id || 0);
-  if (babyId.value) {
-    loadRecords(true);
-  }
+});
+
+onShow(async () => {
+  if (!babyId.value) return;
+  await primeDefaultFilters();
+  await loadRecords(true);
 });
 
 async function loadRecords(reset = false) {
@@ -155,7 +257,7 @@ async function loadRecords(reset = false) {
     loadingMore.value = true;
   }
   try {
-    const res = await apiListRecords(babyId.value, 30, reset ? undefined : nextCursor.value);
+    const res = await apiListRecords(babyId.value, PAGE_SIZE, reset ? undefined : nextCursor.value);
     const items = res.items ?? [];
     if (reset) {
       records.value = items;
@@ -214,6 +316,14 @@ function openRecord(id: number) {
 
 .filter-scroll {
   width: 100%;
+}
+
+.filter-scroll--types {
+  margin-top: 4rpx;
+}
+
+.filter-scroll--types .filter-inner {
+  padding-bottom: 16rpx;
 }
 
 .filter-inner {

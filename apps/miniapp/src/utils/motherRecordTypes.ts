@@ -27,6 +27,85 @@ const motherTemplates: RecordTemplate[] = [
     attachmentHint: "可上传检查单、报告单",
   },
   {
+    value: "followup",
+    label: "复诊",
+    entryLabel: "复诊",
+    mode: "standard",
+    recommendedFields: [
+      { key: "reason", label: "复诊原因", type: "text", placeholder: "例如产后 42 天检查" },
+      { key: "result", label: "结果", type: "text", placeholder: "总体情况" },
+      { key: "next_time", label: "下次时间", type: "date" },
+    ],
+    optionalFields: [
+      { key: "hospital", label: "医院", type: "text", placeholder: "可选" },
+      { key: "doctor_advice", label: "医生建议", type: "text", placeholder: "有无特别建议" },
+    ],
+    summaryPlaceholder: "复诊结果和后续安排是什么？",
+    attachmentHint: "可上传复诊报告",
+  },
+  {
+    value: "nutrition",
+    label: "营养补充",
+    entryLabel: "营养",
+    mode: "standard",
+    recommendedFields: [
+      { key: "type", label: "补充类型", type: "text", placeholder: "例如 DHA、铁、叶酸" },
+      { key: "dose", label: "剂量", type: "text", placeholder: "例如 200mg" },
+    ],
+    optionalFields: [
+      { key: "frequency", label: "频次", type: "text", placeholder: "例如每天一次" },
+      { key: "note", label: "备注", type: "text", placeholder: "可选" },
+    ],
+    summaryPlaceholder: "今天补充了什么？",
+  },
+  {
+    value: "medication",
+    label: "用药",
+    entryLabel: "用药",
+    mode: "standard",
+    recommendedFields: [
+      { key: "name", label: "药名", type: "text", placeholder: "例如叶酸、钙片" },
+      { key: "reason", label: "原因", type: "text", placeholder: "例如补钙、止吐" },
+    ],
+    optionalFields: [
+      { key: "dose", label: "剂量", type: "text", placeholder: "例如 600mg" },
+      { key: "doctor_advice", label: "医生建议", type: "text", placeholder: "有无医嘱" },
+    ],
+    summaryPlaceholder: "因为什么开始或继续用药？",
+  },
+  {
+    value: "symptom",
+    label: "不适",
+    entryLabel: "不适",
+    mode: "standard",
+    recommendedFields: [
+      { key: "type", label: "症状类型", type: "text", placeholder: "例如恶心、水肿、腰酸" },
+      {
+        key: "severity",
+        label: "程度",
+        type: "select",
+        options: [
+          { value: "mild", label: "轻微" },
+          { value: "moderate", label: "中等" },
+          { value: "severe", label: "严重" },
+        ],
+      },
+    ],
+    optionalFields: [
+      { key: "duration", label: "持续时间", type: "text", placeholder: "例如 2 天" },
+      {
+        key: "relieved",
+        label: "是否缓解",
+        type: "select",
+        options: [
+          { value: "yes", label: "已缓解" },
+          { value: "no", label: "未缓解" },
+        ],
+      },
+    ],
+    summaryPlaceholder: "今天最明显的身体感受是什么？",
+  },
+  {
     value: "weight",
     label: "体重",
     entryLabel: "体重",
@@ -112,68 +191,6 @@ const motherTemplates: RecordTemplate[] = [
     metricKeys: ["mmol_l"],
   },
   {
-    value: "symptom",
-    label: "不适",
-    entryLabel: "不适",
-    mode: "standard",
-    recommendedFields: [
-      { key: "type", label: "症状类型", type: "text", placeholder: "例如恶心、水肿、腰酸" },
-      {
-        key: "severity",
-        label: "程度",
-        type: "select",
-        options: [
-          { value: "mild", label: "轻微" },
-          { value: "moderate", label: "中等" },
-          { value: "severe", label: "严重" },
-        ],
-      },
-    ],
-    optionalFields: [
-      { key: "duration", label: "持续时间", type: "text", placeholder: "例如 2 天" },
-      {
-        key: "relieved",
-        label: "是否缓解",
-        type: "select",
-        options: [
-          { value: "yes", label: "已缓解" },
-          { value: "no", label: "未缓解" },
-        ],
-      },
-    ],
-    summaryPlaceholder: "今天最明显的身体感受是什么？",
-  },
-  {
-    value: "medication",
-    label: "用药",
-    entryLabel: "用药",
-    mode: "standard",
-    recommendedFields: [
-      { key: "name", label: "药名", type: "text", placeholder: "例如叶酸、钙片" },
-      { key: "reason", label: "原因", type: "text", placeholder: "例如补钙、止吐" },
-    ],
-    optionalFields: [
-      { key: "dose", label: "剂量", type: "text", placeholder: "例如 600mg" },
-      { key: "doctor_advice", label: "医生建议", type: "text", placeholder: "有无医嘱" },
-    ],
-    summaryPlaceholder: "因为什么开始或继续用药？",
-  },
-  {
-    value: "nutrition",
-    label: "营养补充",
-    entryLabel: "营养",
-    mode: "standard",
-    recommendedFields: [
-      { key: "type", label: "补充类型", type: "text", placeholder: "例如 DHA、铁、叶酸" },
-      { key: "dose", label: "剂量", type: "text", placeholder: "例如 200mg" },
-    ],
-    optionalFields: [
-      { key: "frequency", label: "频次", type: "text", placeholder: "例如每天一次" },
-      { key: "note", label: "备注", type: "text", placeholder: "可选" },
-    ],
-    summaryPlaceholder: "今天补充了什么？",
-  },
-  {
     value: "mood",
     label: "心情",
     entryLabel: "心情",
@@ -214,28 +231,16 @@ const motherTemplates: RecordTemplate[] = [
     ],
     summaryPlaceholder: "今天恢复状态最值得记下的是什么？",
   },
-  {
-    value: "followup",
-    label: "复诊",
-    entryLabel: "复诊",
-    mode: "standard",
-    recommendedFields: [
-      { key: "reason", label: "复诊原因", type: "text", placeholder: "例如产后 42 天检查" },
-      { key: "result", label: "结果", type: "text", placeholder: "总体情况" },
-      { key: "next_time", label: "下次时间", type: "date" },
-    ],
-    optionalFields: [
-      { key: "hospital", label: "医院", type: "text", placeholder: "可选" },
-      { key: "doctor_advice", label: "医生建议", type: "text", placeholder: "有无特别建议" },
-    ],
-    summaryPlaceholder: "复诊结果和后续安排是什么？",
-    attachmentHint: "可上传复诊报告",
-  },
 ];
 
 export const MOTHER_TEMPLATES: RecordTemplate[] = motherTemplates;
 
 export const MOTHER_RECORD_TYPES = motherTemplates.map((t) => ({ value: t.value, label: t.label }));
+
+export const MOTHER_TIMELINE_FILTER_OPTIONS: { value: string; label: string }[] = [
+  { value: "all", label: "全部" },
+  ...MOTHER_RECORD_TYPES,
+];
 
 export function labelForMotherType(type: string): string {
   const hit = motherTemplates.find((item) => item.value === type);

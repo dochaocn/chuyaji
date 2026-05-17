@@ -8,8 +8,8 @@
           <view
             v-for="opt in filterOptions"
             :key="opt.value"
-            :class="['filter-chip', activeFilter === opt.value && 'active']"
-            @click="setFilter(opt.value)"
+            :class="['filter-chip', chipActive(opt.value) && 'active']"
+            @click="toggleFilter(opt.value)"
           >
             <text class="filter-chip-text">{{ opt.label }}</text>
           </view>
@@ -79,10 +79,18 @@
 
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { onLoad } from "@dcloudio/uni-app";
+import { onLoad, onShow } from "@dcloudio/uni-app";
 import { apiGetMother, apiListMotherRecords, type MotherRecordItem } from "@/api/chuyaji";
 import { motherStageBadgeClass, motherStageLabel } from "@/utils/homeRules";
-import { getMotherRecordPreviewRows, labelForMotherType, templateForMotherType } from "@/utils/motherRecordTypes";
+import {
+  MOTHER_TIMELINE_FILTER_OPTIONS,
+  getMotherRecordPreviewRows,
+  labelForMotherType,
+  templateForMotherType,
+} from "@/utils/motherRecordTypes";
+
+/** 首屏与每次触底加载条数 */
+const PAGE_SIZE = 30;
 
 const motherId = ref(0);
 const motherStatus = ref<"pregnant" | "postpartum" | "parenting" | undefined>(undefined);
@@ -93,24 +101,16 @@ const loading = ref(false);
 const loadingMore = ref(false);
 const refreshing = ref(false);
 
-const filterOptions = [
-  { value: "all", label: "全部" },
-  { value: "checkup", label: "产检" },
-  { value: "weight", label: "体重" },
-  { value: "blood_pressure", label: "血压" },
-  { value: "blood_sugar", label: "血糖" },
-  { value: "symptom", label: "不适" },
-  { value: "medication", label: "用药" },
-  { value: "mood", label: "心情" },
-];
-const activeFilter = ref("all");
+const filterOptions = MOTHER_TIMELINE_FILTER_OPTIONS;
+
+const selectedTypes = ref<Set<string>>(new Set());
 
 const periodLabel = computed(() => motherStageLabel(motherStatus.value));
 const periodBadgeClass = computed(() => motherStageBadgeClass(motherStatus.value));
 
 const filteredRecords = computed(() => {
-  if (activeFilter.value === "all") return records.value;
-  return records.value.filter((r) => r.record_type === activeFilter.value);
+  if (selectedTypes.value.size === 0) return records.value;
+  return records.value.filter((r) => selectedTypes.value.has(r.record_type));
 });
 
 type MomListEntry = {
@@ -119,8 +119,20 @@ type MomListEntry = {
   showSummaryNote: boolean;
 };
 
-function setFilter(val: string) {
-  activeFilter.value = val;
+function chipActive(val: string) {
+  if (val === "all") return selectedTypes.value.size === 0;
+  return selectedTypes.value.has(val);
+}
+
+function toggleFilter(val: string) {
+  if (val === "all") {
+    selectedTypes.value = new Set();
+    return;
+  }
+  const next = new Set(selectedTypes.value);
+  if (next.has(val)) next.delete(val);
+  else next.add(val);
+  selectedTypes.value = next;
 }
 
 const groupedRecords = computed(() => {
@@ -142,10 +154,12 @@ const groupedRecords = computed(() => {
 
 onLoad((query: Record<string, string | undefined>) => {
   motherId.value = Number(query.mother_id || 0);
-  if (motherId.value) {
-    void loadMotherMeta();
-    loadRecords(true);
-  }
+});
+
+onShow(() => {
+  if (!motherId.value) return;
+  void loadMotherMeta();
+  void loadRecords(true);
 });
 
 async function loadMotherMeta() {
@@ -171,7 +185,7 @@ async function loadRecords(reset = false) {
     loadingMore.value = true;
   }
   try {
-    const res = await apiListMotherRecords(motherId.value, 30, reset ? undefined : nextCursor.value);
+    const res = await apiListMotherRecords(motherId.value, PAGE_SIZE, reset ? undefined : nextCursor.value);
     const items = res.items ?? [];
     if (reset) {
       records.value = items;
