@@ -1,145 +1,355 @@
 <template>
   <view class="page">
-    <view class="hero">
-      <text class="hero-kicker">宝宝工作台</text>
-      <text class="hero-title">检查与成长，一站记下。</text>
-    </view>
 
+    
     <view v-if="!session.privacyOk" class="notice">
       <text class="notice-title">先阅读隐私说明</text>
       <text class="notice-desc">记录只保存在你的账号范围内，进入正式记录前先确认使用说明。</text>
       <button size="mini" class="notice-btn" @click="goPrivacy">去阅读</button>
     </view>
 
-    <view v-if="!auth.token" class="empty-card">
-      <text class="empty-title">先登录后再开始记录</text>
-      <text class="empty-desc">登录后会自动加载当前宝宝档案与最近记录。</text>
-      <button class="main-btn" @click="onLogin">微信登录</button>
+    <view v-if="!auth.token && auth.sessionBooting" class="empty-card">
+      <text class="empty-title">正在准备运行环境…</text>
+      <text class="empty-desc">请稍候，完成环境与内容加载后即可使用。</text>
     </view>
 
-    <template v-else>
-      <view v-if="dashboard?.profile" class="profile-card">
-        <view class="profile-header">
-          <text class="profile-name">{{ dashboard.profile.nickname || "未命名宝宝" }}</text>
+    <view v-else-if="!auth.token && auth.sessionBootError" class="empty-card">
+      <text class="empty-title">{{ auth.sessionBootError }}</text>
+      <text class="empty-desc">请检查网络设置后重试。</text>
+      <button class="main-btn" @click="retryWeChatSession">重试</button>
+    </view>
+
+    <template v-else-if="auth.token">
+
+      
+      <view class="hero">
+        <view class="hero-top">
+          <text class="hero-kicker">宝宝工作台</text>
+          <text v-if="dashboard?.profile" :class="['stage-badge', babyStageBadgeClass]">{{ babyStageLabel }}</text>
+          <text v-if="dashboard?.profile" class="hero-edit-link" @click="goProfileEdit">编辑档案</text>
+        </view>
+        <view class="hero-headline">
+          <text v-if="dashboard?.profile" class="hero-name">{{ dashboard.profile.nickname || "未命名宝宝" }}</text>
           <text
-            :class="[
-              'profile-badge',
-              dashboard.phase_summary?.stage === 'postnatal' ? 'profile-badge--post' : 'profile-badge--pre',
-            ]"
-            >{{ stageLabel }}</text>
+            class="hero-title"
+            :class="{ 'hero-title--solo': !dashboard?.profile }"
+          >{{ stageTitle }}</text>
         </view>
-        <view class="pill-row">
-          <text class="pill">出生：{{ dashboard.profile.birth_date ? dashboard.profile.birth_date.slice(0, 10) : "未填写" }}</text>
-          <text class="pill">预产：{{ dashboard.profile.edd_date ? dashboard.profile.edd_date.slice(0, 10) : "未填写" }}</text>
-        </view>
-        <view class="summary-grid">
-          <view class="summary-card">
-            <text class="summary-label">记录数</text>
-            <text class="summary-value">{{ dashboard.phase_summary?.record_count || 0 }}</text>
+        <text class="hero-desc">{{ stageDesc }}</text>
+      </view>
+
+      
+      <view v-if="nextStep.type !== 'none'" class="next-card">
+        <text class="next-label">现在可以做</text>
+        <text class="next-title">{{ nextStepTitle }}</text>
+        <button class="next-btn" @click="onNextStepAction">{{ nextStepBtnLabel }}</button>
+      </view>
+
+      
+      <view v-if="dashboard?.profile" class="shortcut-section">
+        <text class="section-label">快速记录</text>
+        <view class="shortcut-grid">
+          <view
+            v-for="item in shortcuts"
+            :key="item.value"
+            class="shortcut-tile"
+            @click="onShortcut(item)"
+          >
+            <text class="shortcut-title">{{ item.entryLabel }}</text>
+            <text class="shortcut-mode">{{ item.mode === 'quick' ? '一键' : '标准' }}</text>
           </view>
-          <view class="summary-card">
+        </view>
+      </view>
+
+      
+      <view v-if="isPostnatalStage && hasTrendData" class="trend-section trend-panel">
+        <view class="panel-head panel-head--inline">
+          <view class="panel-head-text">
+            <text class="panel-kicker">成长快照</text>
+            <text class="panel-title">近况</text>
+          </view>
+          <view class="panel-head-rule" />
+        </view>
+        <view class="summary-grid summary-grid--baby">
+          <view v-if="latestWeightLabel" class="summary-card summary-card--baby summary-card--weight">
+            <view class="summary-card-accent summary-card-accent--coral" />
             <text class="summary-label">最近体重</text>
             <text class="summary-value">{{ latestWeightLabel }}</text>
+            <text v-if="weightAgeDays !== null" class="summary-hint">{{ weightAgeDays }} 天前</text>
+          </view>
+          <view class="summary-card summary-card--baby summary-card--count">
+            <view class="summary-card-accent summary-card-accent--mint" />
+            <text class="summary-label">本月记录</text>
+            <text class="summary-value">{{ monthlyCount }}</text>
+            <text class="summary-hint">条</text>
+          </view>
+          <view v-if="latestMilestone" class="summary-card summary-card--baby summary-card--milestone">
+            <view class="summary-card-accent summary-card-accent--gold" />
+            <text class="summary-label">最近里程碑</text>
+            <text class="summary-value milestone-value">{{ latestMilestone }}</text>
           </view>
         </view>
-      </view>
-
-      <view v-else class="empty-card">
-        <text class="empty-title">还没有宝宝档案</text>
-        <text class="empty-desc">先创建一个宝宝档案，后续所有孕期和成长期记录都围绕它展开。</text>
-        <button class="main-btn" @click="goProfileEdit">创建宝宝档案</button>
-      </view>
-
-      <view class="action-grid">
-        <view class="action-tile warm" @click="goProfileEdit">
-          <text class="action-title">档案</text>
-          <text class="action-desc">基础信息、孕期与出生资料</text>
-        </view>
-        <view class="action-tile mint" @click="goNewRecord">
-          <text class="action-title">录入记录</text>
-          <text class="action-desc">检查、成长、喂养、疾病</text>
-        </view>
-        <view class="action-tile accent" @click="goGrowth">
-          <text class="action-title">生长趋势</text>
-          <text class="action-desc">查看近期体重与趋势摘要</text>
+        <view class="growth-link" @click="goGrowth">
+          <text class="growth-link-text">查看生长趋势</text>
+          <text class="growth-link-chev">›</text>
         </view>
       </view>
 
-      <view class="section">
-        <view class="section-head">
-          <text class="section-title">最近记录</text>
+      
+      <view v-if="dashboard?.profile" class="section records-panel">
+        <view class="panel-head panel-head--inline">
+          <view class="panel-head-text">
+            <text class="panel-kicker">时间线</text>
+            <text class="panel-title">最近记录</text>
+          </view>
+          <view class="panel-head-rule" />
           <view v-if="(dashboard?.latest_records?.length || 0) > 0" class="section-meta">
-            <text class="section-meta-count">共 {{ (dashboard?.latest_records || []).length }} 条</text>
-            <text class="section-meta-hint">点卡片查看详情</text>
+            <text class="section-meta-hint" @click="goTimeline">查看全部</text>
           </view>
-          <view v-else-if="dashboard?.profile && !loading" class="section-meta">
-            <text class="section-meta-hint">在「录入记录」里新增一条</text>
+          <view v-else-if="!loading" class="section-meta">
+            <text class="section-meta-hint">在快速记录里新增一条</text>
           </view>
         </view>
         <view v-if="loading" class="placeholder">加载中…</view>
-        <view v-else-if="!dashboard?.latest_records?.length" class="placeholder">还没有记录，先写第一条检查或成长信息。</view>
-        <view
-          v-for="item in dashboard?.latest_records || []"
-          :key="item.id"
-          class="record-card"
-          @click="openRecord(item.id)"
-        >
-          <view class="record-top">
-            <text :class="['record-tag', item.phase === 'prenatal' ? 'pre' : 'post']">
-              {{ item.phase === "prenatal" ? "怀孕期" : "成长期" }}
-            </text>
-            <text class="record-type">{{ labelForType(item.phase, item.record_type) }}</text>
+        <view v-else-if="!dashboard?.latest_records?.length" class="placeholder placeholder--soft">
+          还没有记录，从推荐模板开始。
+        </view>
+        <view v-else class="record-timeline">
+          <view
+            v-for="(row, idx) in recentBabyRecordsWithPreview"
+            :key="row.item.id"
+            class="record-timeline-row"
+            @click="openRecord(row.item.id)"
+          >
+            <view class="record-rail">
+              <view
+                :class="[
+                  'record-dot',
+                  row.item.phase === 'prenatal' ? 'record-dot--pre' : 'record-dot--post',
+                ]"
+              />
+              <view
+                v-if="idx < recentBabyRecordsWithPreview.length - 1"
+                class="record-line"
+                :class="row.item.phase === 'prenatal' ? 'record-line--pre' : 'record-line--post'"
+              />
+            </view>
+            <view class="record-card record-card--timeline">
+              <view class="record-card-head">
+                <view class="record-card-head-row">
+                  <view class="record-type-row">
+                    <text class="record-type">{{ labelForType(row.item.phase, row.item.record_type) }}</text>
+                    <text :class="['record-tag', row.item.phase === 'prenatal' ? 'pre' : 'post']">
+                      {{ row.item.phase === "prenatal" ? "怀孕期" : "成长期" }}
+                    </text>
+                  </view>
+                  <text class="record-date">{{ row.item.occurred_at.slice(0, 10) }}</text>
+                </view>
+              </view>
+              <view v-if="row.keyRows.length" class="record-body">
+                <view v-for="(kv, ki) in row.keyRows" :key="ki" class="record-kv-row">
+                  <view class="record-key-label">{{ kv.label }}</view>
+                  <view class="record-key-value">{{ kv.value }}</view>
+                </view>
+              </view>
+              <text v-else class="record-summary">{{ row.item.summary?.trim() || "未填写内容" }}</text>
+              <text v-if="row.showSummaryNote" class="record-summary-note">{{ row.item.summary }}</text>
+            </view>
           </view>
-          <text class="record-date">{{ item.occurred_at.slice(0, 10) }}</text>
-          <text class="record-summary">{{ item.summary || "未填写摘要" }}</text>
         </view>
       </view>
+
     </template>
+
+    
+    <QuickRecordSheet
+      v-if="quickTemplate"
+      :visible="showQuickSheet"
+      :template="quickTemplate"
+      @close="showQuickSheet = false"
+      @saved="onQuickSaved"
+    />
+
   </view>
 </template>
 
 <script setup lang="ts">
 import { onShow } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
-import { isDevWechatLogin } from "@/api/config";
-import { apiBabyDashboard } from "@/api/chuyaji";
+import { apiBabyDashboard, apiCreateRecord } from "@/api/chuyaji";
 import type { RecordItem } from "@/api/chuyaji";
 import { useAuthStore } from "@/store/auth";
 import { useSessionStore } from "@/store/session";
-import { labelForType } from "@/utils/recordTypes";
+import {
+  labelForType,
+  BABY_TEMPLATES,
+  BABY_HOME_PRENATAL_SHORTCUT_ORDER,
+  babyHomePostnatalShortcutOrder,
+  getBabyRecordPreviewRows,
+  templateForType,
+  type RecordTemplate,
+} from "@/utils/recordTypes";
+import { calcGestation, calcAgeDays, calcAgeMonths, isPostnatal } from "@/utils/gestation";
+import { getBabyNextStep } from "@/utils/homeRules";
+import QuickRecordSheet from "@/components/QuickRecordSheet.vue";
 
 const auth = useAuthStore();
 const session = useSessionStore();
 const loading = ref(false);
+
 const dashboard = ref<{
   profile: {
     id: number;
     nickname: string;
     birth_date?: string;
     edd_date?: string;
+    lmp_date?: string;
   } | null;
   phase_summary?: { stage: "prenatal" | "postnatal"; record_count: number };
   latest_records: RecordItem[];
   growth_summary?: Record<string, unknown>;
 } | null>(null);
 
-const stageLabel = computed(() => {
-  return dashboard.value?.phase_summary?.stage === "postnatal" ? "成长期" : "怀孕期";
+const showQuickSheet = ref(false);
+const quickTemplate = ref<RecordTemplate | null>(null);
+
+const isPostnatalStage = computed(() => {
+  return isPostnatal(dashboard.value?.profile?.birth_date);
+});
+
+/** 与「最近记录」阶段标签一致，样式对齐宝妈工作台时期徽章 */
+const babyStageLabel = computed(() => (isPostnatalStage.value ? "成长期" : "怀孕期"));
+const babyStageBadgeClass = computed(() => (isPostnatalStage.value ? "badge--post" : "badge--pre"));
+
+const ageDays = computed(() => calcAgeDays(dashboard.value?.profile?.birth_date));
+const ageMonths = computed(() => calcAgeMonths(dashboard.value?.profile?.birth_date));
+
+const gestationResult = computed(() => {
+  const p = dashboard.value?.profile;
+  return calcGestation(p?.edd_date, p?.lmp_date);
+});
+
+const stageTitle = computed(() => {
+  if (!dashboard.value?.profile) return "检查与成长，一站记下。";
+  if (isPostnatalStage.value) {
+    return `宝宝出生第 ${ageDays.value ?? 0} 天`;
+  }
+  if (gestationResult.value.available) {
+    return `孕 ${gestationResult.value.weeks} 周 ${gestationResult.value.days} 天`;
+  }
+  return "检查与成长，一站记下。";
+});
+
+const stageDesc = computed(() => {
+  if (!dashboard.value?.profile) return "先创建一个宝宝档案，后续所有孕期和成长期记录都围绕它展开。";
+  if (isPostnatalStage.value) {
+    return "喂养和生长变化都值得记一记。";
+  }
+  return "继续把每次检查安心记下。";
+});
+
+const shortcuts = computed<RecordTemplate[]>(() => {
+  if (!dashboard.value?.profile) return [];
+  if (isPostnatalStage.value) {
+    const types = babyHomePostnatalShortcutOrder(ageMonths.value ?? 0);
+    return types
+      .map((t) => BABY_TEMPLATES.postnatal.find((tmpl) => tmpl.value === t))
+      .filter((t): t is RecordTemplate => !!t);
+  }
+  return BABY_HOME_PRENATAL_SHORTCUT_ORDER.map((t) => BABY_TEMPLATES.prenatal.find((tmpl) => tmpl.value === t)).filter(
+    (t): t is RecordTemplate => !!t
+  );
+});
+
+const recentBabyRecordsWithPreview = computed(() => {
+  const list = dashboard.value?.latest_records?.slice(0, 3) ?? [];
+  return list.map((item) => {
+    const keyRows = getBabyRecordPreviewRows({
+      phase: item.phase,
+      record_type: item.record_type,
+      payload: item.payload as Record<string, unknown>,
+    });
+    const tmpl = templateForType(item.phase, item.record_type);
+    const sum = item.summary?.trim() || "";
+    const showSummaryNote = tmpl?.mode === "standard" && !!sum && keyRows.length > 0;
+    return { item, keyRows, showSummaryNote };
+  });
+});
+
+const nextStep = computed(() => {
+  const hasProfile = !!dashboard.value?.profile;
+  const lastAt = dashboard.value?.latest_records?.[0]?.occurred_at ?? null;
+  return getBabyNextStep(hasProfile, lastAt);
+});
+
+const nextStepTitle = computed(() => {
+  switch (nextStep.value.type) {
+    case "create_profile": return "还没有宝宝档案";
+    case "add_record": return `已经 ${nextStep.value.daysSinceLast} 天没有新记录了`;
+    case "check_reminder": return "有即将到来的提醒";
+    default: return "";
+  }
+});
+
+const nextStepBtnLabel = computed(() => {
+  switch (nextStep.value.type) {
+    case "create_profile": return "去建档";
+    case "add_record": return "补一条记录";
+    case "check_reminder": return "查看提醒";
+    default: return "";
+  }
 });
 
 const latestWeightLabel = computed(() => {
   const value = dashboard.value?.growth_summary?.latest_weight_g;
-  if (typeof value !== "number") return "暂无";
+  if (typeof value !== "number") return null;
   return `${(value / 1000).toFixed(2)} kg`;
 });
 
-onShow(() => {
+const weightAgeDays = computed(() => {
+  const at = dashboard.value?.growth_summary?.latest_weight_at as string | undefined;
+  if (!at) return null;
+  const diff = Math.floor((Date.now() - Date.parse(at)) / (24 * 60 * 60 * 1000));
+  return diff >= 0 ? diff : null;
+});
+
+const monthlyCount = computed(() => {
+  const records = dashboard.value?.latest_records ?? [];
+  const now = new Date();
+  return records.filter((r) => {
+    const d = new Date(r.occurred_at);
+    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
+  }).length;
+});
+
+const latestMilestone = computed(() => {
+  const records = dashboard.value?.latest_records ?? [];
+  const hit = records.find((r) => r.record_type === "development");
+  if (!hit) return null;
+  return (hit.payload as Record<string, unknown>)?.milestone as string ?? hit.summary ?? "已记录";
+});
+
+const hasTrendData = computed(() => {
+  return !!latestWeightLabel.value || monthlyCount.value > 0;
+});
+
+onShow(async () => {
   auth.loadToken();
   session.load();
+  if (!auth.token) {
+    await auth.ensureWeChatSession();
+  }
   if (auth.token) {
     loadDashboard();
   }
 });
+
+async function retryWeChatSession() {
+  await auth.ensureWeChatSession();
+  if (auth.token) {
+    await loadDashboard();
+  }
+}
 
 async function loadDashboard() {
   loading.value = true;
@@ -157,43 +367,56 @@ async function loadDashboard() {
   }
 }
 
-function goPrivacy() {
-  uni.navigateTo({ url: "/pages/privacy/privacy" });
+function onNextStepAction() {
+  const step = nextStep.value;
+  if (step.type === "create_profile") return goProfileEdit();
+  if (step.type === "add_record") return goNewRecord();
 }
 
-async function onLogin() {
-  if (isDevWechatLogin()) {
-    try {
-      await auth.loginWithWeChatCode("dev");
-      await loadDashboard();
-      uni.showToast({ title: "登录成功", icon: "success" });
-    } catch (error) {
-      console.error(error);
-      uni.showToast({ title: "登录失败", icon: "none" });
+function onShortcut(tmpl: RecordTemplate) {
+  if (tmpl.mode === "quick") {
+    quickTemplate.value = tmpl;
+    showQuickSheet.value = true;
+  } else {
+    const phase = isPostnatalStage.value ? "postnatal" : "prenatal";
+    if (!session.babyId) {
+      uni.showToast({ title: "请先创建宝宝档案", icon: "none" });
+      return;
     }
+    uni.navigateTo({ url: `/pages/baby/record-edit?baby_id=${session.babyId}&phase=${phase}&type=${tmpl.value}` });
+  }
+}
+
+async function onQuickSaved(payload: Record<string, unknown>, summary: string) {
+  const bid = Number(session.babyId) || Number(dashboard.value?.profile?.id) || 0;
+  if (!bid) {
+    uni.showToast({ title: "缺少宝宝档案", icon: "none" });
+    showQuickSheet.value = false;
     return;
   }
-  uni.login({
-    provider: "weixin",
-    success: async (res) => {
-      if (!res.code) {
-        uni.showToast({ title: "缺少登录 code", icon: "none" });
-        return;
-      }
-      try {
-        await auth.loginWithWeChatCode(res.code);
-        await loadDashboard();
-        uni.showToast({ title: "登录成功", icon: "success" });
-      } catch (error) {
-        console.error(error);
-        uni.showToast({ title: "登录失败", icon: "none" });
-      }
-    },
-    fail: (error) => {
-      console.error(error);
-      uni.showToast({ title: "登录失败", icon: "none" });
-    },
-  });
+  if (bid !== Number(session.babyId)) {
+    session.setBaby(bid);
+  }
+  const phase = isPostnatalStage.value ? "postnatal" : "prenatal";
+  try {
+    await apiCreateRecord(bid, {
+      phase,
+      record_type: quickTemplate.value!.value,
+      occurred_at: new Date().toISOString(),
+      summary,
+      payload,
+    });
+    showQuickSheet.value = false;
+    uni.showToast({ title: "已保存", icon: "success" });
+    await loadDashboard();
+  } catch (e) {
+    console.error(e);
+    uni.showToast({ title: "保存失败", icon: "none" });
+  }
+}
+
+function goPrivacy() {
+  uni.navigateTo({ url: "/pages/privacy/privacy" });
 }
 
 function goProfileEdit() {
@@ -207,7 +430,8 @@ function goNewRecord() {
     uni.showToast({ title: "请先创建宝宝档案", icon: "none" });
     return;
   }
-  uni.navigateTo({ url: `/pages/baby/record-edit?baby_id=${session.babyId}` });
+  const phase = isPostnatalStage.value ? "postnatal" : "prenatal";
+  uni.navigateTo({ url: `/pages/baby/record-edit?baby_id=${session.babyId}&phase=${phase}` });
 }
 
 function openRecord(id: number) {
@@ -215,11 +439,13 @@ function openRecord(id: number) {
 }
 
 function goGrowth() {
-  if (!session.babyId) {
-    uni.showToast({ title: "请先创建宝宝档案", icon: "none" });
-    return;
-  }
+  if (!session.babyId) return;
   uni.navigateTo({ url: `/pages/baby/growth?baby_id=${session.babyId}` });
+}
+
+function goTimeline() {
+  if (!session.babyId) return;
+  uni.navigateTo({ url: `/pages/baby/record-list?baby_id=${session.babyId}` });
 }
 </script>
 
@@ -228,30 +454,8 @@ function goGrowth() {
   padding: $cj-page-pad-y $cj-page-pad-x 72rpx;
 }
 
-.hero {
-  margin-bottom: $cj-gap-lg;
-}
-
-.hero-kicker {
-  display: block;
-  font-size: 22rpx;
-  letter-spacing: 4rpx;
-  color: $cj-primary;
-  margin-bottom: 12rpx;
-}
-
-.hero-title {
-  display: block;
-  font-size: 44rpx;
-  line-height: 1.35;
-  color: $cj-ink;
-  font-weight: $cj-fw-display;
-}
-
 .notice,
-.empty-card,
-.profile-card,
-.section {
+.empty-card {
   background: $cj-surface;
   border: 1rpx solid $cj-border-light;
   border-radius: $cj-radius-lg;
@@ -265,22 +469,11 @@ function goGrowth() {
 }
 
 .notice-title,
-.empty-title,
-.profile-name,
-.section-title {
+.empty-title {
   display: block;
   color: $cj-ink;
   font-weight: $cj-fw-display;
-}
-
-.notice-title,
-.section-title {
   font-size: 30rpx;
-}
-
-.empty-title,
-.profile-name {
-  font-size: 34rpx;
 }
 
 .notice-desc,
@@ -301,77 +494,286 @@ function goGrowth() {
   border: none !important;
 }
 
-.profile-header {
+.hero {
+  margin-bottom: $cj-gap-lg;
+}
+
+.hero-top {
   display: flex;
-  flex-wrap: wrap;
   align-items: center;
-  gap: 12rpx 16rpx;
+  gap: 16rpx;
+  flex-wrap: wrap;
+  margin-bottom: 8rpx;
 }
 
-.profile-name {
-  flex: 1;
-  min-width: 200rpx;
-}
-
-.profile-badge {
-  flex-shrink: 0;
-  padding: 8rpx 20rpx;
-  border-radius: $cj-radius-pill;
+.hero-kicker {
   font-size: 22rpx;
+  letter-spacing: 4rpx;
+  color: $cj-primary;
+}
+
+.stage-badge {
+  padding: 6rpx 18rpx;
+  border-radius: $cj-radius-pill;
+  font-size: 20rpx;
   font-weight: 500;
 }
 
-.profile-badge--pre {
+.badge--pre {
   background: $cj-tag-prenatal-bg;
   color: $cj-tag-prenatal-text;
 }
 
-.profile-badge--post {
+.badge--post {
   background: $cj-tag-postnatal-bg;
   color: $cj-tag-postnatal-text;
 }
 
-.section-head,
-.record-top,
-.summary-grid,
-.pill-row,
-.action-grid {
+.hero-edit-link {
+  margin-left: auto;
+  font-size: 24rpx;
+  color: $cj-primary;
+  padding: 8rpx 0;
+}
+
+.hero-headline {
   display: flex;
-}
-
-.section-head {
-  justify-content: space-between;
   align-items: center;
-  gap: $cj-gap-sm;
+  justify-content: space-between;
+  gap: 28rpx;
+  min-width: 0;
 }
 
-.pill-row,
-.summary-grid,
-.action-grid {
+.hero-name {
+  flex-shrink: 0;
+  max-width: 48%;
+  font-size: 36rpx;
+  font-weight: $cj-fw-title;
+  color: $cj-primary-dark;
+  letter-spacing: 1rpx;
+}
+
+.hero-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 40rpx;
+  line-height: 1.35;
+  color: $cj-ink;
+  font-weight: $cj-fw-display;
+  text-align: right;
+}
+
+.hero-title--solo {
+  flex: none;
+  width: 100%;
+  text-align: left;
+}
+
+.hero-desc {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 25rpx;
+  color: $cj-text-secondary;
+  line-height: 1.6;
+}
+
+.next-card {
+  background: $cj-warn-bg;
+  border: 1rpx solid $cj-border-light;
+  border-radius: $cj-radius-lg;
+  box-shadow: $cj-shadow-card;
+  padding: $cj-gap-md;
+  margin-bottom: $cj-gap-md;
+}
+
+.next-label {
+  display: block;
+  font-size: 22rpx;
+  color: $cj-text-muted;
+  margin-bottom: 8rpx;
+}
+
+.next-title {
+  display: block;
+  font-size: 30rpx;
+  font-weight: $cj-fw-display;
+  color: $cj-ink;
+  margin-bottom: $cj-gap-md;
+}
+
+.next-btn {
+  border-radius: $cj-radius-pill !important;
+  background: linear-gradient(165deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%) !important;
+  color: #fffefb !important;
+  border: none !important;
+  font-size: 26rpx;
+  padding: 0 36rpx !important;
+  height: 72rpx !important;
+  line-height: 72rpx !important;
+}
+
+.shortcut-section,
+.trend-section,
+.section {
+  margin-bottom: $cj-gap-md;
+}
+
+.trend-panel {
+  position: relative;
+  padding: $cj-gap-md $cj-gap-md calc($cj-gap-md + 4rpx);
+  background: linear-gradient(165deg, rgba(255, 253, 249, 0.96) 0%, rgba(255, 246, 238, 0.92) 100%);
+  border: 1rpx solid $cj-border-light;
+  border-radius: $cj-radius-lg;
+  box-shadow: $cj-shadow-card;
+  overflow: hidden;
+
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background:
+      radial-gradient(ellipse 120% 80% at 100% 0%, rgba(232, 184, 150, 0.22) 0%, transparent 55%),
+      radial-gradient(ellipse 90% 60% at 0% 100%, rgba(143, 184, 168, 0.14) 0%, transparent 50%);
+    opacity: 0.9;
+  }
+}
+
+.panel-head {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  gap: $cj-gap-sm;
+  margin-bottom: $cj-gap-md;
+}
+
+.panel-head--inline {
+  align-items: center;
+}
+
+.panel-head-text {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.panel-kicker {
+  font-size: 20rpx;
+  letter-spacing: 6rpx;
+  text-transform: uppercase;
+  color: $cj-text-muted;
+}
+
+.panel-title {
+  font-size: 34rpx;
+  font-weight: $cj-fw-display;
+  color: $cj-ink;
+  letter-spacing: 1rpx;
+}
+
+.panel-head-rule {
+  flex: 1;
+  height: 1rpx;
+  background: linear-gradient(90deg, $cj-border 0%, rgba(234, 217, 204, 0.2) 100%);
+  margin-bottom: 10rpx;
+}
+
+.panel-head--inline .panel-head-rule {
+  margin-bottom: 0;
+}
+
+.section-label {
+  display: block;
+  font-size: 22rpx;
+  color: $cj-text-muted;
+  letter-spacing: 3rpx;
+  margin-bottom: $cj-gap-sm;
+}
+
+.shortcut-grid {
+  display: flex;
   flex-wrap: wrap;
   gap: $cj-gap-sm;
-  margin-top: $cj-gap-md;
 }
 
-.pill,
-.summary-card,
-.action-tile,
-.record-card {
-  border-radius: $cj-radius-md;
+.shortcut-tile {
+  flex: 1;
+  min-width: 140rpx;
+  padding: $cj-gap-md;
+  background: $cj-surface;
+  border: 1rpx solid $cj-border-light;
+  border-radius: $cj-radius-lg;
+  box-shadow: $cj-shadow-card;
 }
 
-.pill {
-  padding: 12rpx 22rpx;
-  background: $cj-accent-soft;
-  color: $cj-text-secondary;
-  font-size: 22rpx;
+.shortcut-title {
+  display: block;
+  font-size: 28rpx;
+  font-weight: $cj-fw-display;
+  color: $cj-ink;
+}
+
+.shortcut-mode {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 20rpx;
+  color: $cj-text-muted;
+}
+
+.summary-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $cj-gap-sm;
+}
+
+.summary-grid--baby {
+  position: relative;
+  z-index: 1;
 }
 
 .summary-card {
   flex: 1;
-  min-width: 220rpx;
+  min-width: 180rpx;
   padding: $cj-gap-md;
-  background: linear-gradient(165deg, $cj-surface-2 0%, $cj-surface 100%);
+  background: $cj-surface;
+  border: 1rpx solid $cj-border-light;
+  border-radius: $cj-radius-lg;
+  box-shadow: $cj-shadow-card;
+}
+
+.summary-card--baby {
+  position: relative;
+  overflow: hidden;
+  border: 1rpx solid rgba(234, 217, 204, 0.5);
+  background: rgba(255, 253, 249, 0.92);
+}
+
+.summary-card-accent {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6rpx;
+  border-radius: $cj-radius-lg 0 0 $cj-radius-lg;
+}
+
+.summary-card-accent--coral {
+  background: linear-gradient(180deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%);
+}
+
+.summary-card-accent--mint {
+  background: linear-gradient(180deg, $cj-mint 0%, #6a9e8c 100%);
+}
+
+.summary-card-accent--gold {
+  background: linear-gradient(180deg, $cj-accent-warm 0%, $cj-accent 100%);
+}
+
+.summary-card--milestone {
+  flex: 1 1 100%;
+  min-width: 100%;
 }
 
 .summary-label {
@@ -384,67 +786,206 @@ function goGrowth() {
   display: block;
   margin-top: 10rpx;
   color: $cj-ink;
-  font-size: 34rpx;
+  font-size: 32rpx;
   font-weight: $cj-fw-display;
 }
 
-.action-grid {
+.milestone-value {
+  font-size: 24rpx;
+}
+
+.summary-hint {
+  display: block;
+  margin-top: 6rpx;
+  font-size: 20rpx;
+  color: $cj-text-muted;
+}
+
+.growth-link {
+  position: relative;
+  z-index: 1;
+  margin-top: $cj-gap-md;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6rpx;
+}
+
+.growth-link-text {
+  font-size: 24rpx;
+  color: $cj-primary-dark;
+  font-weight: 500;
+}
+
+.growth-link-chev {
+  font-size: 28rpx;
+  color: $cj-primary;
+  line-height: 1;
+  opacity: 0.85;
+}
+
+.records-panel {
+  position: relative;
+  background: linear-gradient(180deg, $cj-surface 0%, rgba(255, 253, 249, 0.97) 100%);
+  border: 1rpx solid $cj-border-light;
+  border-radius: $cj-radius-lg;
+  box-shadow: $cj-shadow-card;
+  padding: $cj-gap-md $cj-gap-md $cj-gap-lg;
+  overflow: hidden;
+
+  &::after {
+    content: "";
+    position: absolute;
+    right: -40rpx;
+    top: -48rpx;
+    width: 200rpx;
+    height: 200rpx;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(201, 107, 92, 0.08) 0%, transparent 70%);
+    pointer-events: none;
+  }
+}
+
+.records-panel .panel-head {
   margin-bottom: $cj-gap-md;
 }
 
-.action-tile {
-  flex: 1;
-  min-width: 200rpx;
-  padding: $cj-gap-md;
-  color: $cj-ink;
+.records-panel .section-meta {
+  flex-shrink: 0;
 }
 
-.action-tile.warm {
-  background: linear-gradient(145deg, $cj-primary-soft 0%, $cj-surface 100%);
-}
-
-.action-tile.mint {
-  background: linear-gradient(145deg, $cj-mint-soft 0%, $cj-surface 100%);
-}
-
-.action-tile.accent {
-  background: linear-gradient(145deg, $cj-accent-soft 0%, $cj-surface 100%);
-}
-
-.action-title {
-  display: block;
-  font-size: 30rpx;
-  font-weight: $cj-fw-display;
-}
-
-.action-desc {
-  display: block;
-  margin-top: 10rpx;
-  font-size: 23rpx;
-  line-height: 1.6;
-  color: $cj-text-secondary;
+.section-meta-hint {
+  font-size: 22rpx;
+  color: $cj-primary;
+  padding: 8rpx 20rpx;
+  border-radius: $cj-radius-pill;
+  background: rgba(201, 107, 92, 0.08);
 }
 
 .placeholder {
+  position: relative;
+  z-index: 1;
   padding: 36rpx 0;
   text-align: center;
   color: $cj-text-muted;
   font-size: 24rpx;
 }
 
-.record-card {
-  padding: $cj-gap-md;
+.placeholder--soft {
+  padding: 48rpx 24rpx;
   background: $cj-surface-2;
-  margin-top: $cj-gap-sm;
+  border-radius: $cj-radius-md;
+  border: 1rpx dashed rgba(234, 217, 204, 0.85);
 }
 
-.record-top {
+.record-timeline {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+}
+
+.record-timeline-row {
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
+  gap: 20rpx;
+}
+
+.record-rail {
+  flex-shrink: 0;
+  width: 28rpx;
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: $cj-gap-sm;
+  padding-top: 28rpx;
+}
+
+.record-dot {
+  width: 18rpx;
+  height: 18rpx;
+  border-radius: 50%;
+  border: 3rpx solid $cj-surface;
+  box-shadow: 0 0 0 2rpx rgba(234, 217, 204, 0.9);
+}
+
+.record-dot--pre {
+  background: linear-gradient(145deg, #e8c4d4 0%, #b87a92 100%);
+}
+
+.record-dot--post {
+  background: linear-gradient(145deg, #b8e0d0 0%, #5a9d82 100%);
+}
+
+.record-line {
+  flex: 1;
+  width: 2rpx;
+  min-height: 32rpx;
+  margin-top: 8rpx;
+  border-radius: 2rpx;
+  background: linear-gradient(180deg, rgba(234, 217, 204, 0.95) 0%, rgba(234, 217, 204, 0.15) 100%);
+}
+
+.record-line--pre {
+  background: linear-gradient(180deg, rgba(184, 122, 146, 0.35) 0%, rgba(234, 217, 204, 0.2) 100%);
+}
+
+.record-line--post {
+  background: linear-gradient(180deg, rgba(90, 157, 130, 0.35) 0%, rgba(234, 217, 204, 0.2) 100%);
+}
+
+.record-card {
+  flex: 1;
+  min-width: 0;
+  padding: 24rpx 26rpx;
+  background: $cj-surface;
+  border-radius: $cj-radius-lg;
+  border: 1rpx solid $cj-border-light;
+  box-shadow: $cj-shadow-soft;
+}
+
+.record-card--timeline {
+  background: linear-gradient(165deg, rgba(255, 253, 249, 0.98) 0%, rgba(255, 248, 240, 0.92) 100%);
+  border: 1rpx solid rgba(234, 217, 204, 0.55);
+  box-shadow: 0 14rpx 36rpx rgba(42, 36, 32, 0.06);
+}
+
+.record-card-head {
+  margin-bottom: 2rpx;
+}
+
+.record-card-head-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20rpx;
+}
+
+.record-type-row {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 12rpx;
+}
+
+.record-type-row .record-type {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.record-type-row .record-tag {
+  flex-shrink: 0;
 }
 
 .record-tag {
-  padding: 6rpx 16rpx;
+  padding: 6rpx 18rpx;
   border-radius: $cj-radius-pill;
   font-size: 20rpx;
   font-weight: $cj-fw-title;
@@ -461,44 +1002,80 @@ function goGrowth() {
 }
 
 .record-type {
-  font-size: 28rpx;
+  flex: 1;
+  min-width: 0;
+  font-size: 30rpx;
   color: $cj-ink;
-  font-weight: $cj-fw-title;
+  font-weight: $cj-fw-display;
+  line-height: 1.4;
 }
 
 .record-date {
-  display: block;
-  margin-top: 10rpx;
+  flex-shrink: 0;
+  padding-top: 4rpx;
   font-size: 22rpx;
   color: $cj-text-muted;
+  letter-spacing: 0.5rpx;
+}
+
+.record-body {
+  margin-top: 16rpx;
+  padding: 6rpx 18rpx 4rpx;
+  background: $cj-surface-2;
+  border-radius: $cj-radius-md;
+  border: 1rpx solid rgba(234, 217, 204, 0.55);
+}
+
+.record-kv-row {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: flex-start;
+  gap: 16rpx;
+  padding: 16rpx 0;
+  border-bottom: 1rpx solid rgba(234, 217, 204, 0.45);
+}
+
+.record-kv-row:last-child {
+  border-bottom: none;
+  padding-bottom: 12rpx;
+}
+
+.record-kv-row:first-child {
+  padding-top: 12rpx;
+}
+
+.record-key-label {
+  flex-shrink: 0;
+  width: 148rpx;
+}
+
+.record-key-value {
+  flex: 1;
+  min-width: 0;
 }
 
 .record-summary {
   display: block;
-  margin-top: 10rpx;
-  font-size: 25rpx;
+  margin-top: 14rpx;
+  padding: 16rpx 18rpx;
+  background: $cj-surface-2;
+  border-radius: $cj-radius-md;
+  border: 1rpx solid rgba(234, 217, 204, 0.45);
+  font-size: 26rpx;
   color: $cj-text-secondary;
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
-.section-meta {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4rpx;
-  max-width: 62%;
-}
-
-.section-meta-count {
-  font-size: 24rpx;
-  color: $cj-ink;
-  font-weight: $cj-fw-title;
-}
-
-.section-meta-hint {
-  font-size: 22rpx;
+.record-summary-note {
+  display: block;
+  margin-top: 12rpx;
+  padding-top: 14rpx;
+  border-top: 1rpx solid rgba(234, 217, 204, 0.55);
+  font-size: 23rpx;
   color: $cj-text-muted;
-  line-height: 1.4;
-  text-align: right;
+  line-height: 1.55;
 }
+
+@import "@/styles/cj-record-kv-fields.scss";
 </style>

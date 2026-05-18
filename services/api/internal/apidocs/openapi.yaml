@@ -710,8 +710,6 @@ components:
           type: string
         gender:
           type: string
-        avatar_url:
-          type: string
         lmp_date:
           type: string
           format: date-time
@@ -739,8 +737,6 @@ components:
         nickname:
           type: string
         gender:
-          type: string
-        avatar_url:
           type: string
         lmp_date:
           type: string
@@ -783,10 +779,6 @@ components:
         occurred_at:
           type: string
           format: date-time
-        gestational_weeks:
-          type: integer
-        gestational_days:
-          type: integer
         summary:
           type: string
         payload:
@@ -811,10 +803,6 @@ components:
         occurred_at:
           type: string
           format: date-time
-        gestational_weeks:
-          type: integer
-        gestational_days:
-          type: integer
         summary:
           type: string
         payload:

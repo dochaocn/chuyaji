@@ -16,21 +16,20 @@ type User struct {
 }
 
 type Baby struct {
-	ID             uint64 `gorm:"primaryKey"`
-	UserID         uint64 `gorm:"index;not null"`
-	Nickname       string `gorm:"size:64;not null"`
-	Gender         string `gorm:"size:8"`
-	AvatarURL      string `gorm:"size:512"`
-	LMPDate        *time.Time
-	EDDDate        *time.Time
-	BirthDate      *time.Time
-	BirthWeightG   *int
-	BirthHeightCM  *float64
-	BirthHospital  string `gorm:"size:128"`
-	FeedingType    string `gorm:"size:32"`
-	Note           string `gorm:"size:1024"`
-	CreatedAt      time.Time
-	UpdatedAt      time.Time
+	ID            uint64 `gorm:"primaryKey"`
+	UserID        uint64 `gorm:"index;not null"`
+	Nickname      string `gorm:"size:64;not null"`
+	Gender        string `gorm:"size:8"`
+	LMPDate       *time.Time
+	EDDDate       *time.Time
+	BirthDate     *time.Time
+	BirthWeightG  *int
+	BirthHeightCM *float64
+	BirthHospital string `gorm:"size:128"`
+	FeedingType   string `gorm:"size:32"`
+	Note          string `gorm:"size:1024"`
+	CreatedAt     time.Time
+	UpdatedAt     time.Time
 }
 
 type Mother struct {
@@ -51,17 +50,15 @@ type Mother struct {
 }
 
 type Record struct {
-	ID               uint64 `gorm:"primaryKey"`
-	BabyID           uint64 `gorm:"index;not null"`
-	Phase            string `gorm:"size:16;not null"` // prenatal | postnatal
-	RecordType       string `gorm:"size:32;not null"`
-	OccurredAt       time.Time
-	GestationalWeeks *int
-	GestationalDays  *int
-	Summary          string `gorm:"size:512"`
-	Payload          datatypes.JSON
-	CreatedAt        time.Time
-	UpdatedAt        time.Time
+	ID         uint64 `gorm:"primaryKey"`
+	BabyID     uint64 `gorm:"index;not null"`
+	Phase      string `gorm:"size:16;not null"`
+	RecordType string `gorm:"size:32;not null"`
+	OccurredAt time.Time
+	Summary    string `gorm:"size:512"`
+	Payload    datatypes.JSON
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
 }
 
 type MotherRecord struct {
@@ -76,14 +73,13 @@ type MotherRecord struct {
 }
 
 type Attachment struct {
-	ID        uint64 `gorm:"primaryKey"`
-	OwnerType string `gorm:"index;size:32;not null"`
-	OwnerID   uint64 `gorm:"index;not null"`
-	URL       string `gorm:"size:1024;not null"`
-	ThumbURL  string `gorm:"size:1024"`
-	SortOrder int
-	Size      int64
-	// ShareToken 非空表示本附件由服务端托管，可通过 /api/v1/p/:token 匿名读取（随机不可猜测）。
+	ID         uint64 `gorm:"primaryKey"`
+	OwnerType  string `gorm:"index;size:32;not null"`
+	OwnerID    uint64 `gorm:"index;not null"`
+	URL        string `gorm:"size:1024;not null"`
+	ThumbURL   string `gorm:"size:1024"`
+	SortOrder  int
+	Size       int64
 	ShareToken *string `gorm:"uniqueIndex;size:64"`
 	LocalPath  string  `gorm:"size:1024"`
 	CreatedAt  time.Time

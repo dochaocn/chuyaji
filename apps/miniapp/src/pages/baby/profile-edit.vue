@@ -71,7 +71,7 @@
 <script setup lang="ts">
 import { onLoad } from "@dcloudio/uni-app";
 import { ref } from "vue";
-import { apiCreateBaby, apiGetBaby, apiPatchBaby } from "@/api/chuyaji";
+import { apiCreateBaby, apiGetBaby, apiPatchBaby, apiGetMother } from "@/api/chuyaji";
 import { useSessionStore } from "@/store/session";
 
 const session = useSessionStore();
@@ -93,8 +93,26 @@ onLoad((query: Record<string, string | undefined>) => {
   babyId.value = Number(query.id || session.babyId || 0);
   if (babyId.value) {
     loadExisting();
+  } else {
+    prefillFromMother();
   }
 });
+
+async function prefillFromMother() {
+  if (!session.motherId) return;
+  try {
+    const mother = await apiGetMother(session.motherId);
+    if (
+      (mother.status === "postpartum" || mother.status === "parenting") &&
+      mother.delivery_date
+    ) {
+      birth.value = mother.delivery_date.slice(0, 10);
+    }
+    if (mother.note && !birthHospital.value) {
+    }
+  } catch {
+  }
+}
 
 function toISO(value: string): string | undefined {
   const time = Date.parse(value);
@@ -108,7 +126,6 @@ function toNumber(value: string): number | undefined {
   return Number.isFinite(parsed) ? parsed : undefined;
 }
 
-/** 末次月经首日 +280 天（孕 40 周），用于推算预产期 */
 function eddFromLmp(lmpYmd: string): string {
   const t = (lmpYmd || "").trim();
   if (!t) return "";

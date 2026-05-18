@@ -15,10 +15,8 @@ type Config struct {
 	WechatAppID     string
 	WechatAppSecret string
 	DevMode         bool
-	// UploadDir 非空时启用服务端接收 multipart 附件（存本地磁盘）；生产可配合反代与 CHUYAJI_PUBLIC_BASE_URL。
-	UploadDir string
-	// PublicBaseURL 生成附件外链，如 https://api.example.com；为空时上传接口会回退为 http://Host。
-	PublicBaseURL string
+	UploadDir       string
+	PublicBaseURL   string
 }
 
 func Load() *Config {

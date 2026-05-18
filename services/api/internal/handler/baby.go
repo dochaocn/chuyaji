@@ -11,19 +11,18 @@ import (
 )
 
 type babyOut struct {
-	ID            uint64    `json:"id"`
-	UserID        uint64    `json:"user_id"`
-	Nickname      string    `json:"nickname"`
-	Gender        string    `json:"gender,omitempty"`
-	AvatarURL     string    `json:"avatar_url,omitempty"`
+	ID            uint64     `json:"id"`
+	UserID        uint64     `json:"user_id"`
+	Nickname      string     `json:"nickname"`
+	Gender        string     `json:"gender,omitempty"`
 	LMPDate       *time.Time `json:"lmp_date,omitempty"`
 	EDDDate       *time.Time `json:"edd_date,omitempty"`
 	BirthDate     *time.Time `json:"birth_date,omitempty"`
-	BirthWeightG  *int      `json:"birth_weight_g,omitempty"`
-	BirthHeightCM *float64  `json:"birth_height_cm,omitempty"`
-	BirthHospital string    `json:"birth_hospital,omitempty"`
-	FeedingType   string    `json:"feeding_type,omitempty"`
-	Note          string    `json:"note,omitempty"`
+	BirthWeightG  *int       `json:"birth_weight_g,omitempty"`
+	BirthHeightCM *float64   `json:"birth_height_cm,omitempty"`
+	BirthHospital string     `json:"birth_hospital,omitempty"`
+	FeedingType   string     `json:"feeding_type,omitempty"`
+	Note          string     `json:"note,omitempty"`
 }
 
 func babyToOut(b *model.Baby) babyOut {
@@ -32,7 +31,6 @@ func babyToOut(b *model.Baby) babyOut {
 		UserID:        b.UserID,
 		Nickname:      b.Nickname,
 		Gender:        b.Gender,
-		AvatarURL:     b.AvatarURL,
 		LMPDate:       b.LMPDate,
 		EDDDate:       b.EDDDate,
 		BirthDate:     b.BirthDate,
@@ -65,7 +63,6 @@ func (h *Handler) ListBabies(c *gin.Context) {
 type createBabyReq struct {
 	Nickname      string     `json:"nickname" binding:"required,max=64"`
 	Gender        string     `json:"gender" binding:"omitempty,max=8"`
-	AvatarURL     string     `json:"avatar_url" binding:"omitempty,max=512"`
 	LMPDate       *time.Time `json:"lmp_date"`
 	EDDDate       *time.Time `json:"edd_date"`
 	BirthDate     *time.Time `json:"birth_date"`
@@ -91,7 +88,6 @@ func (h *Handler) CreateBaby(c *gin.Context) {
 		UserID:        uid,
 		Nickname:      req.Nickname,
 		Gender:        req.Gender,
-		AvatarURL:     req.AvatarURL,
 		LMPDate:       req.LMPDate,
 		EDDDate:       req.EDDDate,
 		BirthDate:     req.BirthDate,
@@ -135,7 +131,6 @@ func (h *Handler) GetBaby(c *gin.Context) {
 type patchBabyReq struct {
 	Nickname      *string    `json:"nickname"`
 	Gender        *string    `json:"gender"`
-	AvatarURL     *string    `json:"avatar_url"`
 	LMPDate       *time.Time `json:"lmp_date"`
 	EDDDate       *time.Time `json:"edd_date"`
 	BirthDate     *time.Time `json:"birth_date"`
@@ -177,9 +172,6 @@ func (h *Handler) PatchBaby(c *gin.Context) {
 	}
 	if req.Gender != nil {
 		b.Gender = *req.Gender
-	}
-	if req.AvatarURL != nil {
-		b.AvatarURL = *req.AvatarURL
 	}
 	if req.LMPDate != nil {
 		b.LMPDate = req.LMPDate

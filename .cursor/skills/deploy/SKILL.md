@@ -57,15 +57,20 @@ fi
 
 ### 3. 上传二进制
 
+当前 SSH 用户若**对** `/root/application/chuya/bin` **无直接写入权限**，直接 `scp` 到目标路径会失败（`dest open ... Failure`）。优先使用：**先上传到可写目录，再 `sudo mv` 到 `bin`**。
+
+```bash
+scp bin/chuyaji-api aliyun:/tmp/chuyaji-api
+ssh aliyun 'sudo mv /tmp/chuyaji-api /root/application/chuya/bin/chuyaji-api && sudo chmod +x /root/application/chuya/bin/chuyaji-api'
+```
+
+若本机用户对 `bin` 目录可自行写入，也可一行直达（少数环境适用）：
+
 ```bash
 scp bin/chuyaji-api aliyun:/root/application/chuya/bin/chuyaji-api
 ```
 
-若习惯增量同步，可用：
-
-```bash
-rsync -avz bin/chuyaji-api aliyun:/root/application/chuya/bin/
-```
+习惯用 rsync 时同理：可先同步到 `aliyun:/tmp/chuyaji-api`，再 `sudo mv` 到上述 `bin` 路径（或仅当 `rsync` 目标对用户可写时再直传 `bin`）。
 
 ### 4. 远端启动 / 重启
 
@@ -76,6 +81,8 @@ rsync -avz bin/chuyaji-api aliyun:/root/application/chuya/bin/
 ```bash
 ssh aliyun 'sudo systemctl restart chuyaji-api && sudo systemctl status chuyaji-api --no-pager'
 ```
+
+（上传与重启可合并为一条远程命令：在 `sudo mv` + `chmod +x` 成功后紧跟 `systemctl restart`。）
 
 单元文件中 `ExecStart` 应指向 `/root/application/chuya/bin/chuyaji-api`，`WorkingDirectory` 与 `EnvironmentFile` 与线上 `.env` 位置一致。
 
@@ -97,6 +104,7 @@ ssh aliyun 'curl -sS -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8282/heal
 
 ## 常见故障
 
+- **scp 报 `dest open ... Failure`**：多为对 `/root/.../bin` 无写权限，改用「上传到 `/tmp` 再 `sudo mv`」（见上文 §3）。
 - **二进制无法执行**：确认交叉编译的 `GOOS`/`GOARCH` 与服务器一致；`chmod +x`。
 - **启动即退出**：远端缺少 `CHUYAJI_JWT_SECRET` 或数据库路径不可写；查看 `journalctl -u chuyaji-api -e`。
 - **附件/外链异常**：检查 `CHUYAJI_PUBLIC_BASE_URL` 与反代是否指向同一对外域名。

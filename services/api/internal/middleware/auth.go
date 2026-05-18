@@ -10,7 +10,6 @@ import (
 
 const ctxUserIDKey = "uid"
 
-// UserID returns the authenticated user id set by JWT middleware.
 func UserID(c *gin.Context) (uint64, bool) {
 	v, ok := c.Get(ctxUserIDKey)
 	if !ok {

@@ -5,7 +5,6 @@ export interface Baby {
   user_id: number;
   nickname: string;
   gender?: string;
-  avatar_url?: string;
   lmp_date?: string;
   edd_date?: string;
   birth_date?: string;
@@ -37,8 +36,6 @@ export interface RecordItem {
   phase: "prenatal" | "postnatal";
   record_type: string;
   occurred_at: string;
-  gestational_weeks?: number;
-  gestational_days?: number;
   summary: string;
   payload: Record<string, unknown>;
   created_at: string;

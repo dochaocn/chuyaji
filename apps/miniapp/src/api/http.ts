@@ -39,9 +39,7 @@ export function request<T>(opts: RequestOptions): Promise<T> {
         if (status === 401) {
           try {
             uni.removeStorageSync("chuyaji_token");
-          } catch {
-            /* ignore */
-          }
+          } catch {}
         }
         if (status >= 200 && status < 300) {
           resolve(res.data as T);

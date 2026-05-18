@@ -1,0 +1,14 @@
+// 卡片/列表内「字段名 + 字段值」统一正文样式（字号、字重、颜色一致）
+// 布局（宽度、flex）由各页面 scoped 样式单独书写
+// 依赖 uni-app 注入的全局 $cj-* 变量
+
+.record-key-label,
+.record-key-value,
+.summary-key-label,
+.summary-key-value {
+  font-size: 26rpx;
+  font-weight: $cj-fw-body;
+  color: $cj-text;
+  line-height: 1.55;
+  word-break: break-word;
+}

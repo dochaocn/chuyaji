@@ -15,17 +15,15 @@ import (
 )
 
 type recordOut struct {
-	ID               uint64          `json:"id"`
-	BabyID           uint64          `json:"baby_id"`
-	Phase            string          `json:"phase"`
-	RecordType       string          `json:"record_type"`
-	OccurredAt       time.Time       `json:"occurred_at"`
-	GestationalWeeks *int            `json:"gestational_weeks,omitempty"`
-	GestationalDays  *int            `json:"gestational_days,omitempty"`
-	Summary          string          `json:"summary"`
-	Payload          json.RawMessage `json:"payload"`
-	CreatedAt        time.Time       `json:"created_at"`
-	UpdatedAt        time.Time       `json:"updated_at"`
+	ID         uint64          `json:"id"`
+	BabyID     uint64          `json:"baby_id"`
+	Phase      string          `json:"phase"`
+	RecordType string          `json:"record_type"`
+	OccurredAt time.Time       `json:"occurred_at"`
+	Summary    string          `json:"summary"`
+	Payload    json.RawMessage `json:"payload"`
+	CreatedAt  time.Time       `json:"created_at"`
+	UpdatedAt  time.Time       `json:"updated_at"`
 }
 
 func recordToOut(r *model.Record) recordOut {
@@ -36,17 +34,15 @@ func recordToOut(r *model.Record) recordOut {
 		raw = json.RawMessage(`{}`)
 	}
 	return recordOut{
-		ID:               r.ID,
-		BabyID:           r.BabyID,
-		Phase:            r.Phase,
-		RecordType:       r.RecordType,
-		OccurredAt:       r.OccurredAt,
-		GestationalWeeks: r.GestationalWeeks,
-		GestationalDays:  r.GestationalDays,
-		Summary:          r.Summary,
-		Payload:          raw,
-		CreatedAt:        r.CreatedAt,
-		UpdatedAt:        r.UpdatedAt,
+		ID:         r.ID,
+		BabyID:     r.BabyID,
+		Phase:      r.Phase,
+		RecordType: r.RecordType,
+		OccurredAt: r.OccurredAt,
+		Summary:    r.Summary,
+		Payload:    raw,
+		CreatedAt:  r.CreatedAt,
+		UpdatedAt:  r.UpdatedAt,
 	}
 }
 
@@ -75,7 +71,7 @@ func (h *Handler) ListRecords(c *gin.Context) {
 
 	q := h.DB.Where("baby_id = ?", babyID).Order("occurred_at DESC, id DESC")
 	if cursor != "" {
-		t, id, err := DecodeCursor(cursor)
+		t, id, err := decodeCursor(cursor)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "bad cursor"})
 			return
@@ -92,7 +88,7 @@ func (h *Handler) ListRecords(c *gin.Context) {
 	next := ""
 	if len(rows) > limit {
 		last := rows[limit-1]
-		next = EncodeCursor(last.OccurredAt, last.ID)
+		next = encodeCursor(last.OccurredAt, last.ID)
 		rows = rows[:limit]
 	}
 
@@ -104,13 +100,11 @@ func (h *Handler) ListRecords(c *gin.Context) {
 }
 
 type createRecordReq struct {
-	Phase            string          `json:"phase" binding:"required,oneof=prenatal postnatal"`
-	RecordType       string          `json:"record_type" binding:"required,max=32"`
-	OccurredAt       time.Time       `json:"occurred_at" binding:"required"`
-	GestationalWeeks *int            `json:"gestational_weeks"`
-	GestationalDays  *int            `json:"gestational_days"`
-	Summary          string          `json:"summary" binding:"max=512"`
-	Payload          json.RawMessage `json:"payload"`
+	Phase      string          `json:"phase" binding:"required,oneof=prenatal postnatal"`
+	RecordType string          `json:"record_type" binding:"required,max=32"`
+	OccurredAt time.Time       `json:"occurred_at" binding:"required"`
+	Summary    string          `json:"summary" binding:"max=512"`
+	Payload    json.RawMessage `json:"payload"`
 }
 
 func (h *Handler) CreateRecord(c *gin.Context) {
@@ -143,14 +137,12 @@ func (h *Handler) CreateRecord(c *gin.Context) {
 		payload = datatypes.JSON(req.Payload)
 	}
 	r := model.Record{
-		BabyID:           babyID,
-		Phase:            req.Phase,
-		RecordType:       req.RecordType,
-		OccurredAt:       req.OccurredAt,
-		GestationalWeeks: req.GestationalWeeks,
-		GestationalDays:  req.GestationalDays,
-		Summary:          req.Summary,
-		Payload:          payload,
+		BabyID:     babyID,
+		Phase:      req.Phase,
+		RecordType: req.RecordType,
+		OccurredAt: req.OccurredAt,
+		Summary:    req.Summary,
+		Payload:    payload,
 	}
 	if err := h.DB.Create(&r).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "create"})
@@ -188,13 +180,11 @@ func (h *Handler) GetRecord(c *gin.Context) {
 }
 
 type patchRecordReq struct {
-	Phase            *string         `json:"phase"`
-	RecordType       *string         `json:"record_type"`
-	OccurredAt       *time.Time      `json:"occurred_at"`
-	GestationalWeeks *int            `json:"gestational_weeks"`
-	GestationalDays  *int            `json:"gestational_days"`
-	Summary          *string         `json:"summary"`
-	Payload          json.RawMessage `json:"payload"`
+	Phase      *string         `json:"phase"`
+	RecordType *string         `json:"record_type"`
+	OccurredAt *time.Time      `json:"occurred_at"`
+	Summary    *string         `json:"summary"`
+	Payload    json.RawMessage `json:"payload"`
 }
 
 func (h *Handler) PatchRecord(c *gin.Context) {
@@ -235,12 +225,6 @@ func (h *Handler) PatchRecord(c *gin.Context) {
 	}
 	if req.OccurredAt != nil {
 		r.OccurredAt = *req.OccurredAt
-	}
-	if req.GestationalWeeks != nil {
-		r.GestationalWeeks = req.GestationalWeeks
-	}
-	if req.GestationalDays != nil {
-		r.GestationalDays = req.GestationalDays
 	}
 	if req.Summary != nil {
 		r.Summary = *req.Summary

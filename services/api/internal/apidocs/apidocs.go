@@ -11,7 +11,6 @@ import (
 //go:embed openapi.yaml
 var openAPISpec []byte
 
-// elementsVersion 与 README 说明保持一致；升级时请打开 /docs 验收。
 const elementsVersion = "9.0.16"
 
 func docsHTML() string {
@@ -39,7 +38,6 @@ func docsHTML() string {
 `, elementsVersion)
 }
 
-// Register 挂载 OpenAPI 规范与 Stoplight Elements 在线文档：GET /docs 、GET /openapi.yaml
 func Register(r *gin.Engine) {
 	r.GET("/openapi.yaml", func(c *gin.Context) {
 		c.Data(http.StatusOK, "application/yaml; charset=utf-8", openAPISpec)
