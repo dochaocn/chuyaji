@@ -23,6 +23,7 @@ tags:
   - name: MotherRecord
   - name: Dashboard
   - name: Attachment
+  - name: Reminder
   - name: Public
 
 paths:
@@ -589,6 +590,79 @@ paths:
         "204":
           description: 已删除
 
+  /api/v1/reminders:
+    get:
+      tags: [Reminder]
+      summary: 当前用户提醒列表
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, done, ignored]
+            default: pending
+        - name: owner_type
+          in: query
+          schema:
+            type: string
+            enum: [baby, mother]
+        - name: owner_id
+          in: query
+          schema:
+            type: integer
+            format: int64
+        - $ref: "#/components/parameters/limitQuery"
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/Reminder"
+
+  /api/v1/reminders/{id}:
+    patch:
+      tags: [Reminder]
+      summary: 更新提醒状态
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/idPath"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:
+                  type: string
+                  enum: [pending, done, ignored]
+      responses:
+        "200":
+          description: 成功
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Reminder"
+    delete:
+      tags: [Reminder]
+      summary: 删除提醒
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/idPath"
+      responses:
+        "204":
+          description: 已删除
+
   /api/v1/p/{token}:
     get:
       tags: [Public]
@@ -985,6 +1059,44 @@ components:
         size:
           type: integer
           format: int64
+
+    Reminder:
+      type: object
+      properties:
+        id:
+          type: integer
+          format: int64
+        user_id:
+          type: integer
+          format: int64
+        owner_type:
+          type: string
+          enum: [baby, mother]
+        owner_id:
+          type: integer
+          format: int64
+        source_type:
+          type: string
+          enum: [baby_record, mother_record]
+        source_id:
+          type: integer
+          format: int64
+        source_record_type:
+          type: string
+        title:
+          type: string
+        due_at:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [pending, done, ignored]
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
 
     BabyDashboard:
       type: object

@@ -47,7 +47,6 @@
         <button class="next-btn" @click="onNextStepAction">{{ nextStepBtnLabel }}</button>
       </view>
 
-      
       <view v-if="!dashboard?.profile" class="empty-card">
         <template v-if="loading">
           <text class="empty-title">加载中…</text>
@@ -292,8 +291,8 @@
 <script setup lang="ts">
 import { onShow } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
-import { apiMotherDashboard, apiCreateMotherRecord } from "@/api/chuyaji";
-import type { MotherRecordItem } from "@/api/chuyaji";
+import { apiMotherDashboard, apiCreateMotherRecord, apiListReminders } from "@/api/chuyaji";
+import type { MotherRecordItem, ReminderItem } from "@/api/chuyaji";
 import { useAuthStore } from "@/store/auth";
 import { useSessionStore } from "@/store/session";
 import {
@@ -331,6 +330,7 @@ const dashboard = ref<{
 const showQuickSheet = ref(false);
 const quickTemplate = ref<RecordTemplate | null>(null);
 const showMetricPicker = ref(false);
+const reminders = ref<ReminderItem[]>([]);
 
 const statusLabel = computed(() => motherStageLabel(dashboard.value?.profile?.status));
 
@@ -393,13 +393,17 @@ const recentMomRecordsWithPreview = computed(() => {
   });
 });
 
+const activeReminder = computed(() => reminders.value[0] ?? null);
+
 const nextStep = computed(() => {
+  if (activeReminder.value) return { type: "check_reminder" as const };
   const hasProfile = !!dashboard.value?.profile;
   const lastAt = dashboard.value?.latest_records?.[0]?.occurred_at ?? null;
   return getMotherNextStep(hasProfile, lastAt);
 });
 
 const nextStepTitle = computed(() => {
+  if (activeReminder.value) return `${activeReminder.value.title}：${activeReminder.value.due_at.slice(0, 10)}`;
   switch (nextStep.value.type) {
     case "create_profile": return "还没有宝妈档案";
     case "add_record": return `已经 ${nextStep.value.daysSinceLast} 天没有新记录了`;
@@ -509,7 +513,18 @@ async function loadDashboard() {
   try {
     const data = await apiMotherDashboard(session.motherId || undefined);
     dashboard.value = data;
-    if (data.profile?.id) session.setMother(data.profile.id);
+    if (data.profile?.id) {
+      session.setMother(data.profile.id);
+      try {
+        const reminderPage = await apiListReminders("pending", 1, { owner_type: "mother", owner_id: data.profile.id });
+        reminders.value = reminderPage.items;
+      } catch (error) {
+        console.error(error);
+        reminders.value = [];
+      }
+    } else {
+      reminders.value = [];
+    }
   } catch (error) {
     console.error(error);
     uni.showToast({ title: "加载失败", icon: "none" });
@@ -519,6 +534,7 @@ async function loadDashboard() {
 }
 
 function onNextStepAction() {
+  if (activeReminder.value) return goReminders();
   const step = nextStep.value;
   if (step.type === "create_profile") return goProfileEdit();
   if (step.type === "add_record") return goNewRecord();
@@ -611,6 +627,10 @@ function goRecordList() {
 function openSummaryRecord(id: number | undefined) {
   if (!id) return;
   uni.navigateTo({ url: `/pages/mom/record-detail?id=${id}` });
+}
+
+function goReminders() {
+  uni.navigateTo({ url: "/pages/reminders/list" });
 }
 </script>
 

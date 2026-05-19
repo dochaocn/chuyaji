@@ -84,3 +84,18 @@ type Attachment struct {
 	LocalPath  string  `gorm:"size:1024"`
 	CreatedAt  time.Time
 }
+
+type Reminder struct {
+	ID               uint64 `gorm:"primaryKey"`
+	UserID           uint64 `gorm:"index;not null"`
+	OwnerType        string `gorm:"index;size:32;not null"`
+	OwnerID          uint64 `gorm:"index;not null"`
+	SourceType       string `gorm:"uniqueIndex:idx_reminder_source;size:32;not null"`
+	SourceID         uint64 `gorm:"uniqueIndex:idx_reminder_source;not null"`
+	SourceRecordType string `gorm:"size:32;not null"`
+	Title            string `gorm:"size:128;not null"`
+	DueAt            time.Time
+	Status           string `gorm:"index;size:16;not null;default:pending"`
+	CreatedAt        time.Time
+	UpdatedAt        time.Time
+}

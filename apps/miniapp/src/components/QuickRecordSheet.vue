@@ -24,8 +24,12 @@
               </view>
             </view>
           </template>
+          <template v-else-if="field.type === 'date'">
+            <picker mode="date" :value="fieldValues[field.key] || ''" @change="(e) => setSelect(field.key, e.detail.value)">
+              <view :class="['field-input', !fieldValues[field.key] && 'is-placeholder']">{{ fieldValues[field.key] || "请选择日期" }}</view>
+            </picker>
+          </template>
           <template v-else>
-            
             <input
               :value="fieldValues[field.key] ?? ''"
               class="field-input"
@@ -38,6 +42,44 @@
             />
           </template>
         </view>
+
+        <view v-if="template.optionalFields.length" class="note-toggle" @tap.stop="showMore = !showMore">
+          <text class="note-toggle-text">{{ showMore ? "收起更多信息" : "更多信息" }}</text>
+        </view>
+        <template v-if="showMore">
+          <view v-for="field in template.optionalFields" :key="field.key" class="field">
+            <text class="field-label">{{ field.label }}<text v-if="field.unit" class="field-unit">（{{ field.unit }}）</text></text>
+            <template v-if="field.type === 'select'">
+              <view class="select-row">
+                <view
+                  v-for="opt in field.options || []"
+                  :key="opt.value"
+                  :class="['select-chip', fieldValues[field.key] === opt.value && 'selected']"
+                  @tap.stop="setSelect(field.key, opt.value)"
+                >
+                  <text class="select-chip-text">{{ opt.label }}</text>
+                </view>
+              </view>
+            </template>
+            <template v-else-if="field.type === 'date'">
+              <picker mode="date" :value="fieldValues[field.key] || ''" @change="(e) => setSelect(field.key, e.detail.value)">
+                <view :class="['field-input', !fieldValues[field.key] && 'is-placeholder']">{{ fieldValues[field.key] || "请选择日期" }}</view>
+              </picker>
+            </template>
+            <template v-else>
+              <input
+                :value="fieldValues[field.key] ?? ''"
+                class="field-input"
+                :type="field.type === 'number' ? 'digit' : 'text'"
+                :placeholder="field.placeholder || ''"
+                confirm-type="done"
+                :adjust-position="true"
+                :cursor-spacing="inputCursorSpacing"
+                @input="onFieldInput(field.key, $event)"
+              />
+            </template>
+          </view>
+        </template>
 
         <view class="note-toggle" @tap.stop="showNote = !showNote">
           <text class="note-toggle-text">{{ showNote ? "收起备注" : "添加备注" }}</text>
@@ -76,6 +118,7 @@ const emit = defineEmits<{
 const fieldValues = ref<Record<string, string>>({});
 const noteText = ref("");
 const showNote = ref(false);
+const showMore = ref(false);
 const loading = ref(false);
 
 const inputCursorSpacing = 120;
@@ -107,7 +150,7 @@ function bindKeyboardHeightListener() {
 
 function seedFields() {
   const m: Record<string, string> = {};
-  for (const f of props.template.recommendedFields) {
+  for (const f of [...props.template.recommendedFields, ...props.template.optionalFields]) {
     m[f.key] = "";
   }
   fieldValues.value = m;
@@ -119,6 +162,7 @@ watch(
     if (vis) {
       noteText.value = "";
       showNote.value = false;
+      showMore.value = false;
       seedFields();
       bindKeyboardHeightListener();
     } else {
@@ -166,7 +210,7 @@ function onClose() {
 function buildPayload(): Record<string, unknown> {
   const result: Record<string, unknown> = {};
   const fv = fieldValues.value;
-  for (const field of props.template.recommendedFields) {
+  for (const field of [...props.template.recommendedFields, ...props.template.optionalFields]) {
     const raw = fv[field.key]?.trim();
     if (!raw) continue;
     if (field.type === "number") {
@@ -283,6 +327,10 @@ async function onSave() {
   min-height: 96rpx;
   display: flex;
   align-items: center;
+}
+
+.field-input.is-placeholder {
+  color: $cj-text-muted;
 }
 
 .select-row {

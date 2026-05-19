@@ -63,6 +63,21 @@ export interface AttachmentItem {
   size: number;
 }
 
+export interface ReminderItem {
+  id: number;
+  user_id: number;
+  owner_type: "baby" | "mother";
+  owner_id: number;
+  source_type: "baby_record" | "mother_record";
+  source_id: number;
+  source_record_type: string;
+  title: string;
+  due_at: string;
+  status: "pending" | "done" | "ignored";
+  created_at: string;
+  updated_at: string;
+}
+
 export async function apiMe() {
   return request<{ id: number; nickname: string; avatar_url: string }>({ path: "/api/v1/me" });
 }
@@ -180,4 +195,24 @@ export async function apiListMotherAttachments(recordId: number) {
 
 export async function apiDeleteAttachment(id: number) {
   return request<unknown>({ path: `/api/v1/attachments/${id}`, method: "DELETE" });
+}
+
+export async function apiListReminders(
+  status: ReminderItem["status"] = "pending",
+  limit = 20,
+  owner?: { owner_type: ReminderItem["owner_type"]; owner_id: number }
+) {
+  const params = [`status=${status}`, `limit=${limit}`];
+  if (owner) {
+    params.push(`owner_type=${owner.owner_type}`, `owner_id=${owner.owner_id}`);
+  }
+  return request<{ items: ReminderItem[] }>({ path: `/api/v1/reminders?${params.join("&")}` });
+}
+
+export async function apiPatchReminder(id: number, body: { status: ReminderItem["status"] }) {
+  return request<ReminderItem>({ path: `/api/v1/reminders/${id}`, method: "PATCH", data: body });
+}
+
+export async function apiDeleteReminder(id: number) {
+  return request<unknown>({ path: `/api/v1/reminders/${id}`, method: "DELETE" });
 }

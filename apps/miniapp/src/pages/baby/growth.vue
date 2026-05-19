@@ -11,9 +11,9 @@
       <text class="note-body">{{ sampleNote }}</text>
     </view>
 
-    <GrowthChart :user-points="userPoints" :ref-label="refLabel" />
+    <GrowthChart :series="series" :ref-label="refLabel" />
 
-    <button class="ghost-btn" @click="exportJson">导出记录 JSON</button>
+    <button class="ghost-btn" @click="exportJson">导出生长记录 JSON</button>
   </view>
 </template>
 
@@ -29,10 +29,16 @@ import { useSessionStore } from "@/store/session";
 const session = useSessionStore();
 const babyId = ref(0);
 const birthDate = ref<string | undefined>();
-const userPoints = ref<{ age_days: number; kg: number }[]>([]);
+type GrowthMetricKey = "weight" | "height" | "head";
+type GrowthPoint = { age_days: number; value: number; occurred_at: string };
+const series = ref<Record<GrowthMetricKey, GrowthPoint[]>>({
+  weight: [],
+  height: [],
+  head: [],
+});
 
-const sampleNote = computed(() => (sample as { note?: string }).note || "从宝宝记录中提取体重数据。");
-const refLabel = computed(() => "图中趋势条基于已录入的生长记录生成，可继续在后续版本升级为真实折线图。");
+const sampleNote = computed(() => (sample as { note?: string }).note || "从宝宝记录中提取体重、身长和头围数据。");
+const refLabel = computed(() => "曲线基于已录入的生长记录生成，暂不包含 WHO 参考曲线。");
 
 onLoad(async (query: Record<string, string | undefined>) => {
   session.load();
@@ -46,22 +52,37 @@ async function load() {
     const baby = await apiGetBaby(babyId.value);
     birthDate.value = baby.birth_date;
     let cursor: string | undefined;
-    const points: { age_days: number; kg: number }[] = [];
+    const nextSeries: Record<GrowthMetricKey, GrowthPoint[]> = {
+      weight: [],
+      height: [],
+      head: [],
+    };
     for (;;) {
       const page = await apiListRecords(babyId.value, 50, cursor);
       for (const item of page.items) {
         if (item.record_type !== "growth") continue;
-        const weight = (item.payload as { weight_g?: number }).weight_g;
-        if (!birthDate.value || typeof weight !== "number") continue;
+        if (!birthDate.value) continue;
         const dayAge = Math.floor((Date.parse(item.occurred_at) - Date.parse(birthDate.value)) / (24 * 3600 * 1000));
-        if (Number.isFinite(dayAge)) {
-          points.push({ age_days: dayAge, kg: weight / 1000 });
+        if (!Number.isFinite(dayAge)) continue;
+        const payload = item.payload as {
+          weight_g?: number;
+          height_cm?: number;
+          head_circumference_cm?: number;
+        };
+        if (typeof payload.weight_g === "number") {
+          nextSeries.weight.push({ age_days: dayAge, value: payload.weight_g / 1000, occurred_at: item.occurred_at });
+        }
+        if (typeof payload.height_cm === "number") {
+          nextSeries.height.push({ age_days: dayAge, value: payload.height_cm, occurred_at: item.occurred_at });
+        }
+        if (typeof payload.head_circumference_cm === "number") {
+          nextSeries.head.push({ age_days: dayAge, value: payload.head_circumference_cm, occurred_at: item.occurred_at });
         }
       }
       if (!page.next_cursor) break;
       cursor = page.next_cursor;
     }
-    userPoints.value = points;
+    series.value = nextSeries;
   } catch (error) {
     console.error(error);
     uni.showToast({ title: "加载失败", icon: "none" });

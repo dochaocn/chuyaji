@@ -20,6 +20,8 @@ export type RecordTemplate = {
   metricKeys?: string[];
 };
 
+const nextTimeField: TemplateField = { key: "next_time", label: "下次时间", type: "date" };
+
 const prenatalTemplates: RecordTemplate[] = [
   {
     value: "prenatal_checkup",
@@ -56,6 +58,7 @@ const prenatalTemplates: RecordTemplate[] = [
       { key: "ac_mm", label: "AC", type: "number", placeholder: "mm", unit: "mm" },
       { key: "fl_mm", label: "FL", type: "number", placeholder: "mm", unit: "mm" },
       { key: "fhr", label: "胎心", type: "number", placeholder: "次/分", unit: "次/分" },
+      nextTimeField,
     ],
     summaryPlaceholder: "B 超整体情况如何？",
     attachmentHint: "可上传 B 超单、影像照片",
@@ -72,6 +75,7 @@ const prenatalTemplates: RecordTemplate[] = [
     optionalFields: [
       { key: "risk_hint", label: "风险提示", type: "text", placeholder: "如有特殊风险提示" },
       { key: "doctor_advice", label: "医生建议", type: "text", placeholder: "后续建议" },
+      nextTimeField,
     ],
     summaryPlaceholder: "筛查结果和医生建议是什么？",
     attachmentHint: "可上传报告单",
@@ -89,6 +93,7 @@ const prenatalTemplates: RecordTemplate[] = [
       { key: "hospital", label: "医院", type: "text", placeholder: "可选" },
       { key: "estimated_weight_g", label: "胎儿估重", type: "number", placeholder: "例如 800", unit: "g" },
       { key: "note", label: "备注", type: "text", placeholder: "例如面部成像、配合度等" },
+      nextTimeField,
     ],
     summaryPlaceholder: "四维检查印象最深的是什么？",
     attachmentHint: "可上传四维报告或影像截图",
@@ -105,6 +110,7 @@ const prenatalTemplates: RecordTemplate[] = [
       { key: "fasting", label: "空腹", type: "number", placeholder: "mmol/L", unit: "mmol/L" },
       { key: "one_hour", label: "1 小时", type: "number", placeholder: "mmol/L", unit: "mmol/L" },
       { key: "two_hour", label: "2 小时", type: "number", placeholder: "mmol/L", unit: "mmol/L" },
+      nextTimeField,
     ],
     summaryPlaceholder: "糖耐结果是否正常？",
     attachmentHint: "可上传化验单",
@@ -122,6 +128,7 @@ const prenatalTemplates: RecordTemplate[] = [
     optionalFields: [
       { key: "hospital", label: "医院", type: "text", placeholder: "可选" },
       { key: "gestational_weeks", label: "孕周", type: "number", placeholder: "例如 12", unit: "周" },
+      nextTimeField,
     ],
     summaryPlaceholder: "NT 检查结果如何？",
     attachmentHint: "可上传检查报告",

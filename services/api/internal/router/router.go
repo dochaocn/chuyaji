@@ -72,6 +72,9 @@ func New(h *handler.Handler, cfg *config.Config) *gin.Engine {
 	authed.GET("/mother-records/:id/attachments", h.ListMotherAttachments)
 	authed.POST("/mother-records/:id/attachments", h.CreateMotherAttachment)
 	authed.DELETE("/attachments/:id", h.DeleteAttachment)
+	authed.GET("/reminders", h.ListReminders)
+	authed.PATCH("/reminders/:id", h.PatchReminder)
+	authed.DELETE("/reminders/:id", h.DeleteReminder)
 
 	upload := v1.Group("")
 	upload.Use(middleware.JWT(cfg.JWTSecret))

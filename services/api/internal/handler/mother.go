@@ -318,7 +318,12 @@ func (h *Handler) CreateMotherRecord(c *gin.Context) {
 		Summary:    req.Summary,
 		Payload:    payload,
 	}
-	if err := h.DB.Create(&r).Error; err != nil {
+	if err := h.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&r).Error; err != nil {
+			return err
+		}
+		return h.syncMotherRecordReminder(tx, uid, &r)
+	}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "create"})
 		return
 	}
@@ -379,27 +384,38 @@ func (h *Handler) PatchMotherRecord(c *gin.Context) {
 		return
 	}
 	var r model.MotherRecord
-	if err := h.DB.First(&r, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
-		return
-	}
-	if req.RecordType != nil {
-		r.RecordType = *req.RecordType
-	}
-	if req.OccurredAt != nil {
-		r.OccurredAt = *req.OccurredAt
-	}
-	if req.Summary != nil {
-		r.Summary = *req.Summary
-	}
-	if len(req.Payload) > 0 {
-		if !json.Valid(req.Payload) {
+	if err := h.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.First(&r, id).Error; err != nil {
+			return err
+		}
+		if req.RecordType != nil {
+			r.RecordType = *req.RecordType
+		}
+		if req.OccurredAt != nil {
+			r.OccurredAt = *req.OccurredAt
+		}
+		if req.Summary != nil {
+			r.Summary = *req.Summary
+		}
+		if len(req.Payload) > 0 {
+			if !json.Valid(req.Payload) {
+				return errInvalidPayloadJSON
+			}
+			r.Payload = datatypes.JSON(req.Payload)
+		}
+		if err := tx.Save(&r).Error; err != nil {
+			return err
+		}
+		return h.syncMotherRecordReminder(tx, uid, &r)
+	}); err != nil {
+		if errors.Is(err, errInvalidPayloadJSON) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload json"})
 			return
 		}
-		r.Payload = datatypes.JSON(req.Payload)
-	}
-	if err := h.DB.Save(&r).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "save"})
 		return
 	}
@@ -428,6 +444,9 @@ func (h *Handler) DeleteMotherRecord(c *gin.Context) {
 	}
 	if err := h.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("owner_type = ? AND owner_id = ?", "mother_record", id).Delete(&model.Attachment{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("source_type = ? AND source_id = ?", "mother_record", id).Delete(&model.Reminder{}).Error; err != nil {
 			return err
 		}
 		return tx.Delete(&model.MotherRecord{}, id).Error

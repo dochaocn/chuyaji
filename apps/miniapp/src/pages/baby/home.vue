@@ -45,7 +45,6 @@
         <button class="next-btn" @click="onNextStepAction">{{ nextStepBtnLabel }}</button>
       </view>
 
-      
       <view v-if="dashboard?.profile" class="shortcut-section">
         <text class="section-label">快速记录</text>
         <view class="shortcut-grid">
@@ -176,8 +175,8 @@
 <script setup lang="ts">
 import { onShow } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
-import { apiBabyDashboard, apiCreateRecord } from "@/api/chuyaji";
-import type { RecordItem } from "@/api/chuyaji";
+import { apiBabyDashboard, apiCreateRecord, apiListReminders } from "@/api/chuyaji";
+import type { RecordItem, ReminderItem } from "@/api/chuyaji";
 import { useAuthStore } from "@/store/auth";
 import { useSessionStore } from "@/store/session";
 import {
@@ -212,6 +211,7 @@ const dashboard = ref<{
 
 const showQuickSheet = ref(false);
 const quickTemplate = ref<RecordTemplate | null>(null);
+const reminders = ref<ReminderItem[]>([]);
 
 const isPostnatalStage = computed(() => {
   return isPostnatal(dashboard.value?.profile?.birth_date);
@@ -276,13 +276,17 @@ const recentBabyRecordsWithPreview = computed(() => {
   });
 });
 
+const activeReminder = computed(() => reminders.value[0] ?? null);
+
 const nextStep = computed(() => {
+  if (activeReminder.value) return { type: "check_reminder" as const };
   const hasProfile = !!dashboard.value?.profile;
   const lastAt = dashboard.value?.latest_records?.[0]?.occurred_at ?? null;
   return getBabyNextStep(hasProfile, lastAt);
 });
 
 const nextStepTitle = computed(() => {
+  if (activeReminder.value) return `${activeReminder.value.title}：${activeReminder.value.due_at.slice(0, 10)}`;
   switch (nextStep.value.type) {
     case "create_profile": return "还没有宝宝档案";
     case "add_record": return `已经 ${nextStep.value.daysSinceLast} 天没有新记录了`;
@@ -358,6 +362,15 @@ async function loadDashboard() {
     dashboard.value = data;
     if (data.profile?.id) {
       session.setBaby(data.profile.id);
+      try {
+        const reminderPage = await apiListReminders("pending", 1, { owner_type: "baby", owner_id: data.profile.id });
+        reminders.value = reminderPage.items;
+      } catch (error) {
+        console.error(error);
+        reminders.value = [];
+      }
+    } else {
+      reminders.value = [];
     }
   } catch (error) {
     console.error(error);
@@ -368,6 +381,7 @@ async function loadDashboard() {
 }
 
 function onNextStepAction() {
+  if (activeReminder.value) return goReminders();
   const step = nextStep.value;
   if (step.type === "create_profile") return goProfileEdit();
   if (step.type === "add_record") return goNewRecord();
@@ -446,6 +460,10 @@ function goGrowth() {
 function goTimeline() {
   if (!session.babyId) return;
   uni.navigateTo({ url: `/pages/baby/record-list?baby_id=${session.babyId}` });
+}
+
+function goReminders() {
+  uni.navigateTo({ url: "/pages/reminders/list" });
 }
 </script>
 

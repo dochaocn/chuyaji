@@ -34,3 +34,6 @@ bin/chuyaji-api
 .cursor/
 .codex/
 .claude/
+.rtk/
+AGENTS.md
+CLAUDE.md

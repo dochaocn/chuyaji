@@ -11,6 +11,7 @@
     { "path": "pages/mom/record-edit", "style": { "navigationBarTitleText": "宝妈记录" } },
     { "path": "pages/mom/record-detail", "style": { "navigationBarTitleText": "宝妈记录详情" } },
     { "path": "pages/mom/record-list", "style": { "navigationBarTitleText": "全部时间线" } },
+    { "path": "pages/reminders/list", "style": { "navigationBarTitleText": "提醒" } },
     { "path": "pages/privacy/privacy", "style": { "navigationBarTitleText": "隐私说明" } }
   ],
   "tabBar": {
