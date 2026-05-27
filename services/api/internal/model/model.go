@@ -93,8 +93,12 @@ type Reminder struct {
 	SourceType       string `gorm:"uniqueIndex:idx_reminder_source;size:32;not null"`
 	SourceID         uint64 `gorm:"uniqueIndex:idx_reminder_source;not null"`
 	SourceRecordType string `gorm:"size:32;not null"`
+	Category         string `gorm:"index;size:32"`
 	Title            string `gorm:"size:128;not null"`
+	Note             string `gorm:"size:512"`
 	DueAt            time.Time
+	DoneAt           *time.Time
+	SnoozedUntil     *time.Time
 	Status           string `gorm:"index;size:16;not null;default:pending"`
 	CreatedAt        time.Time
 	UpdatedAt        time.Time

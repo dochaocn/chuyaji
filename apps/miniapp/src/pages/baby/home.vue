@@ -88,9 +88,15 @@
             <text class="summary-value milestone-value">{{ latestMilestone }}</text>
           </view>
         </view>
-        <view class="growth-link" @click="goGrowth">
-          <text class="growth-link-text">查看生长趋势</text>
-          <text class="growth-link-chev">›</text>
+        <view class="growth-link-list">
+          <view class="growth-link" @click="goGrowth">
+            <text class="growth-link-text">查看生长趋势</text>
+            <text class="growth-link-chev">›</text>
+          </view>
+          <view class="growth-link" @click="goVaccinePlan">
+            <text class="growth-link-text">查看疫苗计划</text>
+            <text class="growth-link-chev">›</text>
+          </view>
         </view>
       </view>
 
@@ -165,6 +171,8 @@
       v-if="quickTemplate"
       :visible="showQuickSheet"
       :template="quickTemplate"
+      :last-payload="lastQuickPayload"
+      :last-summary="lastQuickSummary"
       @close="showQuickSheet = false"
       @saved="onQuickSaved"
     />
@@ -175,7 +183,7 @@
 <script setup lang="ts">
 import { onShow } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
-import { apiBabyDashboard, apiCreateRecord, apiListReminders } from "@/api/chuyaji";
+import { apiBabyDashboard, apiCreateRecord, apiLatestRecord, apiListReminders } from "@/api/chuyaji";
 import type { RecordItem, ReminderItem } from "@/api/chuyaji";
 import { useAuthStore } from "@/store/auth";
 import { useSessionStore } from "@/store/session";
@@ -211,6 +219,8 @@ const dashboard = ref<{
 
 const showQuickSheet = ref(false);
 const quickTemplate = ref<RecordTemplate | null>(null);
+const lastQuickPayload = ref<Record<string, unknown> | null>(null);
+const lastQuickSummary = ref("");
 const reminders = ref<ReminderItem[]>([]);
 
 const isPostnatalStage = computed(() => {
@@ -286,7 +296,10 @@ const nextStep = computed(() => {
 });
 
 const nextStepTitle = computed(() => {
-  if (activeReminder.value) return `${activeReminder.value.title}：${activeReminder.value.due_at.slice(0, 10)}`;
+  if (activeReminder.value) {
+    const more = reminders.value.length > 1 ? `，还有 ${reminders.value.length - 1} 条` : "";
+    return `${activeReminder.value.title}：${activeReminder.value.due_at.slice(0, 10)}${more}`;
+  }
   switch (nextStep.value.type) {
     case "create_profile": return "还没有宝宝档案";
     case "add_record": return `已经 ${nextStep.value.daysSinceLast} 天没有新记录了`;
@@ -363,7 +376,7 @@ async function loadDashboard() {
     if (data.profile?.id) {
       session.setBaby(data.profile.id);
       try {
-        const reminderPage = await apiListReminders("pending", 1, { owner_type: "baby", owner_id: data.profile.id });
+        const reminderPage = await apiListReminders("pending", 20, { owner_type: "baby", owner_id: data.profile.id });
         reminders.value = reminderPage.items;
       } catch (error) {
         console.error(error);
@@ -387,9 +400,22 @@ function onNextStepAction() {
   if (step.type === "add_record") return goNewRecord();
 }
 
-function onShortcut(tmpl: RecordTemplate) {
+async function onShortcut(tmpl: RecordTemplate) {
   if (tmpl.mode === "quick") {
     quickTemplate.value = tmpl;
+    lastQuickPayload.value = null;
+    lastQuickSummary.value = "";
+    const bid = Number(session.babyId) || Number(dashboard.value?.profile?.id) || 0;
+    const phase = isPostnatalStage.value ? "postnatal" : "prenatal";
+    if (bid) {
+      try {
+        const latest = await apiLatestRecord(bid, tmpl.value, phase);
+        lastQuickPayload.value = (latest.item?.payload || null) as Record<string, unknown> | null;
+        lastQuickSummary.value = latest.item?.summary || "";
+      } catch (e) {
+        console.error(e);
+      }
+    }
     showQuickSheet.value = true;
   } else {
     const phase = isPostnatalStage.value ? "postnatal" : "prenatal";
@@ -449,13 +475,19 @@ function goNewRecord() {
 }
 
 function openRecord(id: number) {
-  uni.navigateTo({ url: `/pages/baby/record-detail?id=${id}` });
+  uni.navigateTo({ url: `/pages/baby/record-edit?id=${id}&baby_id=${session.babyId}` });
 }
 
 function goGrowth() {
   if (!session.babyId) return;
   uni.navigateTo({ url: `/pages/baby/growth?baby_id=${session.babyId}` });
 }
+
+function goVaccinePlan() {
+  if (!session.babyId) return;
+  uni.navigateTo({ url: `/pages/baby/vaccine-plan?baby_id=${session.babyId}` });
+}
+
 
 function goTimeline() {
   if (!session.babyId) return;
@@ -819,14 +851,21 @@ function goReminders() {
   color: $cj-text-muted;
 }
 
-.growth-link {
+.growth-link-list {
   position: relative;
   z-index: 1;
   margin-top: $cj-gap-md;
   display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
+.growth-link {
+  display: flex;
   align-items: center;
   justify-content: flex-end;
   gap: 6rpx;
+  padding: 10rpx 0;
 }
 
 .growth-link-text {

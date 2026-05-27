@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/dochaocn/chuyaji/services/api/internal/middleware"
@@ -253,6 +254,29 @@ func (h *Handler) ListMotherRecords(c *gin.Context) {
 	cursor := c.Query("cursor")
 
 	q := h.DB.Where("mother_id = ?", motherID).Order("occurred_at DESC, id DESC")
+	if recordType := c.Query("record_type"); recordType != "" {
+		q = q.Where("record_type = ?", recordType)
+	}
+	if keyword := strings.TrimSpace(c.Query("q")); keyword != "" {
+		like := "%" + keyword + "%"
+		q = q.Where("(summary LIKE ? OR payload LIKE ?)", like, like)
+	}
+	if from := c.Query("from"); from != "" {
+		t, err := parseQueryDateTime(from, false)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "bad from"})
+			return
+		}
+		q = q.Where("occurred_at >= ?", t)
+	}
+	if to := c.Query("to"); to != "" {
+		t, err := parseQueryDateTime(to, true)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "bad to"})
+			return
+		}
+		q = q.Where("occurred_at < ?", t)
+	}
 	if cursor != "" {
 		t, id, err := decodeCursor(cursor)
 		if err != nil {
@@ -280,6 +304,41 @@ func (h *Handler) ListMotherRecords(c *gin.Context) {
 		out = append(out, motherRecordToOut(&rows[i]))
 	}
 	c.JSON(http.StatusOK, gin.H{"items": out, "next_cursor": next})
+}
+
+func (h *Handler) LatestMotherRecord(c *gin.Context) {
+	uid, ok := middleware.UserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	motherID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "bad mother id"})
+		return
+	}
+	ok2, err := h.canAccessMother(uid, motherID)
+	if err != nil || !ok2 {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+		return
+	}
+	recordType := strings.TrimSpace(c.Query("record_type"))
+	if recordType == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "bad record_type"})
+		return
+	}
+	var r model.MotherRecord
+	if err := h.DB.Where("mother_id = ? AND record_type = ?", motherID, recordType).
+		Order("occurred_at DESC, id DESC").
+		First(&r).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusOK, gin.H{"item": nil})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "query"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"item": motherRecordToOut(&r)})
 }
 
 func (h *Handler) CreateMotherRecord(c *gin.Context) {

@@ -11,6 +11,17 @@
       </view>
     </view>
 
+    <view class="range-tabs">
+      <view
+        v-for="range in ranges"
+        :key="range.key"
+        :class="['range-tab', selectedRange === range.key ? 'range-tab--active' : '']"
+        @click="selectedRange = range.key"
+      >
+        <text class="range-tab-text">{{ range.label }}</text>
+      </view>
+    </view>
+
     <view class="summary-row">
       <view class="summary-card">
         <text class="summary-label">样本数</text>
@@ -19,6 +30,10 @@
       <view class="summary-card">
         <text class="summary-label">最新{{ activeMetric.label }}</text>
         <text class="summary-value">{{ latestLabel }}</text>
+      </view>
+      <view class="summary-card">
+        <text class="summary-label">较上次</text>
+        <text class="summary-value">{{ deltaLabel }}</text>
       </view>
     </view>
 
@@ -41,6 +56,7 @@
         :key="`point-${idx}`"
         class="point"
         :style="{ left: `${point.x}%`, bottom: `${point.y}%` }"
+        @click="openPoint(point.record_id)"
       >
         <text class="point-label">{{ formatValue(point.value) }}</text>
       </view>
@@ -72,6 +88,7 @@ import { computed, ref, watch } from "vue";
 export type GrowthMetricKey = "weight" | "height" | "head";
 
 export type GrowthPoint = {
+  record_id: number;
   age_days: number;
   value: number;
   occurred_at: string;
@@ -82,6 +99,10 @@ const props = defineProps<{
   refLabel?: string;
 }>();
 
+const emit = defineEmits<{
+  (e: "open-record", id: number): void;
+}>();
+
 const metrics: { key: GrowthMetricKey; label: string; unit: string }[] = [
   { key: "weight", label: "体重", unit: "kg" },
   { key: "height", label: "身长", unit: "cm" },
@@ -89,6 +110,13 @@ const metrics: { key: GrowthMetricKey; label: string; unit: string }[] = [
 ];
 
 const selectedMetric = ref<GrowthMetricKey>("weight");
+const selectedRange = ref<"all" | "3m" | "6m">("all");
+
+const ranges: { key: "all" | "3m" | "6m"; label: string; days: number | null }[] = [
+  { key: "all", label: "全部", days: null },
+  { key: "3m", label: "近 3 月", days: 92 },
+  { key: "6m", label: "近 6 月", days: 184 },
+];
 
 const firstAvailableMetric = computed<GrowthMetricKey>(() => {
   return metrics.find((metric) => (props.series[metric.key] ?? []).length > 0)?.key ?? "weight";
@@ -105,13 +133,25 @@ watch(
 );
 
 const activeMetric = computed(() => metrics.find((metric) => metric.key === selectedMetric.value) ?? metrics[0]);
-const activePoints = computed(() =>
-  [...(props.series[selectedMetric.value] ?? [])].sort((a, b) => a.age_days - b.age_days)
-);
+const activePoints = computed(() => {
+  const sorted = [...(props.series[selectedMetric.value] ?? [])].sort((a, b) => a.age_days - b.age_days);
+  const range = ranges.find((item) => item.key === selectedRange.value);
+  if (!range?.days || !sorted.length) return sorted;
+  const maxAge = sorted[sorted.length - 1].age_days;
+  return sorted.filter((point) => point.age_days >= maxAge - range.days!);
+});
 
 const latestLabel = computed(() => {
   const latest = activePoints.value[activePoints.value.length - 1];
   return latest ? formatValue(latest.value) : "暂无";
+});
+
+const deltaLabel = computed(() => {
+  const points = activePoints.value;
+  if (points.length < 2) return "暂无";
+  const delta = points[points.length - 1].value - points[points.length - 2].value;
+  const sign = delta > 0 ? "+" : "";
+  return `${sign}${formatValue(delta)}`;
 });
 
 const normalizedPoints = computed(() => {
@@ -148,6 +188,10 @@ const segments = computed(() => {
 function formatValue(value: number) {
   return activeMetric.value.key === "weight" ? value.toFixed(2) : value.toFixed(1);
 }
+
+function openPoint(id: number) {
+  if (id) emit("open-record", id);
+}
 </script>
 
 <style lang="scss" scoped>
@@ -160,6 +204,12 @@ function formatValue(value: number) {
 }
 
 .tabs {
+  display: flex;
+  gap: $cj-gap-sm;
+  margin-bottom: $cj-gap-md;
+}
+
+.range-tabs {
   display: flex;
   gap: $cj-gap-sm;
   margin-bottom: $cj-gap-md;
@@ -179,9 +229,28 @@ function formatValue(value: number) {
   border-color: $cj-primary;
 }
 
+.range-tab {
+  flex: 1;
+  text-align: center;
+  border-radius: $cj-radius-pill;
+  padding: 10rpx 0;
+  background: $cj-surface-2;
+  border: 1rpx solid $cj-border-light;
+}
+
+.range-tab--active {
+  background: $cj-mint-soft;
+  border-color: $cj-mint;
+}
+
 .tab-text {
   font-size: 24rpx;
   color: $cj-text;
+}
+
+.range-tab-text {
+  font-size: 22rpx;
+  color: $cj-text-secondary;
 }
 
 .tab--active .tab-text {

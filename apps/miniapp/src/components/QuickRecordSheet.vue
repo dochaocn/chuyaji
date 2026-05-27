@@ -96,6 +96,7 @@
         </view>
       </scroll-view>
 
+      <button v-if="hasLast" class="reuse-btn" hover-class="save-btn-hover" @tap.stop="onReuseLast">沿用上次</button>
       <button class="save-btn" :loading="loading" hover-class="save-btn-hover" @tap.stop="onSave">保存</button>
     </view>
   </view>
@@ -108,6 +109,8 @@ import type { RecordTemplate } from "@/utils/recordTypes";
 const props = defineProps<{
   visible: boolean;
   template: RecordTemplate;
+  lastPayload?: Record<string, unknown> | null;
+  lastSummary?: string;
 }>();
 
 const emit = defineEmits<{
@@ -122,6 +125,7 @@ const showMore = ref(false);
 const loading = ref(false);
 
 const inputCursorSpacing = 120;
+const hasLast = computed(() => !!props.lastPayload && Object.keys(props.lastPayload).length > 0);
 
 const keyboardHeightPx = ref(0);
 let offKeyboardHeight: (() => void) | undefined;
@@ -240,6 +244,13 @@ async function onSave() {
   } finally {
     loading.value = false;
   }
+}
+
+function onReuseLast() {
+  if (!props.lastPayload) return;
+  const payload = { ...props.lastPayload };
+  const summary = props.lastSummary?.trim() || buildSummary(payload);
+  emit("saved", payload, summary);
 }
 </script>
 
@@ -385,6 +396,16 @@ async function onSave() {
   color: #fffefb !important;
   border: none !important;
   font-size: 30rpx;
+}
+
+.reuse-btn {
+  width: 100%;
+  margin-bottom: $cj-gap-sm;
+  border-radius: $cj-radius-pill !important;
+  background: $cj-surface !important;
+  color: $cj-text !important;
+  border: 1rpx solid $cj-border-light !important;
+  font-size: 28rpx;
 }
 
 .save-btn-hover {

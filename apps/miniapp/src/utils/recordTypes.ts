@@ -299,7 +299,11 @@ const postnatalTemplates: RecordTemplate[] = [
     entryLabel: "疫苗",
     mode: "standard",
     recommendedFields: [
+      { key: "vaccine_key", label: "疫苗标识", type: "text", placeholder: "例如 hepatitis_b" },
+      { key: "dose_key", label: "剂次标识", type: "text", placeholder: "例如 dose_1" },
       { key: "name", label: "疫苗名称", type: "text", placeholder: "例如乙肝疫苗第二针" },
+      { key: "dose_label", label: "剂次", type: "text", placeholder: "例如 第 2 剂" },
+      { key: "scheduled_date", label: "计划日期", type: "date" },
       { key: "vaccine_date", label: "接种日期", type: "date" },
       { key: "next_time", label: "下次时间", type: "date" },
     ],

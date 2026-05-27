@@ -71,12 +71,52 @@ export interface ReminderItem {
   source_type: "baby_record" | "mother_record";
   source_id: number;
   source_record_type: string;
+  category?: "checkup" | "vaccine" | "followup" | "other" | string;
   title: string;
+  note?: string;
   due_at: string;
+  done_at?: string;
+  snoozed_until?: string;
   status: "pending" | "done" | "ignored";
   created_at: string;
   updated_at: string;
 }
+
+export interface RecordListOptions {
+  limit?: number;
+  cursor?: string;
+  phase?: "prenatal" | "postnatal";
+  record_type?: string;
+  q?: string;
+  from?: string;
+  to?: string;
+}
+
+export interface MotherRecordListOptions {
+  limit?: number;
+  cursor?: string;
+  record_type?: string;
+  q?: string;
+  from?: string;
+  to?: string;
+}
+
+export type GrowthMetricKey = "weight" | "height" | "head";
+
+export interface GrowthSeriesPoint {
+  record_id: number;
+  age_days: number;
+  occurred_at: string;
+  value: number;
+  unit: string;
+}
+
+export interface GrowthSeriesResponse {
+  baby_id: number;
+  birth_date?: string;
+  series: Record<GrowthMetricKey, GrowthSeriesPoint[]>;
+}
+
 
 export async function apiMe() {
   return request<{ id: number; nickname: string; avatar_url: string }>({ path: "/api/v1/me" });
@@ -137,10 +177,30 @@ export async function apiMotherDashboard(motherId?: number) {
   }>({ path });
 }
 
-export async function apiListRecords(babyId: number, limit = 20, cursor?: string) {
-  let path = `/api/v1/babies/${babyId}/records?limit=${limit}`;
-  if (cursor) path += `&cursor=${encodeURIComponent(cursor)}`;
+function queryString(params: Record<string, unknown>) {
+  const pairs: string[] = [];
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === "") continue;
+    pairs.push(`${encodeURIComponent(key)}=${encodeURIComponent(String(value))}`);
+  }
+  return pairs.join("&");
+}
+
+export async function apiListRecords(babyId: number, limitOrOptions: number | RecordListOptions = 20, cursor?: string) {
+  const opts: RecordListOptions =
+    typeof limitOrOptions === "number" ? { limit: limitOrOptions, cursor } : limitOrOptions;
+  const qs = queryString({ limit: opts.limit ?? 20, cursor: opts.cursor, phase: opts.phase, record_type: opts.record_type, q: opts.q, from: opts.from, to: opts.to });
+  const path = `/api/v1/babies/${babyId}/records?${qs}`;
   return request<{ items: RecordItem[]; next_cursor: string }>({ path });
+}
+
+export async function apiLatestRecord(
+  babyId: number,
+  recordType: string,
+  phase?: "prenatal" | "postnatal"
+) {
+  const qs = queryString({ record_type: recordType, phase });
+  return request<{ item: RecordItem | null }>({ path: `/api/v1/babies/${babyId}/records/latest?${qs}` });
 }
 
 export async function apiCreateRecord(babyId: number, body: Record<string, unknown>) {
@@ -159,10 +219,17 @@ export async function apiDeleteRecord(id: number) {
   return request<unknown>({ path: `/api/v1/records/${id}`, method: "DELETE" });
 }
 
-export async function apiListMotherRecords(motherId: number, limit = 20, cursor?: string) {
-  let path = `/api/v1/mothers/${motherId}/records?limit=${limit}`;
-  if (cursor) path += `&cursor=${encodeURIComponent(cursor)}`;
+export async function apiListMotherRecords(motherId: number, limitOrOptions: number | MotherRecordListOptions = 20, cursor?: string) {
+  const opts: MotherRecordListOptions =
+    typeof limitOrOptions === "number" ? { limit: limitOrOptions, cursor } : limitOrOptions;
+  const qs = queryString({ limit: opts.limit ?? 20, cursor: opts.cursor, record_type: opts.record_type, q: opts.q, from: opts.from, to: opts.to });
+  const path = `/api/v1/mothers/${motherId}/records?${qs}`;
   return request<{ items: MotherRecordItem[]; next_cursor: string }>({ path });
+}
+
+export async function apiLatestMotherRecord(motherId: number, recordType: string) {
+  const qs = queryString({ record_type: recordType });
+  return request<{ item: MotherRecordItem | null }>({ path: `/api/v1/mothers/${motherId}/records/latest?${qs}` });
 }
 
 export async function apiCreateMotherRecord(motherId: number, body: Record<string, unknown>) {
@@ -200,19 +267,28 @@ export async function apiDeleteAttachment(id: number) {
 export async function apiListReminders(
   status: ReminderItem["status"] = "pending",
   limit = 20,
-  owner?: { owner_type: ReminderItem["owner_type"]; owner_id: number }
+  owner?: { owner_type: ReminderItem["owner_type"]; owner_id: number },
+  extra?: { from?: string; to?: string; category?: string }
 ) {
   const params = [`status=${status}`, `limit=${limit}`];
   if (owner) {
     params.push(`owner_type=${owner.owner_type}`, `owner_id=${owner.owner_id}`);
   }
+  if (extra?.from) params.push(`from=${encodeURIComponent(extra.from)}`);
+  if (extra?.to) params.push(`to=${encodeURIComponent(extra.to)}`);
+  if (extra?.category) params.push(`category=${encodeURIComponent(extra.category)}`);
   return request<{ items: ReminderItem[] }>({ path: `/api/v1/reminders?${params.join("&")}` });
 }
 
-export async function apiPatchReminder(id: number, body: { status: ReminderItem["status"] }) {
+export async function apiPatchReminder(id: number, body: { status?: ReminderItem["status"]; due_at?: string; snoozed_until?: string; note?: string }) {
   return request<ReminderItem>({ path: `/api/v1/reminders/${id}`, method: "PATCH", data: body });
 }
 
 export async function apiDeleteReminder(id: number) {
   return request<unknown>({ path: `/api/v1/reminders/${id}`, method: "DELETE" });
 }
+
+export async function apiGrowthSeries(babyId: number) {
+  return request<GrowthSeriesResponse>({ path: `/api/v1/babies/${babyId}/growth-series` });
+}
+

@@ -3,7 +3,7 @@
     <view class="head">
       <text class="head-kicker">生长趋势</text>
       <text class="head-title">体重变化与记录点</text>
-      <text class="head-desc">当前版本先提供趋势摘要和数据点，避免“曲线”名义下只有占位内容。</text>
+      <text class="head-desc">基于已录入记录生成趋势，不作为医学判断。</text>
     </view>
 
     <view class="note-card">
@@ -11,7 +11,7 @@
       <text class="note-body">{{ sampleNote }}</text>
     </view>
 
-    <GrowthChart :series="series" :ref-label="refLabel" />
+    <GrowthChart :series="series" :ref-label="refLabel" @open-record="openRecord" />
 
     <button class="ghost-btn" @click="exportJson">导出生长记录 JSON</button>
   </view>
@@ -22,15 +22,14 @@ import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import GrowthChart from "@/components/GrowthChart.vue";
 import sample from "@/assets/who-weight-sample.json";
-import { apiGetBaby, apiListRecords } from "@/api/chuyaji";
+import { apiGrowthSeries } from "@/api/chuyaji";
 import { copyToClipboard, exportAllRecordsJson } from "@/utils/export";
 import { useSessionStore } from "@/store/session";
 
 const session = useSessionStore();
 const babyId = ref(0);
-const birthDate = ref<string | undefined>();
 type GrowthMetricKey = "weight" | "height" | "head";
-type GrowthPoint = { age_days: number; value: number; occurred_at: string };
+type GrowthPoint = { record_id: number; age_days: number; value: number; occurred_at: string };
 const series = ref<Record<GrowthMetricKey, GrowthPoint[]>>({
   weight: [],
   height: [],
@@ -49,44 +48,16 @@ onLoad(async (query: Record<string, string | undefined>) => {
 async function load() {
   if (!babyId.value) return;
   try {
-    const baby = await apiGetBaby(babyId.value);
-    birthDate.value = baby.birth_date;
-    let cursor: string | undefined;
-    const nextSeries: Record<GrowthMetricKey, GrowthPoint[]> = {
-      weight: [],
-      height: [],
-      head: [],
-    };
-    for (;;) {
-      const page = await apiListRecords(babyId.value, 50, cursor);
-      for (const item of page.items) {
-        if (item.record_type !== "growth") continue;
-        if (!birthDate.value) continue;
-        const dayAge = Math.floor((Date.parse(item.occurred_at) - Date.parse(birthDate.value)) / (24 * 3600 * 1000));
-        if (!Number.isFinite(dayAge)) continue;
-        const payload = item.payload as {
-          weight_g?: number;
-          height_cm?: number;
-          head_circumference_cm?: number;
-        };
-        if (typeof payload.weight_g === "number") {
-          nextSeries.weight.push({ age_days: dayAge, value: payload.weight_g / 1000, occurred_at: item.occurred_at });
-        }
-        if (typeof payload.height_cm === "number") {
-          nextSeries.height.push({ age_days: dayAge, value: payload.height_cm, occurred_at: item.occurred_at });
-        }
-        if (typeof payload.head_circumference_cm === "number") {
-          nextSeries.head.push({ age_days: dayAge, value: payload.head_circumference_cm, occurred_at: item.occurred_at });
-        }
-      }
-      if (!page.next_cursor) break;
-      cursor = page.next_cursor;
-    }
-    series.value = nextSeries;
+    const data = await apiGrowthSeries(babyId.value);
+    series.value = data.series;
   } catch (error) {
     console.error(error);
     uni.showToast({ title: "加载失败", icon: "none" });
   }
+}
+
+function openRecord(id: number) {
+  uni.navigateTo({ url: `/pages/baby/record-edit?id=${id}&baby_id=${babyId.value}` });
 }
 
 async function exportJson() {

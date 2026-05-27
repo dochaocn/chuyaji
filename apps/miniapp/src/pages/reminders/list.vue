@@ -17,26 +17,38 @@
     </view>
 
     <view v-else class="list">
-      <view v-for="item in items" :key="item.id" class="reminder-card">
-        <view class="card-main">
-          <text class="card-date">{{ item.due_at.slice(0, 10) }}</text>
-          <text class="card-title">{{ item.title }}</text>
-          <text class="card-meta">{{ sourceLabel(item) }}</text>
+      <template v-for="group in groups" :key="group.key">
+        <view v-if="group.items.length" class="group">
+          <text class="group-title">{{ group.label }}</text>
+          <view v-for="item in group.items" :key="item.id" class="reminder-card">
+            <view class="card-main">
+              <view class="card-topline">
+                <text :class="['status-chip', `status-chip--${group.key}`]">{{ group.label }}</text>
+                <text class="card-date">{{ item.due_at.slice(0, 10) }}</text>
+              </view>
+              <text class="card-title">{{ item.title }}</text>
+              <text class="card-meta">{{ item.note || sourceLabel(item) }}</text>
+            </view>
+            <view class="card-actions">
+              <button size="mini" class="action-btn action-btn--primary" @click="markDone(item)">完成</button>
+              <button size="mini" class="action-btn" @click="snooze(item, 1)">延后 1 天</button>
+              <button size="mini" class="action-btn" @click="snooze(item, 7)">延后 1 周</button>
+            </view>
+            <view class="card-actions card-actions--secondary">
+              <button size="mini" class="action-btn" @click="markIgnored(item.id)">忽略</button>
+              <button size="mini" class="action-btn" @click="openSource(item)">查看来源</button>
+              <button size="mini" class="action-btn action-btn--danger" @click="remove(item.id)">删除</button>
+            </view>
+          </view>
         </view>
-        <view class="card-actions">
-          <button size="mini" class="action-btn action-btn--primary" @click="markDone(item.id)">完成</button>
-          <button size="mini" class="action-btn" @click="markIgnored(item.id)">忽略</button>
-          <button size="mini" class="action-btn" @click="openSource(item)">查看来源</button>
-          <button size="mini" class="action-btn action-btn--danger" @click="remove(item.id)">删除</button>
-        </view>
-      </view>
+      </template>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
 import { onShow } from "@dcloudio/uni-app";
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import { apiDeleteReminder, apiListReminders, apiPatchReminder } from "@/api/chuyaji";
 import type { ReminderItem } from "@/api/chuyaji";
 import { useAuthStore } from "@/store/auth";
@@ -44,6 +56,16 @@ import { useAuthStore } from "@/store/auth";
 const auth = useAuthStore();
 const loading = ref(false);
 const items = ref<ReminderItem[]>([]);
+
+const groups = computed(() => {
+  const today = new Date();
+  const todayText = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  return [
+    { key: "overdue", label: "已逾期", items: items.value.filter((item) => item.due_at.slice(0, 10) < todayText) },
+    { key: "today", label: "今天", items: items.value.filter((item) => item.due_at.slice(0, 10) === todayText) },
+    { key: "future", label: "未来", items: items.value.filter((item) => item.due_at.slice(0, 10) > todayText) },
+  ];
+});
 
 onShow(async () => {
   auth.loadToken();
@@ -68,12 +90,29 @@ async function load() {
   }
 }
 
-async function markDone(id: number) {
-  await updateStatus(id, "done");
+async function markDone(item: ReminderItem) {
+  await updateStatus(item.id, "done");
+  if (item.owner_type === "baby") {
+    uni.navigateTo({ url: `/pages/baby/record-edit?baby_id=${item.owner_id}` });
+  } else {
+    uni.navigateTo({ url: `/pages/mom/record-edit?mother_id=${item.owner_id}` });
+  }
 }
 
 async function markIgnored(id: number) {
   await updateStatus(id, "ignored");
+}
+
+async function snooze(item: ReminderItem, days: number) {
+  const base = new Date(item.due_at);
+  base.setDate(base.getDate() + days);
+  try {
+    await apiPatchReminder(item.id, { snoozed_until: base.toISOString() });
+    await load();
+  } catch (error) {
+    console.error(error);
+    uni.showToast({ title: "操作失败", icon: "none" });
+  }
 }
 
 async function updateStatus(id: number, status: ReminderItem["status"]) {
@@ -99,8 +138,8 @@ async function remove(id: number) {
 function openSource(item: ReminderItem) {
   const url =
     item.source_type === "baby_record"
-      ? `/pages/baby/record-detail?id=${item.source_id}`
-      : `/pages/mom/record-detail?id=${item.source_id}`;
+      ? `/pages/baby/record-edit?id=${item.source_id}&baby_id=${item.owner_id}`
+      : `/pages/mom/record-edit?id=${item.source_id}&mother_id=${item.owner_id}`;
   uni.navigateTo({ url });
 }
 
@@ -172,8 +211,50 @@ function sourceLabel(item: ReminderItem) {
   gap: $cj-gap-md;
 }
 
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: $cj-gap-sm;
+}
+
+.group-title {
+  font-size: 26rpx;
+  color: $cj-ink;
+  font-weight: $cj-fw-display;
+}
+
 .card-main {
   padding-bottom: $cj-gap-md;
+}
+
+.card-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: $cj-gap-sm;
+  margin-bottom: 8rpx;
+}
+
+.status-chip {
+  padding: 6rpx 18rpx;
+  border-radius: $cj-radius-pill;
+  font-size: 20rpx;
+  font-weight: $cj-fw-title;
+}
+
+.status-chip--overdue {
+  background: $cj-danger-bg;
+  color: $cj-danger-text;
+}
+
+.status-chip--today {
+  background: $cj-warn-bg;
+  color: $cj-text-secondary;
+}
+
+.status-chip--future {
+  background: $cj-mint-soft;
+  color: $cj-tag-postnatal-text;
 }
 
 .card-date {
@@ -200,6 +281,10 @@ function sourceLabel(item: ReminderItem) {
 .card-actions {
   display: flex;
   gap: $cj-gap-sm;
+}
+
+.card-actions--secondary {
+  margin-top: $cj-gap-sm;
 }
 
 .action-btn {

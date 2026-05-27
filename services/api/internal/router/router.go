@@ -52,6 +52,8 @@ func New(h *handler.Handler, cfg *config.Config) *gin.Engine {
 	authed.GET("/dashboard/baby", h.BabyDashboard)
 
 	authed.GET("/babies/:id/records", h.ListRecords)
+	authed.GET("/babies/:id/records/latest", h.LatestRecord)
+	authed.GET("/babies/:id/growth-series", h.BabyGrowthSeries)
 	authed.POST("/babies/:id/records", h.CreateRecord)
 	authed.GET("/records/:id", h.GetRecord)
 	authed.PATCH("/records/:id", h.PatchRecord)
@@ -65,6 +67,7 @@ func New(h *handler.Handler, cfg *config.Config) *gin.Engine {
 	authed.PATCH("/mothers/:id", h.PatchMother)
 	authed.GET("/dashboard/mother", h.MotherDashboard)
 	authed.GET("/mothers/:id/records", h.ListMotherRecords)
+	authed.GET("/mothers/:id/records/latest", h.LatestMotherRecord)
 	authed.POST("/mothers/:id/records", h.CreateMotherRecord)
 	authed.GET("/mother-records/:id", h.GetMotherRecord)
 	authed.PATCH("/mother-records/:id", h.PatchMotherRecord)
