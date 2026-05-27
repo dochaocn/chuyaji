@@ -47,7 +47,6 @@
         <button class="next-btn" @click="onNextStepAction">{{ nextStepBtnLabel }}</button>
       </view>
 
-      
       <view v-if="!dashboard?.profile" class="empty-card">
         <template v-if="loading">
           <text class="empty-title">加载中…</text>
@@ -267,6 +266,8 @@
       v-if="quickTemplate"
       :visible="showQuickSheet"
       :template="quickTemplate"
+      :last-payload="lastQuickPayload"
+      :last-summary="lastQuickSummary"
       @close="showQuickSheet = false"
       @saved="onQuickSaved"
     />
@@ -292,8 +293,8 @@
 <script setup lang="ts">
 import { onShow } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
-import { apiMotherDashboard, apiCreateMotherRecord } from "@/api/chuyaji";
-import type { MotherRecordItem } from "@/api/chuyaji";
+import { apiMotherDashboard, apiCreateMotherRecord, apiLatestMotherRecord, apiListReminders } from "@/api/chuyaji";
+import type { MotherRecordItem, ReminderItem } from "@/api/chuyaji";
 import { useAuthStore } from "@/store/auth";
 import { useSessionStore } from "@/store/session";
 import {
@@ -330,7 +331,10 @@ const dashboard = ref<{
 
 const showQuickSheet = ref(false);
 const quickTemplate = ref<RecordTemplate | null>(null);
+const lastQuickPayload = ref<Record<string, unknown> | null>(null);
+const lastQuickSummary = ref("");
 const showMetricPicker = ref(false);
+const reminders = ref<ReminderItem[]>([]);
 
 const statusLabel = computed(() => motherStageLabel(dashboard.value?.profile?.status));
 
@@ -393,13 +397,20 @@ const recentMomRecordsWithPreview = computed(() => {
   });
 });
 
+const activeReminder = computed(() => reminders.value[0] ?? null);
+
 const nextStep = computed(() => {
+  if (activeReminder.value) return { type: "check_reminder" as const };
   const hasProfile = !!dashboard.value?.profile;
   const lastAt = dashboard.value?.latest_records?.[0]?.occurred_at ?? null;
   return getMotherNextStep(hasProfile, lastAt);
 });
 
 const nextStepTitle = computed(() => {
+  if (activeReminder.value) {
+    const more = reminders.value.length > 1 ? `，还有 ${reminders.value.length - 1} 条` : "";
+    return `${activeReminder.value.title}：${activeReminder.value.due_at.slice(0, 10)}${more}`;
+  }
   switch (nextStep.value.type) {
     case "create_profile": return "还没有宝妈档案";
     case "add_record": return `已经 ${nextStep.value.daysSinceLast} 天没有新记录了`;
@@ -509,7 +520,18 @@ async function loadDashboard() {
   try {
     const data = await apiMotherDashboard(session.motherId || undefined);
     dashboard.value = data;
-    if (data.profile?.id) session.setMother(data.profile.id);
+    if (data.profile?.id) {
+      session.setMother(data.profile.id);
+      try {
+        const reminderPage = await apiListReminders("pending", 20, { owner_type: "mother", owner_id: data.profile.id });
+        reminders.value = reminderPage.items;
+      } catch (error) {
+        console.error(error);
+        reminders.value = [];
+      }
+    } else {
+      reminders.value = [];
+    }
   } catch (error) {
     console.error(error);
     uni.showToast({ title: "加载失败", icon: "none" });
@@ -519,18 +541,20 @@ async function loadDashboard() {
 }
 
 function onNextStepAction() {
+  if (activeReminder.value) return goReminders();
   const step = nextStep.value;
   if (step.type === "create_profile") return goProfileEdit();
   if (step.type === "add_record") return goNewRecord();
 }
 
-function onShortcut(tmpl: RecordTemplate) {
+async function onShortcut(tmpl: RecordTemplate) {
   if (tmpl.value === "__body_metric__") {
     showMetricPicker.value = true;
     return;
   }
   if (tmpl.mode === "quick") {
     quickTemplate.value = tmpl;
+    await loadLatestQuick(tmpl.value);
     showQuickSheet.value = true;
   } else {
     if (!session.motherId) {
@@ -541,12 +565,27 @@ function onShortcut(tmpl: RecordTemplate) {
   }
 }
 
-function onMetricPick(type: string) {
+async function onMetricPick(type: string) {
   showMetricPicker.value = false;
   const tmpl = MOTHER_TEMPLATES.find((t) => t.value === type);
   if (!tmpl) return;
   quickTemplate.value = tmpl;
+  await loadLatestQuick(tmpl.value);
   showQuickSheet.value = true;
+}
+
+async function loadLatestQuick(type: string) {
+  lastQuickPayload.value = null;
+  lastQuickSummary.value = "";
+  const motherId = Number(session.motherId) || Number(dashboard.value?.profile?.id) || 0;
+  if (!motherId) return;
+  try {
+    const latest = await apiLatestMotherRecord(motherId, type);
+    lastQuickPayload.value = (latest.item?.payload || null) as Record<string, unknown> | null;
+    lastQuickSummary.value = latest.item?.summary || "";
+  } catch (e) {
+    console.error(e);
+  }
 }
 
 async function onQuickSaved(payload: Record<string, unknown>, summary: string) {
@@ -600,7 +639,7 @@ function goNewRecord() {
 }
 
 function openRecord(id: number) {
-  uni.navigateTo({ url: `/pages/mom/record-detail?id=${id}` });
+  uni.navigateTo({ url: `/pages/mom/record-edit?id=${id}&mother_id=${session.motherId}` });
 }
 
 function goRecordList() {
@@ -608,9 +647,14 @@ function goRecordList() {
   uni.navigateTo({ url: `/pages/mom/record-list?mother_id=${session.motherId}` });
 }
 
+
 function openSummaryRecord(id: number | undefined) {
   if (!id) return;
-  uni.navigateTo({ url: `/pages/mom/record-detail?id=${id}` });
+  uni.navigateTo({ url: `/pages/mom/record-edit?id=${id}&mother_id=${session.motherId}` });
+}
+
+function goReminders() {
+  uni.navigateTo({ url: "/pages/reminders/list" });
 }
 </script>
 
@@ -931,6 +975,30 @@ function openSummaryRecord(id: number | undefined) {
 
 .summary-grid--stack {
   grid-template-columns: 1fr;
+}
+
+.summary-link {
+  position: relative;
+  z-index: 1;
+  margin-top: $cj-gap-md;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6rpx;
+  padding: 10rpx 0;
+}
+
+.summary-link-text {
+  font-size: 24rpx;
+  color: $cj-primary-dark;
+  font-weight: 500;
+}
+
+.summary-link-chev {
+  font-size: 28rpx;
+  color: $cj-primary;
+  line-height: 1;
+  opacity: 0.85;
 }
 
 .summary-card {

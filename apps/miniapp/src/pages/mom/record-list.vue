@@ -3,6 +3,16 @@
 
     
     <view class="filter-bar">
+      <view class="search-row">
+        <input v-model="searchText" class="search-input" placeholder="搜索关键词" confirm-type="search" />
+        <picker mode="date" :value="fromDate" @change="(e) => onDateChange('from', e.detail.value)">
+          <view :class="['date-chip', !fromDate && 'date-chip--empty']">{{ fromDate || "开始日期" }}</view>
+        </picker>
+        <picker mode="date" :value="toDate" @change="(e) => onDateChange('to', e.detail.value)">
+          <view :class="['date-chip', !toDate && 'date-chip--empty']">{{ toDate || "结束日期" }}</view>
+        </picker>
+        <view v-if="fromDate || toDate || searchText" class="date-clear" @click="clearSearch">清除</view>
+      </view>
       <scroll-view scroll-x class="filter-scroll" :show-scrollbar="false">
         <view class="filter-inner">
           <view
@@ -29,7 +39,7 @@
       <view class="list-scroll-inner">
         <view v-if="loading && !records.length" class="placeholder">加载中…</view>
         <view v-else-if="!records.length" class="placeholder">
-          还没有记录，回首页记一条吧。
+          {{ emptyText }}
         </view>
 
         <template v-else>
@@ -78,7 +88,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { apiGetMother, apiListMotherRecords, type MotherRecordItem } from "@/api/chuyaji";
 import { motherStageBadgeClass, motherStageLabel } from "@/utils/homeRules";
@@ -104,6 +114,9 @@ const refreshing = ref(false);
 const filterOptions = MOTHER_TIMELINE_FILTER_OPTIONS;
 
 const selectedTypes = ref<Set<string>>(new Set());
+const searchText = ref("");
+const fromDate = ref("");
+const toDate = ref("");
 
 const periodLabel = computed(() => motherStageLabel(motherStatus.value));
 const periodBadgeClass = computed(() => motherStageBadgeClass(motherStatus.value));
@@ -127,13 +140,21 @@ function chipActive(val: string) {
 function toggleFilter(val: string) {
   if (val === "all") {
     selectedTypes.value = new Set();
+    void loadRecords(true);
     return;
   }
   const next = new Set(selectedTypes.value);
   if (next.has(val)) next.delete(val);
   else next.add(val);
   selectedTypes.value = next;
+  void loadRecords(true);
 }
+
+const emptyText = computed(() => {
+  if (searchText.value.trim()) return "没有找到匹配记录。";
+  if (selectedTypes.value.size > 0 || fromDate.value || toDate.value) return "当前筛选下暂无记录。";
+  return "还没有记录，回首页记一条吧。";
+});
 
 const groupedRecords = computed(() => {
   const map = new Map<string, { label: string; items: MomListEntry[] }>();
@@ -185,7 +206,15 @@ async function loadRecords(reset = false) {
     loadingMore.value = true;
   }
   try {
-    const res = await apiListMotherRecords(motherId.value, PAGE_SIZE, reset ? undefined : nextCursor.value);
+    const singleType = selectedTypes.value.size === 1 ? [...selectedTypes.value][0] : undefined;
+    const res = await apiListMotherRecords(motherId.value, {
+      limit: PAGE_SIZE,
+      cursor: reset ? undefined : nextCursor.value,
+      record_type: singleType,
+      q: searchText.value.trim() || undefined,
+      from: fromDate.value || undefined,
+      to: toDate.value || undefined,
+    });
     const items = res.items ?? [];
     if (reset) {
       records.value = items;
@@ -214,6 +243,25 @@ function onScrollToBottom() {
   loadRecords(false);
 }
 
+let searchTimer: ReturnType<typeof setTimeout> | null = null;
+watch(searchText, () => {
+  if (searchTimer) clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => void loadRecords(true), 400);
+});
+
+function onDateChange(which: "from" | "to", value: string) {
+  if (which === "from") fromDate.value = value;
+  else toDate.value = value;
+  void loadRecords(true);
+}
+
+function clearSearch() {
+  searchText.value = "";
+  fromDate.value = "";
+  toDate.value = "";
+  void loadRecords(true);
+}
+
 function formatDate(iso: string) {
   const d = iso.slice(0, 10);
   const [, m, day] = d.split("-");
@@ -221,7 +269,7 @@ function formatDate(iso: string) {
 }
 
 function openRecord(id: number) {
-  uni.navigateTo({ url: `/pages/mom/record-detail?id=${id}` });
+  uni.navigateTo({ url: `/pages/mom/record-edit?id=${id}&mother_id=${motherId.value}` });
 }
 </script>
 
@@ -241,6 +289,46 @@ function openRecord(id: number) {
   flex-shrink: 0;
   padding: 16rpx $cj-page-pad-x 0;
   background: $cj-page-bg;
+}
+
+.search-row {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  margin-bottom: 12rpx;
+}
+
+.search-input {
+  flex: 1;
+  min-width: 0;
+  box-sizing: border-box;
+  min-height: 68rpx;
+  padding: 0 24rpx;
+  border-radius: $cj-radius-pill;
+  background: $cj-surface;
+  border: 1rpx solid $cj-border-light;
+  color: $cj-text;
+  font-size: 24rpx;
+}
+
+.date-chip,
+.date-clear {
+  flex-shrink: 0;
+  padding: 10rpx 18rpx;
+  border-radius: $cj-radius-pill;
+  background: $cj-surface;
+  border: 1rpx solid $cj-border-light;
+  color: $cj-text-secondary;
+  font-size: 22rpx;
+  white-space: nowrap;
+}
+
+.date-chip--empty {
+  color: $cj-text-muted;
+}
+
+.date-clear {
+  color: $cj-primary;
 }
 
 .filter-scroll {

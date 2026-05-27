@@ -4,13 +4,13 @@
     { "path": "pages/mom/home", "style": { "navigationBarTitleText": "宝妈" } },
     { "path": "pages/baby/profile-edit", "style": { "navigationBarTitleText": "宝宝档案" } },
     { "path": "pages/baby/record-edit", "style": { "navigationBarTitleText": "宝宝记录" } },
-    { "path": "pages/baby/record-detail", "style": { "navigationBarTitleText": "宝宝记录详情" } },
     { "path": "pages/baby/growth", "style": { "navigationBarTitleText": "生长趋势" } },
+    { "path": "pages/baby/vaccine-plan", "style": { "navigationBarTitleText": "疫苗计划" } },
     { "path": "pages/baby/record-list", "style": { "navigationBarTitleText": "全部时间线" } },
     { "path": "pages/mom/profile-edit", "style": { "navigationBarTitleText": "宝妈档案" } },
     { "path": "pages/mom/record-edit", "style": { "navigationBarTitleText": "宝妈记录" } },
-    { "path": "pages/mom/record-detail", "style": { "navigationBarTitleText": "宝妈记录详情" } },
     { "path": "pages/mom/record-list", "style": { "navigationBarTitleText": "全部时间线" } },
+    { "path": "pages/reminders/list", "style": { "navigationBarTitleText": "提醒" } },
     { "path": "pages/privacy/privacy", "style": { "navigationBarTitleText": "隐私说明" } }
   ],
   "tabBar": {

@@ -119,7 +119,7 @@
 import { onLoad } from "@dcloudio/uni-app";
 import { computed, reactive, ref, watch } from "vue";
 import {
-  apiCreateMotherRecord, apiDeleteAttachment, apiGetMotherRecord,
+  apiCreateMotherRecord, apiDeleteAttachment, apiGetMotherRecord, apiLatestMotherRecord,
   apiListMotherAttachments, apiPatchMotherRecord, type AttachmentItem,
 } from "@/api/chuyaji";
 import { uploadMotherRecordAttachment } from "@/api/upload";
@@ -165,10 +165,7 @@ const currentTemplate = computed<RecordTemplate | undefined>(() =>
   MOTHER_TEMPLATES.find((t) => t.value === recordType.value)
 );
 
-const pageTitle = computed(() => {
-  if (recordId.value) return `编辑${currentTemplate.value?.label || "记录"}`;
-  return currentTemplate.value?.label ? `新增${currentTemplate.value.label}` : "新增宝妈记录";
-});
+const pageTitle = computed(() => currentTemplate.value?.label || "宝妈记录");
 
 const recommendedFields = computed(() => currentTemplate.value?.recommendedFields ?? []);
 const optionalFields = computed(() => currentTemplate.value?.optionalFields ?? []);
@@ -198,13 +195,17 @@ watch(
   { flush: "sync" }
 );
 
-onLoad((query: Record<string, string | undefined>) => {
+onLoad(async (query: Record<string, string | undefined>) => {
   motherId.value = Number(query.mother_id || 0);
   recordId.value = Number(query.id || 0);
   if (query.type) recordType.value = query.type;
   const now = new Date();
   occurredAt.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  if (recordId.value) loadExisting();
+  if (recordId.value) {
+    await loadExisting();
+    return;
+  }
+  await loadPreset(query.prefill);
 });
 
 function onType(event: { detail: { value: string } }) {
@@ -235,6 +236,29 @@ async function loadExisting() {
     console.error(error);
     uni.showToast({ title: "加载失败", icon: "none" });
   }
+}
+
+async function loadPreset(prefill?: string) {
+  let preset: { payload?: Record<string, unknown>; summary?: string } | null = null;
+  if (prefill === "last" && motherId.value && recordType.value) {
+    try {
+      const latest = await apiLatestMotherRecord(motherId.value, recordType.value);
+      if (latest.item) preset = { payload: latest.item.payload as Record<string, unknown>, summary: latest.item.summary };
+    } catch (error) {
+      console.error(error);
+    }
+  }
+  if (!preset?.payload) return;
+  serverPayload.value = { ...preset.payload };
+  for (const key of Object.keys(extras)) delete extras[key];
+  for (const [key, val] of Object.entries(preset.payload)) {
+    if (val != null && val !== "") extras[key] = String(val);
+  }
+  if (currentTemplate.value?.mode === "standard") {
+    summary.value = preset.summary || "";
+  }
+  pendingPaths.value = [];
+  serverAttachments.value = [];
 }
 
 function buildPayload(): Record<string, unknown> {

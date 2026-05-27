@@ -30,6 +30,7 @@ func Open(dbPath string) (*gorm.DB, error) {
 		&model.Mother{},
 		&model.MotherRecord{},
 		&model.Attachment{},
+		&model.Reminder{},
 	); err != nil {
 		return nil, err
 	}

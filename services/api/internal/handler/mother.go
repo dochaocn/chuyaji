@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/dochaocn/chuyaji/services/api/internal/middleware"
@@ -253,6 +254,29 @@ func (h *Handler) ListMotherRecords(c *gin.Context) {
 	cursor := c.Query("cursor")
 
 	q := h.DB.Where("mother_id = ?", motherID).Order("occurred_at DESC, id DESC")
+	if recordType := c.Query("record_type"); recordType != "" {
+		q = q.Where("record_type = ?", recordType)
+	}
+	if keyword := strings.TrimSpace(c.Query("q")); keyword != "" {
+		like := "%" + keyword + "%"
+		q = q.Where("(summary LIKE ? OR payload LIKE ?)", like, like)
+	}
+	if from := c.Query("from"); from != "" {
+		t, err := parseQueryDateTime(from, false)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "bad from"})
+			return
+		}
+		q = q.Where("occurred_at >= ?", t)
+	}
+	if to := c.Query("to"); to != "" {
+		t, err := parseQueryDateTime(to, true)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "bad to"})
+			return
+		}
+		q = q.Where("occurred_at < ?", t)
+	}
 	if cursor != "" {
 		t, id, err := decodeCursor(cursor)
 		if err != nil {
@@ -280,6 +304,41 @@ func (h *Handler) ListMotherRecords(c *gin.Context) {
 		out = append(out, motherRecordToOut(&rows[i]))
 	}
 	c.JSON(http.StatusOK, gin.H{"items": out, "next_cursor": next})
+}
+
+func (h *Handler) LatestMotherRecord(c *gin.Context) {
+	uid, ok := middleware.UserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	motherID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "bad mother id"})
+		return
+	}
+	ok2, err := h.canAccessMother(uid, motherID)
+	if err != nil || !ok2 {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+		return
+	}
+	recordType := strings.TrimSpace(c.Query("record_type"))
+	if recordType == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "bad record_type"})
+		return
+	}
+	var r model.MotherRecord
+	if err := h.DB.Where("mother_id = ? AND record_type = ?", motherID, recordType).
+		Order("occurred_at DESC, id DESC").
+		First(&r).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusOK, gin.H{"item": nil})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "query"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"item": motherRecordToOut(&r)})
 }
 
 func (h *Handler) CreateMotherRecord(c *gin.Context) {
@@ -318,7 +377,12 @@ func (h *Handler) CreateMotherRecord(c *gin.Context) {
 		Summary:    req.Summary,
 		Payload:    payload,
 	}
-	if err := h.DB.Create(&r).Error; err != nil {
+	if err := h.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&r).Error; err != nil {
+			return err
+		}
+		return h.syncMotherRecordReminder(tx, uid, &r)
+	}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "create"})
 		return
 	}
@@ -379,27 +443,38 @@ func (h *Handler) PatchMotherRecord(c *gin.Context) {
 		return
 	}
 	var r model.MotherRecord
-	if err := h.DB.First(&r, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
-		return
-	}
-	if req.RecordType != nil {
-		r.RecordType = *req.RecordType
-	}
-	if req.OccurredAt != nil {
-		r.OccurredAt = *req.OccurredAt
-	}
-	if req.Summary != nil {
-		r.Summary = *req.Summary
-	}
-	if len(req.Payload) > 0 {
-		if !json.Valid(req.Payload) {
+	if err := h.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.First(&r, id).Error; err != nil {
+			return err
+		}
+		if req.RecordType != nil {
+			r.RecordType = *req.RecordType
+		}
+		if req.OccurredAt != nil {
+			r.OccurredAt = *req.OccurredAt
+		}
+		if req.Summary != nil {
+			r.Summary = *req.Summary
+		}
+		if len(req.Payload) > 0 {
+			if !json.Valid(req.Payload) {
+				return errInvalidPayloadJSON
+			}
+			r.Payload = datatypes.JSON(req.Payload)
+		}
+		if err := tx.Save(&r).Error; err != nil {
+			return err
+		}
+		return h.syncMotherRecordReminder(tx, uid, &r)
+	}); err != nil {
+		if errors.Is(err, errInvalidPayloadJSON) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload json"})
 			return
 		}
-		r.Payload = datatypes.JSON(req.Payload)
-	}
-	if err := h.DB.Save(&r).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "save"})
 		return
 	}
@@ -428,6 +503,9 @@ func (h *Handler) DeleteMotherRecord(c *gin.Context) {
 	}
 	if err := h.DB.Transaction(func(tx *gorm.DB) error {
 		if err := tx.Where("owner_type = ? AND owner_id = ?", "mother_record", id).Delete(&model.Attachment{}).Error; err != nil {
+			return err
+		}
+		if err := tx.Where("source_type = ? AND source_id = ?", "mother_record", id).Delete(&model.Reminder{}).Error; err != nil {
 			return err
 		}
 		return tx.Delete(&model.MotherRecord{}, id).Error

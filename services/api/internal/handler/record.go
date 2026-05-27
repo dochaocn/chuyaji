@@ -5,6 +5,7 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/dochaocn/chuyaji/services/api/internal/middleware"
@@ -13,6 +14,8 @@ import (
 	"gorm.io/datatypes"
 	"gorm.io/gorm"
 )
+
+var errInvalidPayloadJSON = errors.New("invalid payload json")
 
 type recordOut struct {
 	ID         uint64          `json:"id"`
@@ -70,6 +73,36 @@ func (h *Handler) ListRecords(c *gin.Context) {
 	cursor := c.Query("cursor")
 
 	q := h.DB.Where("baby_id = ?", babyID).Order("occurred_at DESC, id DESC")
+	if phase := c.Query("phase"); phase != "" {
+		if phase != "prenatal" && phase != "postnatal" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "bad phase"})
+			return
+		}
+		q = q.Where("phase = ?", phase)
+	}
+	if recordType := c.Query("record_type"); recordType != "" {
+		q = q.Where("record_type = ?", recordType)
+	}
+	if keyword := strings.TrimSpace(c.Query("q")); keyword != "" {
+		like := "%" + keyword + "%"
+		q = q.Where("(summary LIKE ? OR payload LIKE ?)", like, like)
+	}
+	if from := c.Query("from"); from != "" {
+		t, err := parseQueryDateTime(from, false)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "bad from"})
+			return
+		}
+		q = q.Where("occurred_at >= ?", t)
+	}
+	if to := c.Query("to"); to != "" {
+		t, err := parseQueryDateTime(to, true)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "bad to"})
+			return
+		}
+		q = q.Where("occurred_at < ?", t)
+	}
 	if cursor != "" {
 		t, id, err := decodeCursor(cursor)
 		if err != nil {
@@ -97,6 +130,47 @@ func (h *Handler) ListRecords(c *gin.Context) {
 		out = append(out, recordToOut(&rows[i]))
 	}
 	c.JSON(http.StatusOK, gin.H{"items": out, "next_cursor": next})
+}
+
+func (h *Handler) LatestRecord(c *gin.Context) {
+	uid, ok := middleware.UserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	babyID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "bad baby id"})
+		return
+	}
+	ok2, err := h.canAccessBaby(uid, babyID)
+	if err != nil || !ok2 {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+		return
+	}
+	recordType := strings.TrimSpace(c.Query("record_type"))
+	if recordType == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "bad record_type"})
+		return
+	}
+	q := h.DB.Where("baby_id = ? AND record_type = ?", babyID, recordType).Order("occurred_at DESC, id DESC")
+	if phase := c.Query("phase"); phase != "" {
+		if phase != "prenatal" && phase != "postnatal" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "bad phase"})
+			return
+		}
+		q = q.Where("phase = ?", phase)
+	}
+	var r model.Record
+	if err := q.First(&r).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusOK, gin.H{"item": nil})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "query"})
+		return
+	}
+	c.JSON(http.StatusOK, gin.H{"item": recordToOut(&r)})
 }
 
 type createRecordReq struct {
@@ -144,7 +218,12 @@ func (h *Handler) CreateRecord(c *gin.Context) {
 		Summary:    req.Summary,
 		Payload:    payload,
 	}
-	if err := h.DB.Create(&r).Error; err != nil {
+	if err := h.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Create(&r).Error; err != nil {
+			return err
+		}
+		return h.syncBabyRecordReminder(tx, uid, &r)
+	}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "create"})
 		return
 	}
@@ -207,36 +286,47 @@ func (h *Handler) PatchRecord(c *gin.Context) {
 		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
 		return
 	}
-	var r model.Record
-	if err := h.DB.First(&r, id).Error; err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
-		return
-	}
 	var req patchRecordReq
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
 		return
 	}
-	if req.Phase != nil {
-		r.Phase = *req.Phase
-	}
-	if req.RecordType != nil {
-		r.RecordType = *req.RecordType
-	}
-	if req.OccurredAt != nil {
-		r.OccurredAt = *req.OccurredAt
-	}
-	if req.Summary != nil {
-		r.Summary = *req.Summary
-	}
-	if len(req.Payload) > 0 {
-		if !json.Valid(req.Payload) {
+	var r model.Record
+	if err := h.DB.Transaction(func(tx *gorm.DB) error {
+		if err := tx.First(&r, id).Error; err != nil {
+			return err
+		}
+		if req.Phase != nil {
+			r.Phase = *req.Phase
+		}
+		if req.RecordType != nil {
+			r.RecordType = *req.RecordType
+		}
+		if req.OccurredAt != nil {
+			r.OccurredAt = *req.OccurredAt
+		}
+		if req.Summary != nil {
+			r.Summary = *req.Summary
+		}
+		if len(req.Payload) > 0 {
+			if !json.Valid(req.Payload) {
+				return errInvalidPayloadJSON
+			}
+			r.Payload = datatypes.JSON(req.Payload)
+		}
+		if err := tx.Save(&r).Error; err != nil {
+			return err
+		}
+		return h.syncBabyRecordReminder(tx, uid, &r)
+	}); err != nil {
+		if errors.Is(err, errInvalidPayloadJSON) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid payload json"})
 			return
 		}
-		r.Payload = datatypes.JSON(req.Payload)
-	}
-	if err := h.DB.Save(&r).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "save"})
 		return
 	}
@@ -267,10 +357,29 @@ func (h *Handler) DeleteRecord(c *gin.Context) {
 		if err := tx.Where("owner_type = ? AND owner_id = ?", "baby_record", id).Delete(&model.Attachment{}).Error; err != nil {
 			return err
 		}
+		if err := tx.Where("source_type = ? AND source_id = ?", "baby_record", id).Delete(&model.Reminder{}).Error; err != nil {
+			return err
+		}
 		return tx.Delete(&model.Record{}, id).Error
 	}); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "delete"})
 		return
 	}
 	c.Status(http.StatusNoContent)
+}
+
+func parseQueryDateTime(raw string, exclusiveEnd bool) (time.Time, error) {
+	layouts := []string{time.RFC3339Nano, time.RFC3339, "2006-01-02"}
+	var lastErr error
+	for _, layout := range layouts {
+		t, err := time.Parse(layout, raw)
+		if err == nil {
+			if exclusiveEnd && layout == "2006-01-02" {
+				return t.AddDate(0, 0, 1), nil
+			}
+			return t, nil
+		}
+		lastErr = err
+	}
+	return time.Time{}, lastErr
 }
