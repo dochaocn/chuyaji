@@ -386,31 +386,32 @@ async function save() {
 </script>
 
 <style lang="scss" scoped>
-.page { padding: $cj-page-pad-y $cj-page-pad-x 56rpx; }
+.page { padding: $cj-page-pad-y $cj-page-pad-x 64rpx; }
 
-.head { margin-bottom: $cj-gap-lg; }
-.head-title { display: block; font-size: 42rpx; font-weight: $cj-fw-display; color: $cj-ink; }
-.head-desc { display: block; margin-top: $cj-gap-sm; font-size: 26rpx; color: $cj-text-secondary; line-height: 1.6; }
+.head { margin-bottom: $cj-gap-lg; padding-top: 4rpx; }
+.head-title { display: block; font-size: 42rpx; font-weight: $cj-fw-display; color: $cj-ink; letter-spacing: -0.5rpx; }
+.head-desc { display: block; margin-top: $cj-gap-sm; font-size: 25rpx; color: $cj-text-secondary; line-height: 1.65; }
 
 .section {
   background: $cj-surface;
-  border-radius: $cj-radius-lg;
-  border: 1rpx solid $cj-border-light;
+  border-radius: $cj-radius-xl;
+  border: 1rpx solid $cj-border-faint;
   box-shadow: $cj-shadow-card;
-  padding: $cj-gap-md;
+  padding: 28rpx;
   margin-bottom: $cj-gap-md;
 }
 
 .section-label {
   display: block;
   margin-bottom: $cj-gap-md;
-  font-size: 22rpx;
+  font-size: 21rpx;
   color: $cj-text-muted;
   letter-spacing: 3rpx;
+  font-weight: 500;
 }
 
 .optional-toggle { padding: 4rpx 0; }
-.optional-toggle-text { font-size: 24rpx; color: $cj-primary; }
+.optional-toggle-text { font-size: 23rpx; color: $cj-primary; font-weight: 500; }
 
 .picker-line, .field { margin-bottom: $cj-gap-md; }
 .field:last-child { margin-bottom: 0; }
@@ -427,17 +428,19 @@ async function save() {
 .picker-k, .lab {
   display: block;
   margin-bottom: 10rpx;
-  font-size: 24rpx;
+  font-size: 23rpx;
   color: $cj-text-muted;
+  font-weight: 500;
+  letter-spacing: 0.3rpx;
 }
 
-.unit-text { font-size: 22rpx; }
+.unit-text { font-size: 21rpx; }
 
 .picker-v, .input, .picker-input, .area {
   width: 100%;
   box-sizing: border-box;
   background: $cj-surface-2;
-  border: 1rpx solid $cj-border-light;
+  border: 1rpx solid $cj-border-faint;
   border-radius: $cj-radius-md;
   padding: $cj-gap-md;
   color: $cj-text;
@@ -449,17 +452,17 @@ async function save() {
 .picker-input.is-placeholder { color: $cj-text-muted; }
 .area { min-height: 200rpx; line-height: 1.55; padding-top: 28rpx; padding-bottom: 28rpx; }
 
-.section-hint { display: block; margin-top: 8rpx; font-size: 22rpx; color: $cj-text-muted; line-height: 1.5; }
+.section-hint { display: block; margin-top: 8rpx; font-size: 21rpx; color: $cj-text-muted; line-height: 1.5; }
 
-.photo-placeholder { margin-top: $cj-gap-md; padding: 28rpx 0; text-align: center; font-size: 24rpx; color: $cj-text-muted; }
-.photo-grid { display: flex; flex-wrap: wrap; gap: 16rpx; margin-top: $cj-gap-md; }
-.photo-cell { position: relative; width: calc((100% - 32rpx) / 3); box-sizing: border-box; }
-.photo-img { display: block; width: 100%; height: 200rpx; border-radius: $cj-radius-md; background: $cj-surface-2; }
-.photo-remove { position: absolute; top: 8rpx; right: 8rpx; width: 44rpx; height: 44rpx; border-radius: 50%; background: rgba(0,0,0,.45); display: flex; align-items: center; justify-content: center; }
-.photo-remove-x { color: #fff; font-size: 32rpx; line-height: 1; }
-.add-photo-btn { margin-top: $cj-gap-md; border-radius: $cj-radius-pill !important; background: $cj-surface !important; color: $cj-text !important; border: 1rpx solid $cj-border-light !important; }
+.photo-placeholder { margin-top: $cj-gap-md; padding: 32rpx 0; text-align: center; font-size: 23rpx; color: $cj-text-muted; background: $cj-surface-2; border-radius: $cj-radius-lg; border: 1rpx dashed $cj-border-faint; }
+.photo-grid { display: flex; flex-wrap: wrap; gap: 14rpx; margin-top: $cj-gap-md; }
+.photo-cell { position: relative; width: calc((100% - 28rpx) / 3); box-sizing: border-box; }
+.photo-img { display: block; width: 100%; height: 200rpx; border-radius: $cj-radius-lg; background: $cj-surface-2; }
+.photo-remove { position: absolute; top: 6rpx; right: 6rpx; width: 40rpx; height: 40rpx; border-radius: 50%; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; }
+.photo-remove-x { color: #fff; font-size: 30rpx; line-height: 1; }
+.add-photo-btn { margin-top: $cj-gap-md; border-radius: $cj-radius-pill !important; background: $cj-surface !important; color: $cj-text !important; border: 1rpx solid $cj-border-faint !important; }
 
 .main-btn, .ghost-btn { border-radius: $cj-radius-pill !important; }
-.main-btn { margin-top: $cj-gap-sm; background: linear-gradient(165deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%) !important; color: #fffefb !important; border: none !important; }
-.ghost-btn { background: $cj-surface !important; color: $cj-text !important; border: 1rpx solid $cj-border-light !important; }
+.main-btn { margin-top: $cj-gap-sm; background: linear-gradient(160deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%) !important; color: #fffefb !important; border: none !important; box-shadow: $cj-shadow-soft; }
+.ghost-btn { background: $cj-surface !important; color: $cj-text !important; border: 1rpx solid $cj-border-faint !important; }
 </style>

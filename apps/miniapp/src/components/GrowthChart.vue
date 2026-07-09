@@ -197,9 +197,9 @@ function openPoint(id: number) {
 <style lang="scss" scoped>
 .wrap {
   background: $cj-surface;
-  border-radius: $cj-radius-lg;
-  padding: $cj-gap-md;
-  border: 1rpx solid $cj-border-light;
+  border-radius: $cj-radius-xl;
+  padding: 28rpx;
+  border: 1rpx solid $cj-border-faint;
   box-shadow: $cj-shadow-card;
 }
 
@@ -219,23 +219,26 @@ function openPoint(id: number) {
   flex: 1;
   text-align: center;
   border-radius: $cj-radius-pill;
-  padding: 14rpx 0;
+  padding: 13rpx 0;
   background: $cj-surface-2;
-  border: 1rpx solid $cj-border-light;
+  border: 1rpx solid $cj-border-faint;
+  transition: all 0.15s;
 }
 
 .tab--active {
   background: $cj-primary;
   border-color: $cj-primary;
+  box-shadow: $cj-shadow-soft;
 }
 
 .range-tab {
   flex: 1;
   text-align: center;
   border-radius: $cj-radius-pill;
-  padding: 10rpx 0;
+  padding: 9rpx 0;
   background: $cj-surface-2;
-  border: 1rpx solid $cj-border-light;
+  border: 1rpx solid $cj-border-faint;
+  transition: all 0.15s;
 }
 
 .range-tab--active {
@@ -244,12 +247,13 @@ function openPoint(id: number) {
 }
 
 .tab-text {
-  font-size: 24rpx;
+  font-size: 23rpx;
   color: $cj-text;
+  letter-spacing: 0.3rpx;
 }
 
 .range-tab-text {
-  font-size: 22rpx;
+  font-size: 21rpx;
   color: $cj-text-secondary;
 }
 
@@ -266,14 +270,16 @@ function openPoint(id: number) {
 .summary-card {
   flex: 1;
   background: $cj-surface-2;
-  border-radius: $cj-radius-md;
+  border-radius: $cj-radius-lg;
   padding: $cj-gap-sm;
 }
 
 .summary-label {
   display: block;
-  font-size: 22rpx;
+  font-size: 21rpx;
   color: $cj-text-muted;
+  font-weight: 500;
+  letter-spacing: 0.5rpx;
 }
 
 .summary-value {
@@ -282,20 +288,21 @@ function openPoint(id: number) {
   font-size: 32rpx;
   color: $cj-ink;
   font-weight: $cj-fw-display;
+  letter-spacing: -0.3rpx;
 }
 
 .chart {
   position: relative;
   height: 360rpx;
   margin: $cj-gap-md 0;
-  border-radius: $cj-radius-md;
-  background: linear-gradient(180deg, rgba(232, 242, 238, 0.45) 0%, rgba(255, 246, 238, 0.45) 100%);
+  border-radius: $cj-radius-lg;
+  background: linear-gradient(180deg, rgba(230, 241, 236, 0.4) 0%, rgba(255, 247, 240, 0.4) 100%);
   overflow: hidden;
 }
 
 .axis-line {
   position: absolute;
-  background: rgba(139, 128, 119, 0.22);
+  background: rgba(139, 128, 119, 0.18);
 }
 
 .axis-line--x {
@@ -314,7 +321,7 @@ function openPoint(id: number) {
 
 .line-segment {
   position: absolute;
-  height: 5rpx;
+  height: 4rpx;
   border-radius: $cj-radius-pill;
   background: linear-gradient(90deg, $cj-mint 0%, $cj-primary 100%);
   transform-origin: left center;
@@ -322,23 +329,23 @@ function openPoint(id: number) {
 
 .point {
   position: absolute;
-  width: 18rpx;
-  height: 18rpx;
-  margin-left: -9rpx;
-  margin-bottom: -9rpx;
+  width: 16rpx;
+  height: 16rpx;
+  margin-left: -8rpx;
+  margin-bottom: -8rpx;
   border-radius: 50%;
   background: $cj-primary;
-  border: 4rpx solid #fffefb;
-  box-shadow: 0 4rpx 12rpx rgba(120, 72, 60, 0.16);
+  border: 3rpx solid #fffefb;
+  box-shadow: 0 3rpx 10rpx rgba(120, 72, 60, 0.14);
 }
 
 .point-label {
   position: absolute;
   left: 50%;
-  bottom: 24rpx;
+  bottom: 22rpx;
   transform: translateX(-50%);
   white-space: nowrap;
-  font-size: 20rpx;
+  font-size: 19rpx;
   color: $cj-text-secondary;
 }
 
@@ -350,7 +357,7 @@ function openPoint(id: number) {
   display: flex;
   flex-direction: row;
   padding: 10rpx 0;
-  border-bottom: 1rpx solid $cj-border;
+  border-bottom: 1rpx solid $cj-border-faint;
 }
 
 .head {
@@ -360,7 +367,7 @@ function openPoint(id: number) {
 
 .c {
   flex: 1;
-  font-size: 26rpx;
+  font-size: 25rpx;
   color: $cj-text-secondary;
 }
 
@@ -390,7 +397,7 @@ function openPoint(id: number) {
 
 .hint {
   margin-top: $cj-gap-sm;
-  font-size: 22rpx;
+  font-size: 21rpx;
   color: $cj-text-muted;
   line-height: 1.55;
 }

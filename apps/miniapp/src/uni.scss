@@ -1,53 +1,82 @@
-$cj-page-bg: #f4ebe3;
+// ── Color Palette ──
+$cj-page-bg: #f5ece4;
 $cj-surface: #fffdf9;
-$cj-surface-2: #fff6ee;
-$cj-ink: #2a2420;
-$cj-text: #3d3530;
-$cj-text-secondary: #6e655c;
-$cj-text-muted: #9a9188;
+$cj-surface-2: #fff7f0;
+$cj-surface-3: #fefaf6;
+$cj-ink: #261f1b;
+$cj-text: #3a322d;
+$cj-text-secondary: #6b6058;
+$cj-text-muted: #9a9088;
 $cj-primary: #c96b5c;
 $cj-primary-dark: #a84f42;
-$cj-primary-gradient-top: #d88478;
-$cj-primary-soft: #f3d9d3;
+$cj-primary-gradient-top: #da8a7e;
+$cj-primary-soft: #f5ddd8;
 $cj-accent: #d4a574;
 $cj-accent-warm: #e8b896;
 $cj-accent-soft: #fdf4eb;
-$cj-mint: #8fb8a8;
-$cj-mint-soft: #e8f2ee;
-$cj-border: #ead9cc;
-$cj-border-light: rgba(234, 217, 204, 0.65);
-$cj-shadow-card: 0 16rpx 48rpx rgba(42, 36, 32, 0.07);
-$cj-shadow-lift: 0 24rpx 64rpx rgba(201, 107, 92, 0.11);
-$cj-shadow-soft: 0 10rpx 28rpx rgba(201, 107, 92, 0.14);
+$cj-mint: #7dab98;
+$cj-mint-soft: #e6f1ec;
+
+// ── Borders ──
+$cj-border: #e8d8cc;
+$cj-border-light: rgba(232, 216, 204, 0.6);
+$cj-border-faint: rgba(232, 216, 204, 0.35);
+
+// ── Shadows (layered depth system) ──
+$cj-shadow-xs: 0 4rpx 12rpx rgba(42, 36, 32, 0.04);
+$cj-shadow-card: 0 2rpx 8rpx rgba(42, 36, 32, 0.03), 0 12rpx 40rpx rgba(42, 36, 32, 0.06);
+$cj-shadow-lift: 0 4rpx 12rpx rgba(201, 107, 92, 0.06), 0 20rpx 56rpx rgba(201, 107, 92, 0.1);
+$cj-shadow-soft: 0 2rpx 6rpx rgba(201, 107, 92, 0.06), 0 8rpx 24rpx rgba(201, 107, 92, 0.1);
+$cj-shadow-float: 0 8rpx 24rpx rgba(42, 36, 32, 0.06), 0 24rpx 64rpx rgba(42, 36, 32, 0.08);
+
+// ── Radius ──
+$cj-radius-xs: 10rpx;
 $cj-radius-sm: 14rpx;
-$cj-radius-md: 28rpx;
-$cj-radius-lg: 40rpx;
+$cj-radius-md: 24rpx;
+$cj-radius-lg: 36rpx;
+$cj-radius-xl: 48rpx;
 $cj-radius-pill: 999rpx;
-$cj-page-pad-x: 36rpx;
-$cj-page-pad-y: 24rpx;
+
+// ── Spacing ──
+$cj-page-pad-x: 32rpx;
+$cj-page-pad-y: 20rpx;
+$cj-gap-xs: 10rpx;
 $cj-gap-sm: 16rpx;
 $cj-gap-md: 24rpx;
 $cj-gap-lg: 36rpx;
-$cj-tag-prenatal-bg: #ead4dd;
-$cj-tag-prenatal-text: #5c3d4a;
-$cj-tag-postnatal-bg: #cfe8de;
-$cj-tag-postnatal-text: #2d4a3e;
-$cj-warn-bg: #fff3e6;
-$cj-warn-border: #e8c9a8;
-$cj-danger-bg: #fcefea;
-$cj-danger-text: #8f3d36;
+$cj-gap-xl: 48rpx;
+
+// ── Tags ──
+$cj-tag-prenatal-bg: #ecd6df;
+$cj-tag-prenatal-text: #5a3a4a;
+$cj-tag-postnatal-bg: #cce5da;
+$cj-tag-postnatal-text: #2a4a3c;
+
+// ── Status ──
+$cj-warn-bg: #fff4e8;
+$cj-warn-border: #e6c8a6;
+$cj-danger-bg: #fdf0f2;
+$cj-danger-text: #8c3a34;
+
+// ── Typography ──
 $cj-fw-title: 600;
 $cj-fw-display: 700;
 $cj-fw-body: 400;
-$cj-track: rgba(201, 107, 92, 0.22);
+
+// ── Misc ──
+$cj-track: rgba(201, 107, 92, 0.18);
+
+// ── Glass effect mixin (used by pages) ──
+// background: rgba(255, 253, 249, 0.85);
+// backdrop-filter: blur(20rpx);  // note: uni-app may not support
 
 page {
   background-color: $cj-page-bg;
   color: $cj-text;
   background-image:
-    radial-gradient(ellipse 130% 90% at 100% -10%, rgba(232, 184, 150, 0.35) 0%, transparent 52%),
-    radial-gradient(ellipse 100% 70% at -15% 105%, rgba(143, 184, 168, 0.2) 0%, transparent 48%),
-    radial-gradient(ellipse 60% 40% at 50% 50%, rgba(255, 253, 249, 0.5) 0%, transparent 100%);
+    radial-gradient(ellipse 140% 80% at 100% -8%, rgba(232, 184, 150, 0.28) 0%, transparent 50%),
+    radial-gradient(ellipse 90% 60% at -10% 100%, rgba(125, 171, 152, 0.16) 0%, transparent 45%),
+    radial-gradient(ellipse 50% 35% at 50% 50%, rgba(255, 253, 249, 0.45) 0%, transparent 100%);
   font-family:
     -apple-system,
     BlinkMacSystemFont,
@@ -55,6 +84,7 @@ page {
     "Hiragino Sans GB",
     "Microsoft YaHei",
     sans-serif;
+  -webkit-font-smoothing: antialiased;
 }
 
 button::after {
@@ -62,7 +92,7 @@ button::after {
 }
 
 button[type="primary"] {
-  background: linear-gradient(165deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%) !important;
+  background: linear-gradient(160deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%) !important;
   color: #fffefb !important;
   border-radius: $cj-radius-pill !important;
   font-weight: 600;

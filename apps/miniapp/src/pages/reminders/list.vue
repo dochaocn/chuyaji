@@ -151,19 +151,21 @@ function sourceLabel(item: ReminderItem) {
 
 <style lang="scss" scoped>
 .page {
-  padding: $cj-page-pad-y $cj-page-pad-x 72rpx;
+  padding: $cj-page-pad-y $cj-page-pad-x 80rpx;
 }
 
 .head {
   margin-bottom: $cj-gap-lg;
+  padding-top: 4rpx;
 }
 
 .head-kicker {
   display: block;
-  font-size: 22rpx;
-  letter-spacing: 4rpx;
+  font-size: 21rpx;
+  letter-spacing: 5rpx;
   color: $cj-primary;
   margin-bottom: 8rpx;
+  font-weight: 500;
 }
 
 .head-title {
@@ -171,23 +173,24 @@ function sourceLabel(item: ReminderItem) {
   font-size: 42rpx;
   color: $cj-ink;
   font-weight: $cj-fw-display;
+  letter-spacing: -0.5rpx;
 }
 
 .head-desc {
   display: block;
   margin-top: $cj-gap-sm;
-  font-size: 26rpx;
+  font-size: 25rpx;
   color: $cj-text-secondary;
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
 .empty-card,
 .reminder-card {
   background: $cj-surface;
-  border: 1rpx solid $cj-border-light;
-  border-radius: $cj-radius-lg;
+  border: 1rpx solid $cj-border-faint;
+  border-radius: $cj-radius-xl;
   box-shadow: $cj-shadow-card;
-  padding: $cj-gap-md;
+  padding: 28rpx;
 }
 
 .empty-title {
@@ -195,6 +198,7 @@ function sourceLabel(item: ReminderItem) {
   color: $cj-ink;
   font-weight: $cj-fw-display;
   font-size: 30rpx;
+  letter-spacing: 0.3rpx;
 }
 
 .empty-desc {
@@ -202,7 +206,7 @@ function sourceLabel(item: ReminderItem) {
   margin-top: 10rpx;
   color: $cj-text-secondary;
   font-size: 25rpx;
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
 .list {
@@ -218,9 +222,10 @@ function sourceLabel(item: ReminderItem) {
 }
 
 .group-title {
-  font-size: 26rpx;
+  font-size: 25rpx;
   color: $cj-ink;
   font-weight: $cj-fw-display;
+  letter-spacing: 0.3rpx;
 }
 
 .card-main {
@@ -236,10 +241,11 @@ function sourceLabel(item: ReminderItem) {
 }
 
 .status-chip {
-  padding: 6rpx 18rpx;
+  padding: 5rpx 16rpx;
   border-radius: $cj-radius-pill;
-  font-size: 20rpx;
+  font-size: 19rpx;
   font-weight: $cj-fw-title;
+  letter-spacing: 0.3rpx;
 }
 
 .status-chip--overdue {
@@ -259,22 +265,24 @@ function sourceLabel(item: ReminderItem) {
 
 .card-date {
   display: block;
-  font-size: 24rpx;
+  font-size: 23rpx;
   color: $cj-primary;
   margin-bottom: 8rpx;
+  font-weight: 500;
 }
 
 .card-title {
   display: block;
-  font-size: 32rpx;
+  font-size: 31rpx;
   font-weight: $cj-fw-display;
   color: $cj-ink;
+  letter-spacing: 0.2rpx;
 }
 
 .card-meta {
   display: block;
   margin-top: 8rpx;
-  font-size: 23rpx;
+  font-size: 22rpx;
   color: $cj-text-muted;
 }
 
@@ -293,13 +301,14 @@ function sourceLabel(item: ReminderItem) {
   border-radius: $cj-radius-pill !important;
   background: $cj-surface-2 !important;
   color: $cj-text !important;
-  border: 1rpx solid $cj-border-light !important;
-  font-size: 22rpx !important;
+  border: 1rpx solid $cj-border-faint !important;
+  font-size: 21rpx !important;
 }
 
 .action-btn--primary {
   background: $cj-primary !important;
   color: #fffefb !important;
+  box-shadow: $cj-shadow-xs;
 }
 
 .action-btn--danger {

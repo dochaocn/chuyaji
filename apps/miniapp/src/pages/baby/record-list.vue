@@ -360,15 +360,15 @@ function openRecord(id: number) {
 
 .filter-bar {
   flex-shrink: 0;
-  padding: 16rpx $cj-page-pad-x 0;
+  padding: 12rpx $cj-page-pad-x 0;
   background: $cj-page-bg;
 }
 
 .search-row {
   display: flex;
   align-items: center;
-  gap: 12rpx;
-  margin-bottom: 12rpx;
+  gap: 10rpx;
+  margin-bottom: 10rpx;
 }
 
 .search-input {
@@ -379,7 +379,7 @@ function openRecord(id: number) {
   padding: 0 24rpx;
   border-radius: $cj-radius-pill;
   background: $cj-surface;
-  border: 1rpx solid $cj-border-light;
+  border: 1rpx solid $cj-border-faint;
   color: $cj-text;
   font-size: 24rpx;
 }
@@ -387,12 +387,12 @@ function openRecord(id: number) {
 .date-chip,
 .date-clear {
   flex-shrink: 0;
-  padding: 10rpx 18rpx;
+  padding: 9rpx 16rpx;
   border-radius: $cj-radius-pill;
   background: $cj-surface;
-  border: 1rpx solid $cj-border-light;
+  border: 1rpx solid $cj-border-faint;
   color: $cj-text-secondary;
-  font-size: 22rpx;
+  font-size: 21rpx;
   white-space: nowrap;
 }
 
@@ -402,6 +402,7 @@ function openRecord(id: number) {
 
 .date-clear {
   color: $cj-primary;
+  font-weight: 500;
 }
 
 .filter-scroll {
@@ -413,28 +414,30 @@ function openRecord(id: number) {
 }
 
 .filter-scroll--types .filter-inner {
-  padding-bottom: 16rpx;
+  padding-bottom: 14rpx;
 }
 
 .filter-inner {
   display: flex;
-  gap: 16rpx;
-  padding-bottom: 16rpx;
+  gap: 12rpx;
+  padding-bottom: 14rpx;
   white-space: nowrap;
 }
 
 .filter-chip {
   display: inline-flex;
   align-items: center;
-  padding: 10rpx 28rpx;
+  padding: 9rpx 24rpx;
   border-radius: $cj-radius-pill;
-  border: 1rpx solid $cj-border-light;
+  border: 1rpx solid $cj-border-faint;
   background: $cj-surface;
   flex-shrink: 0;
+  transition: all 0.15s;
 
   &.active {
     background: $cj-primary;
     border-color: $cj-primary;
+    box-shadow: $cj-shadow-soft;
 
     .filter-chip-text {
       color: #fffefb;
@@ -443,8 +446,9 @@ function openRecord(id: number) {
 }
 
 .filter-chip-text {
-  font-size: 24rpx;
+  font-size: 23rpx;
   color: $cj-text-secondary;
+  letter-spacing: 0.3rpx;
 }
 
 .list-scroll {
@@ -467,24 +471,25 @@ function openRecord(id: number) {
   padding: 80rpx 0;
   text-align: center;
   color: $cj-text-muted;
-  font-size: 26rpx;
+  font-size: 25rpx;
 }
 
 .group-header {
   display: flex;
   align-items: baseline;
-  gap: 12rpx;
+  gap: 10rpx;
   padding: $cj-gap-md 0 $cj-gap-sm;
 }
 
 .group-title {
-  font-size: 26rpx;
+  font-size: 25rpx;
   font-weight: $cj-fw-display;
   color: $cj-ink;
+  letter-spacing: 0.3rpx;
 }
 
 .group-count {
-  font-size: 22rpx;
+  font-size: 21rpx;
   color: $cj-text-muted;
 }
 
@@ -497,11 +502,15 @@ function openRecord(id: number) {
   min-width: 0;
   box-sizing: border-box;
   background: $cj-surface;
-  border: 1rpx solid $cj-border-light;
-  border-radius: $cj-radius-lg;
+  border: 1rpx solid $cj-border-faint;
+  border-radius: $cj-radius-xl;
   box-shadow: $cj-shadow-card;
-  padding: $cj-gap-md;
+  padding: 26rpx;
   margin-bottom: $cj-gap-sm;
+
+  &:active {
+    opacity: 0.92;
+  }
 }
 
 .record-head {
@@ -513,10 +522,11 @@ function openRecord(id: number) {
 
 .tag {
   flex-shrink: 0;
-  padding: 4rpx 14rpx;
+  padding: 4rpx 12rpx;
   border-radius: $cj-radius-pill;
-  font-size: 20rpx;
+  font-size: 19rpx;
   font-weight: $cj-fw-title;
+  letter-spacing: 0.3rpx;
 
   &.pre {
     background: $cj-tag-prenatal-bg;
@@ -538,11 +548,12 @@ function openRecord(id: number) {
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+  letter-spacing: 0.2rpx;
 }
 
 .record-date {
   flex-shrink: 0;
-  font-size: 22rpx;
+  font-size: 21rpx;
   color: $cj-text-muted;
 }
 
@@ -560,13 +571,13 @@ function openRecord(id: number) {
   margin-top: 12rpx;
   display: flex;
   flex-direction: column;
-  gap: 8rpx;
+  gap: 6rpx;
 }
 
 .record-key-line {
   display: flex;
   align-items: flex-start;
-  gap: 16rpx;
+  gap: 14rpx;
 }
 
 .record-key-label {
@@ -583,8 +594,8 @@ function openRecord(id: number) {
   display: block;
   margin-top: 10rpx;
   padding-top: 10rpx;
-  border-top: 1rpx solid $cj-border-light;
-  font-size: 24rpx;
+  border-top: 1rpx solid $cj-border-faint;
+  font-size: 22rpx;
   color: $cj-text-muted;
   line-height: 1.55;
 }
@@ -595,7 +606,7 @@ function openRecord(id: number) {
 }
 
 .load-more-text {
-  font-size: 24rpx;
+  font-size: 23rpx;
   color: $cj-text-muted;
 }
 

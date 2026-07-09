@@ -130,34 +130,34 @@ function goProfile() {
 </script>
 
 <style lang="scss" scoped>
-.page { padding: $cj-page-pad-y $cj-page-pad-x 72rpx; }
-.head { margin-bottom: $cj-gap-lg; }
-.head-kicker { display: block; font-size: 22rpx; letter-spacing: 4rpx; color: $cj-mint; margin-bottom: 8rpx; }
-.head-title { display: block; font-size: 42rpx; color: $cj-ink; font-weight: $cj-fw-display; }
-.head-desc { display: block; margin-top: $cj-gap-sm; font-size: 26rpx; color: $cj-text-secondary; line-height: 1.6; }
-.empty-card, .card { background: $cj-surface; border: 1rpx solid $cj-border-light; border-radius: $cj-radius-lg; box-shadow: $cj-shadow-card; padding: $cj-gap-md; }
-.empty-title { display: block; color: $cj-ink; font-size: 30rpx; font-weight: $cj-fw-display; }
-.empty-desc { display: block; margin-top: 10rpx; color: $cj-text-secondary; font-size: 25rpx; line-height: 1.6; }
-.timeline { display: flex; flex-direction: column; gap: 8rpx; }
-.timeline-row { display: flex; gap: 20rpx; }
+.page { padding: $cj-page-pad-y $cj-page-pad-x 80rpx; }
+.head { margin-bottom: $cj-gap-lg; padding-top: 4rpx; }
+.head-kicker { display: block; font-size: 21rpx; letter-spacing: 5rpx; color: $cj-mint; margin-bottom: 8rpx; font-weight: 500; }
+.head-title { display: block; font-size: 42rpx; color: $cj-ink; font-weight: $cj-fw-display; letter-spacing: -0.5rpx; }
+.head-desc { display: block; margin-top: $cj-gap-sm; font-size: 25rpx; color: $cj-text-secondary; line-height: 1.65; }
+.empty-card, .card { background: $cj-surface; border: 1rpx solid $cj-border-faint; border-radius: $cj-radius-xl; box-shadow: $cj-shadow-card; padding: 28rpx; }
+.empty-title { display: block; color: $cj-ink; font-size: 30rpx; font-weight: $cj-fw-display; letter-spacing: 0.3rpx; }
+.empty-desc { display: block; margin-top: 10rpx; color: $cj-text-secondary; font-size: 25rpx; line-height: 1.65; }
+.timeline { display: flex; flex-direction: column; gap: 10rpx; }
+.timeline-row { display: flex; gap: 18rpx; }
 .rail { width: 28rpx; display: flex; flex-direction: column; align-items: center; padding-top: 28rpx; flex-shrink: 0; }
-.dot { width: 18rpx; height: 18rpx; border-radius: 50%; border: 3rpx solid $cj-surface; box-shadow: 0 0 0 2rpx rgba(234,217,204,.9); }
+.dot { width: 16rpx; height: 16rpx; border-radius: 50%; border: 3rpx solid $cj-surface; box-shadow: 0 0 0 2rpx $cj-border-faint; }
 .dot--done { background: $cj-mint; }
 .dot--overdue { background: $cj-primary; }
 .dot--pending { background: $cj-accent; }
-.line { flex: 1; width: 2rpx; min-height: 42rpx; margin-top: 8rpx; background: $cj-border; }
+.line { flex: 1; width: 2rpx; min-height: 42rpx; margin-top: 8rpx; background: linear-gradient(180deg, $cj-border-faint 0%, transparent 100%); }
 .card { flex: 1; margin-bottom: $cj-gap-sm; }
 .card-head { display: flex; align-items: flex-start; justify-content: space-between; gap: $cj-gap-sm; }
 .title-wrap { min-width: 0; }
-.vaccine-name { display: block; font-size: 30rpx; color: $cj-ink; font-weight: $cj-fw-display; }
-.dose, .date, .desc { display: block; margin-top: 8rpx; font-size: 24rpx; color: $cj-text-secondary; line-height: 1.55; }
-.status-chip { flex-shrink: 0; padding: 6rpx 18rpx; border-radius: $cj-radius-pill; font-size: 20rpx; font-weight: $cj-fw-title; }
+.vaccine-name { display: block; font-size: 29rpx; color: $cj-ink; font-weight: $cj-fw-display; letter-spacing: 0.2rpx; }
+.dose, .date, .desc { display: block; margin-top: 8rpx; font-size: 23rpx; color: $cj-text-secondary; line-height: 1.55; }
+.status-chip { flex-shrink: 0; padding: 5rpx 16rpx; border-radius: $cj-radius-pill; font-size: 19rpx; font-weight: $cj-fw-title; letter-spacing: 0.3rpx; }
 .status-chip--done { background: $cj-mint-soft; color: $cj-tag-postnatal-text; }
 .status-chip--overdue { background: $cj-danger-bg; color: $cj-danger-text; }
 .status-chip--pending { background: $cj-warn-bg; color: $cj-text-secondary; }
 .actions { margin-top: $cj-gap-md; }
 .main-btn, .ghost-btn { border-radius: $cj-radius-pill !important; }
-.main-btn { margin-top: $cj-gap-md; background: linear-gradient(165deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%) !important; color: #fffefb !important; border: none !important; }
+.main-btn { margin-top: $cj-gap-md; background: linear-gradient(160deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%) !important; color: #fffefb !important; border: none !important; box-shadow: $cj-shadow-soft; }
 .main-btn--mini { margin-top: 0; width: 100%; }
-.ghost-btn { width: 100%; background: $cj-surface-2 !important; color: $cj-text !important; border: 1rpx solid $cj-border-light !important; }
+.ghost-btn { width: 100%; background: $cj-surface-2 !important; color: $cj-text !important; border: 1rpx solid $cj-border-faint !important; }
 </style>

@@ -501,21 +501,22 @@ function goReminders() {
 
 <style lang="scss" scoped>
 .page {
-  padding: $cj-page-pad-y $cj-page-pad-x 72rpx;
+  padding: $cj-page-pad-y $cj-page-pad-x 80rpx;
 }
 
 .notice,
 .empty-card {
   background: $cj-surface;
-  border: 1rpx solid $cj-border-light;
-  border-radius: $cj-radius-lg;
+  border: 1rpx solid $cj-border-faint;
+  border-radius: $cj-radius-xl;
   box-shadow: $cj-shadow-card;
-  padding: $cj-gap-md;
+  padding: 28rpx $cj-gap-md;
   margin-bottom: $cj-gap-md;
 }
 
 .notice {
-  background: $cj-warn-bg;
+  background: linear-gradient(135deg, $cj-warn-bg 0%, #fff8f0 100%);
+  border-color: $cj-warn-border;
 }
 
 .notice-title,
@@ -524,6 +525,7 @@ function goReminders() {
   color: $cj-ink;
   font-weight: $cj-fw-display;
   font-size: 30rpx;
+  letter-spacing: 0.5rpx;
 }
 
 .notice-desc,
@@ -532,41 +534,45 @@ function goReminders() {
   margin-top: 10rpx;
   color: $cj-text-secondary;
   font-size: 25rpx;
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
 .notice-btn,
 .main-btn {
   margin-top: $cj-gap-md;
   border-radius: $cj-radius-pill !important;
-  background: linear-gradient(165deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%) !important;
+  background: linear-gradient(160deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%) !important;
   color: #fffefb !important;
   border: none !important;
+  box-shadow: $cj-shadow-soft;
 }
 
 .hero {
-  margin-bottom: $cj-gap-lg;
+  margin-bottom: $cj-gap-xl;
+  padding-top: 8rpx;
 }
 
 .hero-top {
   display: flex;
   align-items: center;
-  gap: 16rpx;
+  gap: 14rpx;
   flex-wrap: wrap;
-  margin-bottom: 8rpx;
+  margin-bottom: 10rpx;
 }
 
 .hero-kicker {
-  font-size: 22rpx;
-  letter-spacing: 4rpx;
+  font-size: 21rpx;
+  letter-spacing: 5rpx;
   color: $cj-primary;
+  font-weight: 500;
 }
 
 .stage-badge {
-  padding: 6rpx 18rpx;
+  padding: 5rpx 16rpx;
   border-radius: $cj-radius-pill;
-  font-size: 20rpx;
+  font-size: 19rpx;
   font-weight: 500;
+  letter-spacing: 0.5rpx;
 }
 
 .badge--pre {
@@ -581,23 +587,24 @@ function goReminders() {
 
 .hero-edit-link {
   margin-left: auto;
-  font-size: 24rpx;
+  font-size: 23rpx;
   color: $cj-primary;
   padding: 8rpx 0;
+  font-weight: 500;
 }
 
 .hero-headline {
   display: flex;
-  align-items: center;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 28rpx;
+  gap: 24rpx;
   min-width: 0;
 }
 
 .hero-name {
   flex-shrink: 0;
   max-width: 48%;
-  font-size: 36rpx;
+  font-size: 34rpx;
   font-weight: $cj-fw-title;
   color: $cj-primary-dark;
   letter-spacing: 1rpx;
@@ -607,10 +614,11 @@ function goReminders() {
   flex: 1;
   min-width: 0;
   font-size: 40rpx;
-  line-height: 1.35;
+  line-height: 1.3;
   color: $cj-ink;
   font-weight: $cj-fw-display;
   text-align: right;
+  letter-spacing: -0.5rpx;
 }
 
 .hero-title--solo {
@@ -621,26 +629,27 @@ function goReminders() {
 
 .hero-desc {
   display: block;
-  margin-top: 10rpx;
+  margin-top: 12rpx;
   font-size: 25rpx;
   color: $cj-text-secondary;
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
 .next-card {
-  background: $cj-warn-bg;
-  border: 1rpx solid $cj-border-light;
-  border-radius: $cj-radius-lg;
+  background: linear-gradient(135deg, $cj-warn-bg 0%, #fff9f2 100%);
+  border: 1rpx solid $cj-border-faint;
+  border-radius: $cj-radius-xl;
   box-shadow: $cj-shadow-card;
-  padding: $cj-gap-md;
+  padding: 28rpx $cj-gap-md;
   margin-bottom: $cj-gap-md;
 }
 
 .next-label {
   display: block;
-  font-size: 22rpx;
+  font-size: 21rpx;
   color: $cj-text-muted;
   margin-bottom: 8rpx;
+  letter-spacing: 1rpx;
 }
 
 .next-title {
@@ -649,17 +658,20 @@ function goReminders() {
   font-weight: $cj-fw-display;
   color: $cj-ink;
   margin-bottom: $cj-gap-md;
+  letter-spacing: 0.3rpx;
 }
 
 .next-btn {
   border-radius: $cj-radius-pill !important;
-  background: linear-gradient(165deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%) !important;
+  background: linear-gradient(160deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%) !important;
   color: #fffefb !important;
   border: none !important;
   font-size: 26rpx;
   padding: 0 36rpx !important;
   height: 72rpx !important;
   line-height: 72rpx !important;
+  box-shadow: $cj-shadow-soft;
+  letter-spacing: 1rpx;
 }
 
 .shortcut-section,
@@ -670,10 +682,10 @@ function goReminders() {
 
 .trend-panel {
   position: relative;
-  padding: $cj-gap-md $cj-gap-md calc($cj-gap-md + 4rpx);
-  background: linear-gradient(165deg, rgba(255, 253, 249, 0.96) 0%, rgba(255, 246, 238, 0.92) 100%);
-  border: 1rpx solid $cj-border-light;
-  border-radius: $cj-radius-lg;
+  padding: 28rpx $cj-gap-md calc($cj-gap-md + 4rpx);
+  background: linear-gradient(155deg, rgba(255, 253, 249, 0.97) 0%, rgba(255, 247, 240, 0.95) 60%, rgba(230, 241, 236, 0.3) 100%);
+  border: 1rpx solid $cj-border-faint;
+  border-radius: $cj-radius-xl;
   box-shadow: $cj-shadow-card;
   overflow: hidden;
 
@@ -683,9 +695,9 @@ function goReminders() {
     inset: 0;
     pointer-events: none;
     background:
-      radial-gradient(ellipse 120% 80% at 100% 0%, rgba(232, 184, 150, 0.22) 0%, transparent 55%),
-      radial-gradient(ellipse 90% 60% at 0% 100%, rgba(143, 184, 168, 0.14) 0%, transparent 50%);
-    opacity: 0.9;
+      radial-gradient(ellipse 110% 70% at 100% 0%, rgba(232, 184, 150, 0.18) 0%, transparent 50%),
+      radial-gradient(ellipse 80% 50% at 0% 100%, rgba(125, 171, 152, 0.12) 0%, transparent 45%);
+    opacity: 0.85;
   }
 }
 
@@ -710,23 +722,24 @@ function goReminders() {
 }
 
 .panel-kicker {
-  font-size: 20rpx;
+  font-size: 19rpx;
   letter-spacing: 6rpx;
   text-transform: uppercase;
   color: $cj-text-muted;
+  font-weight: 500;
 }
 
 .panel-title {
-  font-size: 34rpx;
+  font-size: 32rpx;
   font-weight: $cj-fw-display;
   color: $cj-ink;
-  letter-spacing: 1rpx;
+  letter-spacing: 0.5rpx;
 }
 
 .panel-head-rule {
   flex: 1;
   height: 1rpx;
-  background: linear-gradient(90deg, $cj-border 0%, rgba(234, 217, 204, 0.2) 100%);
+  background: linear-gradient(90deg, $cj-border-faint 0%, transparent 100%);
   margin-bottom: 10rpx;
 }
 
@@ -736,10 +749,11 @@ function goReminders() {
 
 .section-label {
   display: block;
-  font-size: 22rpx;
+  font-size: 21rpx;
   color: $cj-text-muted;
   letter-spacing: 3rpx;
   margin-bottom: $cj-gap-sm;
+  font-weight: 500;
 }
 
 .shortcut-grid {
@@ -751,11 +765,17 @@ function goReminders() {
 .shortcut-tile {
   flex: 1;
   min-width: 140rpx;
-  padding: $cj-gap-md;
+  padding: 28rpx;
   background: $cj-surface;
-  border: 1rpx solid $cj-border-light;
-  border-radius: $cj-radius-lg;
+  border: 1rpx solid $cj-border-faint;
+  border-radius: $cj-radius-xl;
   box-shadow: $cj-shadow-card;
+  transition: opacity 0.15s;
+
+  &:active {
+    opacity: 0.8;
+    transform: scale(0.98);
+  }
 }
 
 .shortcut-title {
@@ -763,13 +783,15 @@ function goReminders() {
   font-size: 28rpx;
   font-weight: $cj-fw-display;
   color: $cj-ink;
+  letter-spacing: 0.3rpx;
 }
 
 .shortcut-mode {
   display: block;
   margin-top: 6rpx;
-  font-size: 20rpx;
+  font-size: 19rpx;
   color: $cj-text-muted;
+  letter-spacing: 0.5rpx;
 }
 
 .summary-grid {
@@ -786,18 +808,18 @@ function goReminders() {
 .summary-card {
   flex: 1;
   min-width: 180rpx;
-  padding: $cj-gap-md;
+  padding: 28rpx;
   background: $cj-surface;
-  border: 1rpx solid $cj-border-light;
-  border-radius: $cj-radius-lg;
+  border: 1rpx solid $cj-border-faint;
+  border-radius: $cj-radius-xl;
   box-shadow: $cj-shadow-card;
 }
 
 .summary-card--baby {
   position: relative;
   overflow: hidden;
-  border: 1rpx solid rgba(234, 217, 204, 0.5);
-  background: rgba(255, 253, 249, 0.92);
+  border: 1rpx solid $cj-border-faint;
+  background: rgba(255, 253, 249, 0.94);
 }
 
 .summary-card-accent {
@@ -805,8 +827,8 @@ function goReminders() {
   left: 0;
   top: 0;
   bottom: 0;
-  width: 6rpx;
-  border-radius: $cj-radius-lg 0 0 $cj-radius-lg;
+  width: 5rpx;
+  border-radius: $cj-radius-xl 0 0 $cj-radius-xl;
 }
 
 .summary-card-accent--coral {
@@ -814,7 +836,7 @@ function goReminders() {
 }
 
 .summary-card-accent--mint {
-  background: linear-gradient(180deg, $cj-mint 0%, #6a9e8c 100%);
+  background: linear-gradient(180deg, $cj-mint 0%, #5d9482 100%);
 }
 
 .summary-card-accent--gold {
@@ -829,7 +851,9 @@ function goReminders() {
 .summary-label {
   display: block;
   color: $cj-text-muted;
-  font-size: 22rpx;
+  font-size: 21rpx;
+  font-weight: 500;
+  letter-spacing: 0.5rpx;
 }
 
 .summary-value {
@@ -838,16 +862,18 @@ function goReminders() {
   color: $cj-ink;
   font-size: 32rpx;
   font-weight: $cj-fw-display;
+  letter-spacing: -0.3rpx;
 }
 
 .milestone-value {
   font-size: 24rpx;
+  letter-spacing: 0;
 }
 
 .summary-hint {
   display: block;
   margin-top: 6rpx;
-  font-size: 20rpx;
+  font-size: 19rpx;
   color: $cj-text-muted;
 }
 
@@ -857,7 +883,7 @@ function goReminders() {
   margin-top: $cj-gap-md;
   display: flex;
   flex-direction: column;
-  gap: 10rpx;
+  gap: 6rpx;
 }
 
 .growth-link {
@@ -869,25 +895,26 @@ function goReminders() {
 }
 
 .growth-link-text {
-  font-size: 24rpx;
+  font-size: 23rpx;
   color: $cj-primary-dark;
   font-weight: 500;
+  letter-spacing: 0.3rpx;
 }
 
 .growth-link-chev {
   font-size: 28rpx;
   color: $cj-primary;
   line-height: 1;
-  opacity: 0.85;
+  opacity: 0.75;
 }
 
 .records-panel {
   position: relative;
-  background: linear-gradient(180deg, $cj-surface 0%, rgba(255, 253, 249, 0.97) 100%);
-  border: 1rpx solid $cj-border-light;
-  border-radius: $cj-radius-lg;
+  background: linear-gradient(180deg, $cj-surface 0%, rgba(255, 253, 249, 0.98) 100%);
+  border: 1rpx solid $cj-border-faint;
+  border-radius: $cj-radius-xl;
   box-shadow: $cj-shadow-card;
-  padding: $cj-gap-md $cj-gap-md $cj-gap-lg;
+  padding: 28rpx $cj-gap-md $cj-gap-lg;
   overflow: hidden;
 
   &::after {
@@ -895,10 +922,10 @@ function goReminders() {
     position: absolute;
     right: -40rpx;
     top: -48rpx;
-    width: 200rpx;
-    height: 200rpx;
+    width: 180rpx;
+    height: 180rpx;
     border-radius: 50%;
-    background: radial-gradient(circle, rgba(201, 107, 92, 0.08) 0%, transparent 70%);
+    background: radial-gradient(circle, rgba(201, 107, 92, 0.06) 0%, transparent 70%);
     pointer-events: none;
   }
 }
@@ -912,27 +939,29 @@ function goReminders() {
 }
 
 .section-meta-hint {
-  font-size: 22rpx;
+  font-size: 21rpx;
   color: $cj-primary;
-  padding: 8rpx 20rpx;
+  padding: 7rpx 18rpx;
   border-radius: $cj-radius-pill;
-  background: rgba(201, 107, 92, 0.08);
+  background: rgba(201, 107, 92, 0.07);
+  font-weight: 500;
+  letter-spacing: 0.3rpx;
 }
 
 .placeholder {
   position: relative;
   z-index: 1;
-  padding: 36rpx 0;
+  padding: 40rpx 0;
   text-align: center;
   color: $cj-text-muted;
   font-size: 24rpx;
 }
 
 .placeholder--soft {
-  padding: 48rpx 24rpx;
+  padding: 52rpx 24rpx;
   background: $cj-surface-2;
-  border-radius: $cj-radius-md;
-  border: 1rpx dashed rgba(234, 217, 204, 0.85);
+  border-radius: $cj-radius-lg;
+  border: 1rpx dashed $cj-border-faint;
 }
 
 .record-timeline {
@@ -940,14 +969,14 @@ function goReminders() {
   z-index: 1;
   display: flex;
   flex-direction: column;
-  gap: 8rpx;
+  gap: 10rpx;
 }
 
 .record-timeline-row {
   display: flex;
   flex-direction: row;
   align-items: stretch;
-  gap: 20rpx;
+  gap: 18rpx;
 }
 
 .record-rail {
@@ -960,11 +989,11 @@ function goReminders() {
 }
 
 .record-dot {
-  width: 18rpx;
-  height: 18rpx;
+  width: 16rpx;
+  height: 16rpx;
   border-radius: 50%;
   border: 3rpx solid $cj-surface;
-  box-shadow: 0 0 0 2rpx rgba(234, 217, 204, 0.9);
+  box-shadow: 0 0 0 2rpx $cj-border-faint;
 }
 
 .record-dot--pre {
@@ -981,15 +1010,15 @@ function goReminders() {
   min-height: 32rpx;
   margin-top: 8rpx;
   border-radius: 2rpx;
-  background: linear-gradient(180deg, rgba(234, 217, 204, 0.95) 0%, rgba(234, 217, 204, 0.15) 100%);
+  background: linear-gradient(180deg, $cj-border-faint 0%, transparent 100%);
 }
 
 .record-line--pre {
-  background: linear-gradient(180deg, rgba(184, 122, 146, 0.35) 0%, rgba(234, 217, 204, 0.2) 100%);
+  background: linear-gradient(180deg, rgba(184, 122, 146, 0.3) 0%, transparent 100%);
 }
 
 .record-line--post {
-  background: linear-gradient(180deg, rgba(90, 157, 130, 0.35) 0%, rgba(234, 217, 204, 0.2) 100%);
+  background: linear-gradient(180deg, rgba(90, 157, 130, 0.3) 0%, transparent 100%);
 }
 
 .record-card {
@@ -998,14 +1027,18 @@ function goReminders() {
   padding: 24rpx 26rpx;
   background: $cj-surface;
   border-radius: $cj-radius-lg;
-  border: 1rpx solid $cj-border-light;
-  box-shadow: $cj-shadow-soft;
+  border: 1rpx solid $cj-border-faint;
+  box-shadow: $cj-shadow-xs;
 }
 
 .record-card--timeline {
-  background: linear-gradient(165deg, rgba(255, 253, 249, 0.98) 0%, rgba(255, 248, 240, 0.92) 100%);
-  border: 1rpx solid rgba(234, 217, 204, 0.55);
-  box-shadow: 0 14rpx 36rpx rgba(42, 36, 32, 0.06);
+  background: linear-gradient(160deg, rgba(255, 253, 249, 0.98) 0%, rgba(255, 249, 242, 0.95) 100%);
+  border: 1rpx solid $cj-border-faint;
+  box-shadow: $cj-shadow-xs;
+
+  &:active {
+    opacity: 0.92;
+  }
 }
 
 .record-card-head {
@@ -1016,7 +1049,7 @@ function goReminders() {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 20rpx;
+  gap: 16rpx;
 }
 
 .record-type-row {
@@ -1026,7 +1059,7 @@ function goReminders() {
   flex-direction: row;
   align-items: center;
   flex-wrap: nowrap;
-  gap: 12rpx;
+  gap: 10rpx;
 }
 
 .record-type-row .record-type {
@@ -1042,10 +1075,11 @@ function goReminders() {
 }
 
 .record-tag {
-  padding: 6rpx 18rpx;
+  padding: 5rpx 14rpx;
   border-radius: $cj-radius-pill;
-  font-size: 20rpx;
+  font-size: 19rpx;
   font-weight: $cj-fw-title;
+  letter-spacing: 0.3rpx;
 }
 
 .record-tag.pre {
@@ -1061,26 +1095,27 @@ function goReminders() {
 .record-type {
   flex: 1;
   min-width: 0;
-  font-size: 30rpx;
+  font-size: 29rpx;
   color: $cj-ink;
   font-weight: $cj-fw-display;
   line-height: 1.4;
+  letter-spacing: 0.2rpx;
 }
 
 .record-date {
   flex-shrink: 0;
   padding-top: 4rpx;
-  font-size: 22rpx;
+  font-size: 21rpx;
   color: $cj-text-muted;
   letter-spacing: 0.5rpx;
 }
 
 .record-body {
-  margin-top: 16rpx;
-  padding: 6rpx 18rpx 4rpx;
+  margin-top: 14rpx;
+  padding: 4rpx 16rpx 2rpx;
   background: $cj-surface-2;
   border-radius: $cj-radius-md;
-  border: 1rpx solid rgba(234, 217, 204, 0.55);
+  border: 1rpx solid $cj-border-faint;
 }
 
 .record-kv-row {
@@ -1088,18 +1123,18 @@ function goReminders() {
   flex-direction: row;
   flex-wrap: nowrap;
   align-items: flex-start;
-  gap: 16rpx;
-  padding: 16rpx 0;
-  border-bottom: 1rpx solid rgba(234, 217, 204, 0.45);
+  gap: 14rpx;
+  padding: 14rpx 0;
+  border-bottom: 1rpx solid $cj-border-faint;
 }
 
 .record-kv-row:last-child {
   border-bottom: none;
-  padding-bottom: 12rpx;
+  padding-bottom: 10rpx;
 }
 
 .record-kv-row:first-child {
-  padding-top: 12rpx;
+  padding-top: 10rpx;
 }
 
 .record-key-label {
@@ -1114,22 +1149,22 @@ function goReminders() {
 
 .record-summary {
   display: block;
-  margin-top: 14rpx;
-  padding: 16rpx 18rpx;
+  margin-top: 12rpx;
+  padding: 14rpx 16rpx;
   background: $cj-surface-2;
   border-radius: $cj-radius-md;
-  border: 1rpx solid rgba(234, 217, 204, 0.45);
-  font-size: 26rpx;
+  border: 1rpx solid $cj-border-faint;
+  font-size: 25rpx;
   color: $cj-text-secondary;
   line-height: 1.65;
 }
 
 .record-summary-note {
   display: block;
-  margin-top: 12rpx;
-  padding-top: 14rpx;
-  border-top: 1rpx solid rgba(234, 217, 204, 0.55);
-  font-size: 23rpx;
+  margin-top: 10rpx;
+  padding-top: 12rpx;
+  border-top: 1rpx solid $cj-border-faint;
+  font-size: 22rpx;
   color: $cj-text-muted;
   line-height: 1.55;
 }

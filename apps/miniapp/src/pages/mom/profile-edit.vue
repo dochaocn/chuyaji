@@ -251,11 +251,12 @@ async function save() {
 
 <style lang="scss" scoped>
 .page {
-  padding: $cj-page-pad-y $cj-page-pad-x 56rpx;
+  padding: $cj-page-pad-y $cj-page-pad-x 64rpx;
 }
 
 .head {
   margin-bottom: $cj-gap-lg;
+  padding-top: 4rpx;
 }
 
 .head-title {
@@ -263,32 +264,33 @@ async function save() {
   font-size: 42rpx;
   font-weight: $cj-fw-display;
   color: $cj-ink;
+  letter-spacing: -0.5rpx;
 }
 
 .head-desc {
   display: block;
   margin-top: $cj-gap-sm;
-  font-size: 26rpx;
+  font-size: 25rpx;
   color: $cj-text-secondary;
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
 .section {
   background: $cj-surface;
-  border-radius: $cj-radius-lg;
-  border: 1rpx solid $cj-border-light;
+  border-radius: $cj-radius-xl;
+  border: 1rpx solid $cj-border-faint;
   box-shadow: $cj-shadow-card;
-  padding: $cj-gap-md;
+  padding: 28rpx;
   margin-bottom: $cj-gap-md;
 }
 
 .section-label {
   display: block;
   margin-bottom: $cj-gap-md;
-  font-size: 22rpx;
+  font-size: 21rpx;
   color: $cj-text-muted;
   letter-spacing: 3rpx;
-  text-transform: uppercase;
+  font-weight: 500;
 }
 
 .field {
@@ -302,8 +304,10 @@ async function save() {
 .lab {
   display: block;
   margin-bottom: 10rpx;
-  font-size: 24rpx;
+  font-size: 23rpx;
   color: $cj-text-muted;
+  font-weight: 500;
+  letter-spacing: 0.3rpx;
 }
 
 .input,
@@ -312,7 +316,7 @@ async function save() {
   width: 100%;
   box-sizing: border-box;
   background: $cj-surface-2;
-  border: 1rpx solid $cj-border-light;
+  border: 1rpx solid $cj-border-faint;
   border-radius: $cj-radius-md;
   padding: $cj-gap-md;
   color: $cj-text;
@@ -349,8 +353,9 @@ async function save() {
 .main-btn {
   margin-top: $cj-gap-sm;
   border-radius: $cj-radius-pill !important;
-  background: linear-gradient(165deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%) !important;
+  background: linear-gradient(160deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%) !important;
   color: #fffefb !important;
   border: none !important;
+  box-shadow: $cj-shadow-soft;
 }
 </style>

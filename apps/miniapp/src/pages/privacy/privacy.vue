@@ -44,7 +44,7 @@ function agree() {
 }
 
 .page {
-  padding: $cj-page-pad-y $cj-page-pad-x 56rpx;
+  padding: $cj-page-pad-y $cj-page-pad-x 64rpx;
 }
 
 .frame {
@@ -56,10 +56,10 @@ function agree() {
 
 .corner {
   position: absolute;
-  width: 48rpx;
-  height: 48rpx;
+  width: 44rpx;
+  height: 44rpx;
   border-color: $cj-accent;
-  opacity: 0.55;
+  opacity: 0.45;
   pointer-events: none;
 }
 
@@ -85,12 +85,12 @@ function agree() {
 
 .mark {
   display: inline-block;
-  font-size: 20rpx;
+  font-size: 19rpx;
   font-weight: $cj-fw-title;
   letter-spacing: 3rpx;
   color: $cj-primary-dark;
   background: $cj-primary-soft;
-  padding: 6rpx 20rpx;
+  padding: 5rpx 18rpx;
   border-radius: $cj-radius-pill;
   margin-bottom: $cj-gap-md;
 }
@@ -100,24 +100,24 @@ function agree() {
   font-size: 44rpx;
   font-weight: $cj-fw-display;
   color: $cj-ink;
-  letter-spacing: 2rpx;
+  letter-spacing: 1rpx;
 }
 
 .sub {
   display: block;
   margin-top: $cj-gap-sm;
-  font-size: 26rpx;
+  font-size: 25rpx;
   color: $cj-text-secondary;
-  line-height: 1.5;
+  line-height: 1.55;
 }
 
 .card {
   background: $cj-surface;
-  padding: $cj-gap-lg;
-  border-radius: $cj-radius-lg;
+  padding: 28rpx;
+  border-radius: $cj-radius-xl;
   margin-bottom: $cj-gap-lg;
   box-shadow: $cj-shadow-card;
-  border: 1rpx solid $cj-border-light;
+  border: 1rpx solid $cj-border-faint;
   animation: cj-fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.08s backwards;
 }
 
@@ -131,8 +131,9 @@ function agree() {
 .btn {
   border-radius: $cj-radius-pill !important;
   animation: cj-fade-up 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.14s backwards;
-  background: linear-gradient(165deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%) !important;
+  background: linear-gradient(160deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%) !important;
   color: #fffefb !important;
   border: none !important;
+  box-shadow: $cj-shadow-soft;
 }
 </style>

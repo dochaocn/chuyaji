@@ -258,7 +258,7 @@ function onReuseLast() {
 .sheet-mask {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.35);
+  background: rgba(0, 0, 0, 0.3);
   z-index: 999;
   display: flex;
   align-items: flex-end;
@@ -267,7 +267,7 @@ function onReuseLast() {
 .sheet {
   width: 100%;
   background: $cj-surface;
-  border-radius: $cj-radius-lg $cj-radius-lg 0 0;
+  border-radius: $cj-radius-xl $cj-radius-xl 0 0;
   padding: $cj-gap-lg $cj-gap-md calc(env(safe-area-inset-bottom, 0px) + 32rpx);
   box-sizing: border-box;
 }
@@ -280,14 +280,15 @@ function onReuseLast() {
 }
 
 .sheet-title {
-  font-size: 34rpx;
+  font-size: 33rpx;
   font-weight: $cj-fw-display;
   color: $cj-ink;
+  letter-spacing: 0.2rpx;
 }
 
 .sheet-close {
-  width: 56rpx;
-  height: 56rpx;
+  width: 52rpx;
+  height: 52rpx;
   border-radius: 50%;
   background: $cj-surface-2;
   display: flex;
@@ -296,7 +297,7 @@ function onReuseLast() {
 }
 
 .sheet-close-x {
-  font-size: 36rpx;
+  font-size: 34rpx;
   color: $cj-text-muted;
   line-height: 1;
 }
@@ -318,19 +319,21 @@ function onReuseLast() {
 .field-label {
   display: block;
   margin-bottom: 10rpx;
-  font-size: 24rpx;
+  font-size: 23rpx;
   color: $cj-text-muted;
+  font-weight: 500;
+  letter-spacing: 0.3rpx;
 }
 
 .field-unit {
-  font-size: 22rpx;
+  font-size: 21rpx;
 }
 
 .field-input {
   width: 100%;
   box-sizing: border-box;
   background: $cj-surface-2;
-  border: 1rpx solid $cj-border-light;
+  border: 1rpx solid $cj-border-faint;
   border-radius: $cj-radius-md;
   padding: $cj-gap-md;
   font-size: 32rpx;
@@ -347,23 +350,25 @@ function onReuseLast() {
 .select-row {
   display: flex;
   flex-wrap: wrap;
-  gap: 16rpx;
+  gap: 12rpx;
 }
 
 .select-chip {
-  padding: 14rpx 28rpx;
+  padding: 12rpx 24rpx;
   border-radius: $cj-radius-pill;
   background: $cj-surface-2;
-  border: 1rpx solid $cj-border-light;
+  border: 1rpx solid $cj-border-faint;
+  transition: all 0.15s;
 }
 
 .select-chip.selected {
   background: $cj-primary-soft;
   border-color: $cj-primary;
+  box-shadow: $cj-shadow-xs;
 }
 
 .select-chip-text {
-  font-size: 26rpx;
+  font-size: 25rpx;
   color: $cj-text;
 }
 
@@ -372,15 +377,16 @@ function onReuseLast() {
 }
 
 .note-toggle-text {
-  font-size: 24rpx;
+  font-size: 23rpx;
   color: $cj-primary;
+  font-weight: 500;
 }
 
 .note-area {
   width: 100%;
   box-sizing: border-box;
   background: $cj-surface-2;
-  border: 1rpx solid $cj-border-light;
+  border: 1rpx solid $cj-border-faint;
   border-radius: $cj-radius-md;
   padding: $cj-gap-md;
   font-size: 28rpx;
@@ -392,10 +398,11 @@ function onReuseLast() {
 .save-btn {
   width: 100%;
   border-radius: $cj-radius-pill !important;
-  background: linear-gradient(165deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%) !important;
+  background: linear-gradient(160deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%) !important;
   color: #fffefb !important;
   border: none !important;
   font-size: 30rpx;
+  box-shadow: $cj-shadow-soft;
 }
 
 .reuse-btn {
@@ -404,7 +411,7 @@ function onReuseLast() {
   border-radius: $cj-radius-pill !important;
   background: $cj-surface !important;
   color: $cj-text !important;
-  border: 1rpx solid $cj-border-light !important;
+  border: 1rpx solid $cj-border-faint !important;
   font-size: 28rpx;
 }
 

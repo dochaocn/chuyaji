@@ -75,19 +75,21 @@ async function exportJson() {
 
 <style lang="scss" scoped>
 .page {
-  padding: $cj-page-pad-y $cj-page-pad-x 56rpx;
+  padding: $cj-page-pad-y $cj-page-pad-x 64rpx;
 }
 
 .head {
   margin-bottom: $cj-gap-lg;
+  padding-top: 4rpx;
 }
 
 .head-kicker {
   display: block;
-  font-size: 22rpx;
-  letter-spacing: 4rpx;
+  font-size: 21rpx;
+  letter-spacing: 5rpx;
   color: $cj-mint;
   margin-bottom: 8rpx;
+  font-weight: 500;
 }
 
 .head-title {
@@ -95,37 +97,40 @@ async function exportJson() {
   font-size: 42rpx;
   color: $cj-ink;
   font-weight: $cj-fw-display;
+  letter-spacing: -0.5rpx;
 }
 
 .head-desc {
   display: block;
   margin-top: $cj-gap-sm;
-  font-size: 26rpx;
+  font-size: 25rpx;
   color: $cj-text-secondary;
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
 .note-card {
   margin-bottom: $cj-gap-md;
-  padding: $cj-gap-md;
+  padding: 28rpx;
   background: $cj-surface;
-  border-radius: $cj-radius-lg;
-  border: 1rpx solid $cj-border-light;
+  border-radius: $cj-radius-xl;
+  border: 1rpx solid $cj-border-faint;
   box-shadow: $cj-shadow-card;
 }
 
 .note-label {
   display: block;
-  font-size: 22rpx;
+  font-size: 21rpx;
   color: $cj-text-muted;
   margin-bottom: 8rpx;
+  font-weight: 500;
+  letter-spacing: 0.5rpx;
 }
 
 .note-body {
   display: block;
   font-size: 25rpx;
   color: $cj-text-secondary;
-  line-height: 1.6;
+  line-height: 1.65;
 }
 
 .ghost-btn {
@@ -133,6 +138,6 @@ async function exportJson() {
   border-radius: $cj-radius-pill !important;
   background: $cj-surface !important;
   color: $cj-text !important;
-  border: 1rpx solid $cj-border-light !important;
+  border: 1rpx solid $cj-border-faint !important;
 }
 </style>
