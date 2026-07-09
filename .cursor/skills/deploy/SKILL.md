@@ -1,8 +1,10 @@
 ---
 name: deploy
 description: >-
-  为初芽记（chuyaji）仓库编译 Go API 二进制、通过 SSH 上传至固定阿里云主机目录并重启服务；远端若无 .env 则从 services/api/.env.example 复制到部署目录后再填密钥。
-  在用户提到部署、上线、发布后端、同步到 aliyun、/root/application/chuya，或需要打包 chuyaji-api 时使用。
+  初芽记（chuyaji）后端 API 及管理端前端的编译与远程部署。
+  后端：编译 Go API 二进制、通过 SSH 上传至阿里云 /root/application/chuya 并重启服务。
+  管理端：构建 Vue SPA、上传至 /root/application/chuyaji-admin/，通过 /admin/ 路径访问。
+  在用户提到部署、上线、发布、同步到 aliyun 时使用。
 ---
 
 # 初芽记：编译与远程部署
@@ -12,9 +14,11 @@ description: >-
 | 项 | 值 |
 |----|-----|
 | SSH 主机别名 | `aliyun`（`~/.ssh/config` 中已配置） |
-| 远端根目录 | `/root/application/chuya` |
+| 远端 API 根目录 | `/root/application/chuya` |
+| 远端管理端目录 | `/root/application/chuyaji-admin/` |
 | API 入口包 | `./services/api/cmd/server` |
 | 构建产物名 | `bin/chuyaji-api`（与根目录 [Makefile](../../../Makefile) 一致） |
+| 管理端访问地址 | `https://www.dochao.com.cn/admin/` |
 
 详细配置、systemd、反代与小程序检查见仓库根目录 [README.md](../../../README.md) 中「部署与上线」；systemd 单元模板见 [deploy/chuyaji-api.service](../../../deploy/chuyaji-api.service)（需将路径改为本约定下的 `WorkingDirectory`、`ExecStart`、`EnvironmentFile`）。
 
@@ -101,6 +105,46 @@ ssh aliyun 'curl -sS -o /dev/null -w "%{http_code}\n" http://127.0.0.1:8282/heal
 ```
 
 （若 `CHUYAJI_HTTP_ADDR` 非 `:8282`，改用实际监听地址。）
+
+---
+
+## 管理端前端部署
+
+管理端为 Vue 3 SPA，部署在 `https://www.dochao.com.cn/admin/`。Nginx 通过 `alias /root/application/chuyaji-admin/` 托管静态文件，`/api/` 反向代理到后端。
+
+### 1. 本地构建
+
+在**仓库根目录**执行：
+
+```bash
+make admin-build
+```
+
+等价于 `cd apps/admin && npm run build`，产物在 `apps/admin/dist/`。
+
+### 2. 上传到服务器
+
+远端目录 `/root/application/chuyaji-admin/` 对当前 SSH 用户可能无写权限，先传到 `/tmp` 再 `sudo mv`：
+
+```bash
+ssh aliyun 'sudo rm -rf /root/application/chuyaji-admin/*'
+scp -r apps/admin/dist/* aliyun:/tmp/chuyaji-admin/
+ssh aliyun 'sudo cp -r /tmp/chuyaji-admin/* /root/application/chuyaji-admin/ && sudo rm -rf /tmp/chuyaji-admin'
+```
+
+若首次部署，先创建目录：
+
+```bash
+ssh aliyun 'sudo mkdir -p /root/application/chuyaji-admin'
+```
+
+### 3. 验证
+
+```bash
+ssh aliyun 'curl -sS -o /dev/null -w "%{http_code}\n" https://www.dochao.com.cn/admin/'
+```
+
+返回 200 即成功。浏览器访问 `https://www.dochao.com.cn/admin/` 应看到登录页。
 
 ## 常见故障
 

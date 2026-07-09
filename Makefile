@@ -1,4 +1,4 @@
-.PHONY: api run-api tidy
+.PHONY: api run-api tidy admin-dev admin-build
 
 tidy:
 	go mod tidy
@@ -8,3 +8,9 @@ api:
 
 run-api:
 	cd services/api && CHUYAJI_JWT_SECRET=dev-secret-change-me go run ./cmd/server
+
+admin-dev:
+	cd apps/admin && npm run dev
+
+admin-build:
+	cd apps/admin && npm run build

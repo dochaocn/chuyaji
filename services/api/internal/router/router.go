@@ -85,6 +85,32 @@ func New(h *handler.Handler, cfg *config.Config) *gin.Engine {
 	upload.POST("/records/:id/attachments/upload", h.UploadAttachment)
 	upload.POST("/mother-records/:id/attachments/upload", h.UploadMotherAttachment)
 
+	// Admin routes
+	admin := v1.Group("/admin")
+	admin.POST("/login", h.AdminLogin)
+
+	adminAuth := admin.Group("")
+	adminAuth.Use(middleware.Admin(cfg.JWTSecret))
+	adminAuth.GET("/overview", h.AdminOverview)
+	adminAuth.GET("/users", h.AdminListUsers)
+	adminAuth.GET("/users/:id", h.AdminGetUser)
+	adminAuth.DELETE("/users/:id", h.AdminDeleteUser)
+	adminAuth.GET("/babies", h.AdminListBabies)
+	adminAuth.GET("/mothers", h.AdminListMothers)
+	adminAuth.GET("/records", h.AdminListRecords)
+	adminAuth.GET("/records/:id", h.AdminGetRecord)
+	adminAuth.GET("/records/:id/attachments", h.AdminListRecordAttachments)
+	adminAuth.DELETE("/records/:id", h.AdminDeleteRecord)
+	adminAuth.GET("/mother-records", h.AdminListMotherRecords)
+	adminAuth.GET("/mother-records/:id", h.AdminGetMotherRecord)
+	adminAuth.GET("/mother-records/:id/attachments", h.AdminListMotherRecordAttachments)
+	adminAuth.DELETE("/mother-records/:id", h.AdminDeleteMotherRecord)
+	adminAuth.GET("/reminders", h.AdminListReminders)
+	adminAuth.GET("/reminders/stats", h.AdminReminderStats)
+	adminAuth.GET("/analytics/records", h.AdminAnalyticsRecords)
+	adminAuth.GET("/analytics/activity", h.AdminAnalyticsActivity)
+	adminAuth.GET("/analytics/growth", h.AdminAnalyticsGrowth)
+
 	return r
 }
 

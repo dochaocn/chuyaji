@@ -8,7 +8,8 @@ import (
 )
 
 type Claims struct {
-	UserID uint64 `json:"uid"`
+	UserID uint64 `json:"uid,omitempty"`
+	Role   string `json:"role,omitempty"`
 	jwt.RegisteredClaims
 }
 
@@ -16,6 +17,19 @@ func SignJWT(secret string, userID uint64, ttl time.Duration) (string, error) {
 	now := time.Now()
 	claims := Claims{
 		UserID: userID,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
+			IssuedAt:  jwt.NewNumericDate(now),
+		},
+	}
+	t := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return t.SignedString([]byte(secret))
+}
+
+func SignAdminJWT(secret string, ttl time.Duration) (string, error) {
+	now := time.Now()
+	claims := Claims{
+		Role: "admin",
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
 			IssuedAt:  jwt.NewNumericDate(now),

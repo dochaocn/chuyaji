@@ -17,6 +17,7 @@ type Config struct {
 	DevMode         bool
 	UploadDir       string
 	PublicBaseURL   string
+	AdminPassword   string
 }
 
 func Load() *Config {
@@ -33,6 +34,7 @@ func Load() *Config {
 		DevMode:         getEnvBool("CHUYAJI_DEV_MODE", false),
 		UploadDir:       getEnv("CHUYAJI_UPLOAD_DIR", "./data/uploads"),
 		PublicBaseURL:   getEnv("CHUYAJI_PUBLIC_BASE_URL", ""),
+		AdminPassword:   getEnv("CHUYAJI_ADMIN_PASSWORD", ""),
 	}
 	if cfg.JWTSecret == "" {
 		log.Fatal("CHUYAJI_JWT_SECRET is required")

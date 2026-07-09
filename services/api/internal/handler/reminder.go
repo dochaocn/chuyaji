@@ -24,6 +24,7 @@ type reminderOut struct {
 	UserID           uint64     `json:"user_id"`
 	OwnerType        string     `json:"owner_type"`
 	OwnerID          uint64     `json:"owner_id"`
+	OwnerName        string     `json:"owner_name,omitempty"`
 	SourceType       string     `json:"source_type"`
 	SourceID         uint64     `json:"source_id"`
 	SourceRecordType string     `json:"source_record_type"`

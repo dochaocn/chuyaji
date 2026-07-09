@@ -1,0 +1,28 @@
+{
+  "name": "chuyaji-admin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite --port 5174",
+    "build": "vue-tsc --noEmit && vite build",
+    "type-check": "vue-tsc --noEmit"
+  },
+  "dependencies": {
+    "vue": "^3.4.21",
+    "vue-router": "^4.3.0",
+    "pinia": "^2.2.6",
+    "element-plus": "^2.9.1",
+    "@element-plus/icons-vue": "^2.3.1",
+    "axios": "^1.7.0",
+    "echarts": "^5.5.0",
+    "vue-echarts": "^7.0.0"
+  },
+  "devDependencies": {
+    "vite": "^5.2.8",
+    "typescript": "^5.6.0",
+    "vue-tsc": "^2.0.0",
+    "@vitejs/plugin-vue": "^5.0.0",
+    "sass": "^1.80.0"
+  }
+}
