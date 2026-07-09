@@ -4,11 +4,11 @@
       <h2>提醒管理</h2>
     </div>
 
-    <el-row :gutter="16" style="margin-bottom: 16px">
-      <el-col :span="6"><StatsCard label="总提醒数" :value="stats.total" icon="Bell" color="#409eff" /></el-col>
-      <el-col :span="6"><StatsCard label="待处理" :value="stats.by_status?.pending || 0" icon="Clock" color="#e6a23c" /></el-col>
-      <el-col :span="6"><StatsCard label="已完成" :value="stats.by_status?.done || 0" icon="CircleCheck" color="#67c23a" /></el-col>
-      <el-col :span="6"><StatsCard label="已过期" :value="stats.overdue_count" icon="Warning" color="#f56c6c" /></el-col>
+    <el-row :gutter="16" class="stats-row">
+      <el-col :xs="12" :sm="12" :md="6"><StatsCard label="总提醒数" :value="stats.total" icon="Bell" color="#409eff" /></el-col>
+      <el-col :xs="12" :sm="12" :md="6"><StatsCard label="待处理" :value="stats.by_status?.pending || 0" icon="Clock" color="#e6a23c" /></el-col>
+      <el-col :xs="12" :sm="12" :md="6"><StatsCard label="已完成" :value="stats.by_status?.done || 0" icon="CircleCheck" color="#67c23a" /></el-col>
+      <el-col :xs="12" :sm="12" :md="6"><StatsCard label="已过期" :value="stats.overdue_count" icon="Warning" color="#f56c6c" /></el-col>
     </el-row>
 
     <div class="filter-bar">
@@ -132,3 +132,13 @@ onMounted(() => {
   loadStats()
 })
 </script>
+
+<style scoped>
+.stats-row {
+  margin-bottom: 16px;
+}
+
+.stats-row .el-col {
+  margin-bottom: 8px;
+}
+</style>

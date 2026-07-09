@@ -65,7 +65,7 @@
       </div>
     </el-card>
 
-    <el-drawer v-model="drawerVisible" :title="`记录详情 #${detailRecord?.id}`" size="520px">
+    <el-drawer v-model="drawerVisible" :title="`记录详情 #${detailRecord?.id}`" :size="isMobile ? '100%' : '520px'">
       <template v-if="detailRecord">
         <el-descriptions :column="1" border>
           <el-descriptions-item label="宝妈名">{{ motherNameMap[detailRecord.mother_id] || detailRecord.mother_id }}</el-descriptions-item>
@@ -102,7 +102,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, computed, onMounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { adminListMotherRecords, adminDeleteMotherRecord, adminListMothers, adminListMotherRecordAttachments } from '../api/admin'
 import { motherTypeLabel, motherRecordTypeLabels } from '../utils/labels'
@@ -127,6 +127,11 @@ const pageSize = 20
 const loading = ref(false)
 const dateRange = ref<string[]>([])
 const filters = reactive({ record_type: '' })
+
+const isMobile = ref(window.innerWidth <= 768)
+function onResize() { isMobile.value = window.innerWidth <= 768 }
+onMounted(() => window.addEventListener('resize', onResize))
+onUnmounted(() => window.removeEventListener('resize', onResize))
 
 const drawerVisible = ref(false)
 const detailRecord = ref<any>(null)
@@ -221,5 +226,10 @@ onMounted(() => {
   height: 120px;
   border-radius: 6px;
   cursor: pointer;
+}
+@media (max-width: 768px) {
+  .attachment-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 </style>

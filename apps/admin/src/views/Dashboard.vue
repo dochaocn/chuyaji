@@ -10,8 +10,8 @@
     </div>
 
     <el-row :gutter="20" style="margin-top: 20px">
-      <el-col :span="12">
-        <el-card shadow="hover">
+      <el-col :xs="24" :sm="24" :md="12">
+        <el-card shadow="hover" style="margin-bottom: 16px">
           <template #header><span style="font-weight: 600">最近用户</span></template>
           <el-table :data="overview.recent_users" stripe size="small">
             <el-table-column prop="id" label="ID" width="60" />
@@ -19,7 +19,7 @@
           </el-table>
         </el-card>
       </el-col>
-      <el-col :span="12">
+      <el-col :xs="24" :sm="24" :md="12">
         <el-card shadow="hover">
           <template #header><span style="font-weight: 600">最近记录</span></template>
           <el-table :data="overview.recent_records" stripe size="small">
@@ -76,5 +76,18 @@ onMounted(async () => {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 16px;
+}
+
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
 }
 </style>

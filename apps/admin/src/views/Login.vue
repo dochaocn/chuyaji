@@ -89,6 +89,7 @@ async function handleLogin() {
 
 .login-card {
   width: 380px;
+  max-width: calc(100vw - 32px);
   border-radius: 16px;
   border: 1px solid #f0e4d8;
   background: #fffdf9;

@@ -14,7 +14,7 @@
     </el-card>
 
     <el-row :gutter="16">
-      <el-col :span="12">
+      <el-col :xs="24" :sm="24" :md="12" class="detail-col">
         <el-card shadow="hover">
           <template #header><span style="font-weight: 600">宝宝档案 ({{ babies.length }})</span></template>
           <el-table :data="babies" stripe size="small">
@@ -29,7 +29,7 @@
           </el-table>
         </el-card>
       </el-col>
-      <el-col :span="12">
+      <el-col :xs="24" :sm="24" :md="12" class="detail-col">
         <el-card shadow="hover">
           <template #header><span style="font-weight: 600">宝妈档案 ({{ mothers.length }})</span></template>
           <el-table :data="mothers" stripe size="small">
@@ -81,3 +81,9 @@ onMounted(async () => {
   }
 })
 </script>
+
+<style scoped>
+.detail-col {
+  margin-bottom: 16px;
+}
+</style>

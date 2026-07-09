@@ -9,14 +9,14 @@
       </el-select>
     </div>
 
-    <el-row :gutter="16" style="margin-bottom: 16px">
-      <el-col :span="12">
+    <el-row :gutter="16" class="chart-row">
+      <el-col :xs="24" :sm="24" :md="12">
         <el-card shadow="hover">
           <template #header><span style="font-weight: 600">记录类型分布</span></template>
           <v-chart :option="pieOption" style="height: 350px" autoresize />
         </el-card>
       </el-col>
-      <el-col :span="12">
+      <el-col :xs="24" :sm="24" :md="12">
         <el-card shadow="hover">
           <template #header><span style="font-weight: 600">每日记录数量</span></template>
           <v-chart :option="lineOption" style="height: 350px" autoresize />
@@ -103,3 +103,13 @@ async function loadAll() {
 
 onMounted(loadAll)
 </script>
+
+<style scoped>
+.chart-row {
+  margin-bottom: 16px;
+}
+
+.chart-row .el-col {
+  margin-bottom: 16px;
+}
+</style>

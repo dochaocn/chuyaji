@@ -1,6 +1,6 @@
 <template>
   <el-container style="height: 100%">
-    <el-aside width="220px" class="sidebar">
+    <el-aside v-if="!isMobile" width="220px" class="sidebar">
       <div class="logo">
         <div class="logo-icon">芽</div>
         <div class="logo-text">
@@ -41,10 +41,66 @@
         </el-menu-item>
       </el-menu>
     </el-aside>
+
+    <el-drawer
+      v-model="drawerVisible"
+      direction="ltr"
+      :size="240"
+      :with-header="false"
+      class="mobile-drawer"
+    >
+      <div class="logo">
+        <div class="logo-icon">芽</div>
+        <div class="logo-text">
+          <span>初芽记</span>
+          <small>管理后台</small>
+        </div>
+      </div>
+      <el-menu
+        :default-active="activeMenu"
+        background-color="transparent"
+        text-color="#6b6058"
+        active-text-color="#c96b5c"
+        router
+        @select="drawerVisible = false"
+      >
+        <el-menu-item index="/dashboard">
+          <el-icon><DataAnalysis /></el-icon>
+          <span>数据总览</span>
+        </el-menu-item>
+        <el-menu-item index="/users">
+          <el-icon><User /></el-icon>
+          <span>用户管理</span>
+        </el-menu-item>
+        <el-menu-item index="/records">
+          <el-icon><Document /></el-icon>
+          <span>宝宝记录</span>
+        </el-menu-item>
+        <el-menu-item index="/mother-records">
+          <el-icon><Notebook /></el-icon>
+          <span>宝妈记录</span>
+        </el-menu-item>
+        <el-menu-item index="/reminders">
+          <el-icon><Bell /></el-icon>
+          <span>提醒管理</span>
+        </el-menu-item>
+        <el-menu-item index="/analytics">
+          <el-icon><TrendCharts /></el-icon>
+          <span>数据分析</span>
+        </el-menu-item>
+      </el-menu>
+    </el-drawer>
+
     <el-container>
       <el-header class="topbar">
-        <span class="topbar-title">{{ currentTitle }}</span>
-        <el-button text @click="handleLogout" class="logout-btn">退出登录</el-button>
+        <div class="topbar-left">
+          <el-icon v-if="isMobile" class="hamburger" @click="drawerVisible = true"><Fold /></el-icon>
+          <span class="topbar-title">{{ currentTitle }}</span>
+        </div>
+        <el-button text @click="handleLogout" class="logout-btn">
+          <el-icon><SwitchButton /></el-icon>
+          <span v-if="!isMobile">退出登录</span>
+        </el-button>
       </el-header>
       <el-main class="main-content">
         <router-view />
@@ -54,13 +110,29 @@
 </template>
 
 <script setup lang="ts">
-import { computed } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../store/auth'
 
 const route = useRoute()
 const router = useRouter()
 const auth = useAuthStore()
+
+const isMobile = ref(false)
+const drawerVisible = ref(false)
+
+function checkMobile() {
+  isMobile.value = window.innerWidth <= 768
+}
+
+onMounted(() => {
+  checkMobile()
+  window.addEventListener('resize', checkMobile)
+})
+
+onUnmounted(() => {
+  window.removeEventListener('resize', checkMobile)
+})
 
 const activeMenu = computed(() => {
   const path = route.path
@@ -84,6 +156,7 @@ function handleLogout() {
   background: #fffdf9;
   border-right: 1px solid #f0e4d8;
   box-shadow: 2px 0 12px rgba(42, 36, 32, 0.04);
+  overflow: hidden;
 }
 
 .logo {
@@ -154,6 +227,23 @@ function handleLogout() {
   height: 56px;
 }
 
+.topbar-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.hamburger {
+  font-size: 22px;
+  color: #3a322d;
+  cursor: pointer;
+  padding: 4px;
+}
+
+.hamburger:hover {
+  color: #c96b5c;
+}
+
 .topbar-title {
   font-size: 16px;
   font-weight: 600;
@@ -162,6 +252,9 @@ function handleLogout() {
 
 .logout-btn {
   color: #9a9088;
+  display: flex;
+  align-items: center;
+  gap: 4px;
   &:hover {
     color: #c96b5c;
   }
@@ -170,5 +263,22 @@ function handleLogout() {
 .main-content {
   background: #f5ece4;
   overflow-y: auto;
+}
+
+.mobile-drawer {
+  :deep(.el-drawer__body) {
+    padding: 0;
+  }
+}
+
+@media (max-width: 768px) {
+  .topbar {
+    padding: 0 12px;
+    height: 50px;
+  }
+
+  .topbar-title {
+    font-size: 15px;
+  }
 }
 </style>
