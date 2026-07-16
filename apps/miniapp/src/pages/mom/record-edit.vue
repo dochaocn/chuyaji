@@ -111,7 +111,8 @@
       <button class="add-photo-btn" @click="pickImages">添加图片</button>
     </view>
 
-    <button class="main-btn" :loading="loading" @click="save">保存记录</button>
+    <button v-if="session.canWrite" class="main-btn" :loading="loading" @click="save">保存记录</button>
+    <view v-else class="readonly-tip"><text>当前为只读成员，无法保存记录。</text></view>
   </view>
 </template>
 
@@ -126,6 +127,9 @@ import { uploadMotherRecordAttachment } from "@/api/upload";
 import { ensureImageUnderMaxBytes } from "@/utils/imageCompress";
 import { resolvePublicMediaUrl } from "@/utils/mediaUrl";
 import { MOTHER_TEMPLATES, labelForMotherType, type RecordTemplate, type TemplateField } from "@/utils/motherRecordTypes";
+import { useSessionStore } from "@/store/session";
+
+const session = useSessionStore();
 
 const motherId = ref(0);
 const recordId = ref(0);

@@ -64,7 +64,10 @@
       </view>
     </view>
 
-    <button class="main-btn" :loading="loading" @click="save">保存档案</button>
+    <button v-if="session.canWrite" class="main-btn" :loading="loading" @click="save">保存档案</button>
+    <view v-else class="readonly-tip">
+      <text>当前为只读成员，无法修改档案。</text>
+    </view>
   </view>
 </template>
 
@@ -196,6 +199,9 @@ async function save() {
     };
     const result = babyId.value ? await apiPatchBaby(babyId.value, body) : await apiCreateBaby(body);
     session.setBaby(result.id);
+    if (!babyId.value) {
+      await session.refreshFamilyContext();
+    }
     uni.showToast({ title: "已保存", icon: "success" });
     setTimeout(() => {
       const pages = getCurrentPages();

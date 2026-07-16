@@ -3,15 +3,15 @@
     <view class="head">
       <text class="head-kicker">生长趋势</text>
       <text class="head-title">体重变化与记录点</text>
-      <text class="head-desc">基于已录入记录生成趋势，不作为医学判断。</text>
+      <text class="head-desc">基于已录入记录叠加 WHO 参考曲线，不作为医学判断。</text>
     </view>
 
     <view class="note-card">
       <text class="note-label">说明</text>
-      <text class="note-body">{{ sampleNote }}</text>
+      <text class="note-body">{{ hintText }}</text>
     </view>
 
-    <GrowthChart :series="series" :ref-label="refLabel" @open-record="openRecord" />
+    <GrowthChart :series="series" :reference="reference" :ref-label="refLabel" @open-record="openRecord" />
 
     <button class="ghost-btn" @click="exportJson">导出生长记录 JSON</button>
   </view>
@@ -21,23 +21,30 @@
 import { computed, ref } from "vue";
 import { onLoad } from "@dcloudio/uni-app";
 import GrowthChart from "@/components/GrowthChart.vue";
-import sample from "@/assets/who-weight-sample.json";
-import { apiGrowthSeries } from "@/api/chuyaji";
+import { apiGrowthSeries, type GrowthMetricKey, type GrowthRefPoint, type GrowthSeriesPoint } from "@/api/chuyaji";
 import { copyToClipboard, exportAllRecordsJson } from "@/utils/export";
 import { useSessionStore } from "@/store/session";
 
 const session = useSessionStore();
 const babyId = ref(0);
-type GrowthMetricKey = "weight" | "height" | "head";
-type GrowthPoint = { record_id: number; age_days: number; value: number; occurred_at: string };
-const series = ref<Record<GrowthMetricKey, GrowthPoint[]>>({
+const hint = ref("");
+const series = ref<Record<GrowthMetricKey, GrowthSeriesPoint[]>>({
+  weight: [],
+  height: [],
+  head: [],
+});
+const reference = ref<Record<GrowthMetricKey, GrowthRefPoint[]>>({
   weight: [],
   height: [],
   head: [],
 });
 
-const sampleNote = computed(() => (sample as { note?: string }).note || "从宝宝记录中提取体重、身长和头围数据。");
-const refLabel = computed(() => "曲线基于已录入的生长记录生成，暂不包含 WHO 参考曲线。");
+const hintText = computed(
+  () =>
+    hint.value ||
+    "参考曲线为 WHO 2006 近似百分位带（P3/P50/P97），仅供对照，不替代医生评估。"
+);
+const refLabel = "当前叠加 WHO 2006 参考曲线（P3 / P50 / P97）。";
 
 onLoad(async (query: Record<string, string | undefined>) => {
   session.load();
@@ -50,6 +57,8 @@ async function load() {
   try {
     const data = await apiGrowthSeries(babyId.value);
     series.value = data.series;
+    reference.value = data.reference || { weight: [], height: [], head: [] };
+    hint.value = data.hint || "";
   } catch (error) {
     console.error(error);
     uni.showToast({ title: "加载失败", icon: "none" });

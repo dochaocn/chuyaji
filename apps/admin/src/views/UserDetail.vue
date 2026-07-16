@@ -13,6 +13,20 @@
       </el-descriptions>
     </el-card>
 
+    <el-card shadow="hover" style="margin-bottom: 16px" v-if="families.length">
+      <template #header><span style="font-weight: 600">家庭成员</span></template>
+      <div v-for="fam in families" :key="fam.family_id" style="margin-bottom: 12px">
+        <div style="margin-bottom: 8px; color: #6b5a4e">
+          #{{ fam.family_id }} {{ fam.family_name }}（本用户角色：{{ fam.my_role }}）
+        </div>
+        <el-table :data="fam.members || []" stripe size="small">
+          <el-table-column prop="user_id" label="用户ID" width="90" />
+          <el-table-column prop="nickname" label="昵称" />
+          <el-table-column prop="role" label="角色" width="100" />
+        </el-table>
+      </div>
+    </el-card>
+
     <el-row :gutter="16">
       <el-col :xs="24" :sm="24" :md="12" class="detail-col">
         <el-card shadow="hover">
@@ -58,6 +72,7 @@ const loading = ref(false)
 const user = ref<any>({})
 const babies = ref<any[]>([])
 const mothers = ref<any[]>([])
+const families = ref<any[]>([])
 
 function formatTime(t: string) {
   return t ? new Date(t).toLocaleString('zh-CN') : '-'
@@ -74,6 +89,7 @@ onMounted(async () => {
     user.value = res.data.user || {}
     babies.value = res.data.babies || []
     mothers.value = res.data.mothers || []
+    families.value = res.data.families || []
   } catch {
     ElMessage.error('加载失败')
   } finally {

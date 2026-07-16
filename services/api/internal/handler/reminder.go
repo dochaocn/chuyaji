@@ -76,7 +76,33 @@ func (h *Handler) ListReminders(c *gin.Context) {
 		return
 	}
 
-	query := h.DB.Where("user_id = ? AND status = ?", uid, status)
+	babyIDs, err := h.accessibleBabyIDs(uid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "query"})
+		return
+	}
+	motherIDs, err := h.accessibleMotherIDs(uid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "query"})
+		return
+	}
+	if len(babyIDs) == 0 && len(motherIDs) == 0 {
+		c.JSON(http.StatusOK, gin.H{"items": []reminderOut{}})
+		return
+	}
+
+	query := h.DB.Where("status = ?", status)
+	switch {
+	case len(babyIDs) > 0 && len(motherIDs) > 0:
+		query = query.Where(
+			h.DB.Where("owner_type = ? AND owner_id IN ?", "baby", babyIDs).
+				Or("owner_type = ? AND owner_id IN ?", "mother", motherIDs),
+		)
+	case len(babyIDs) > 0:
+		query = query.Where("owner_type = ? AND owner_id IN ?", "baby", babyIDs)
+	default:
+		query = query.Where("owner_type = ? AND owner_id IN ?", "mother", motherIDs)
+	}
 	if ownerType := c.Query("owner_type"); ownerType != "" {
 		if ownerType != "baby" && ownerType != "mother" {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "bad owner_type"})
@@ -151,12 +177,17 @@ func (h *Handler) PatchReminder(c *gin.Context) {
 		return
 	}
 	var r model.Reminder
-	if err := h.DB.Where("id = ? AND user_id = ?", id, uid).First(&r).Error; err != nil {
+	if err := h.DB.Where("id = ?", id).First(&r).Error; err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 			return
 		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "query"})
+		return
+	}
+	canWrite, err := h.canWriteReminder(uid, &r)
+	if err != nil || !canWrite {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
 		return
 	}
 	if req.Status != nil {
@@ -201,13 +232,22 @@ func (h *Handler) DeleteReminder(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "bad id"})
 		return
 	}
-	res := h.DB.Where("id = ? AND user_id = ?", id, uid).Delete(&model.Reminder{})
-	if res.Error != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "delete"})
+	var r model.Reminder
+	if err := h.DB.Where("id = ?", id).First(&r).Error; err != nil {
+		if errors.Is(err, gorm.ErrRecordNotFound) {
+			c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "query"})
 		return
 	}
-	if res.RowsAffected == 0 {
-		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+	canWrite, err := h.canWriteReminder(uid, &r)
+	if err != nil || !canWrite {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+		return
+	}
+	if err := h.DB.Delete(&r).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "delete"})
 		return
 	}
 	c.Status(http.StatusNoContent)

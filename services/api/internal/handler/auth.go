@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/dochaocn/chuyaji/services/api/internal/auth"
@@ -88,6 +89,40 @@ func (h *Handler) Me(c *gin.Context) {
 	var u model.User
 	if err := h.DB.First(&u, uid).Error; err != nil {
 		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+	c.JSON(http.StatusOK, userOut{
+		ID:        u.ID,
+		Nickname:  u.Nickname,
+		AvatarURL: u.AvatarURL,
+	})
+}
+
+type patchMeReq struct {
+	Nickname *string `json:"nickname" binding:"omitempty,max=64"`
+}
+
+func (h *Handler) PatchMe(c *gin.Context) {
+	uid, ok := middleware.UserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	var req patchMeReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
+		return
+	}
+	var u model.User
+	if err := h.DB.First(&u, uid).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "user not found"})
+		return
+	}
+	if req.Nickname != nil {
+		u.Nickname = strings.TrimSpace(*req.Nickname)
+	}
+	if err := h.DB.Save(&u).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "save"})
 		return
 	}
 	c.JSON(http.StatusOK, userOut{

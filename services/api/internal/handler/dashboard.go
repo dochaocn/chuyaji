@@ -22,8 +22,18 @@ func (h *Handler) BabyDashboard(c *gin.Context) {
 		return
 	}
 
+	familyIDs, err := h.userFamilyIDs(uid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "query"})
+		return
+	}
+	if len(familyIDs) == 0 {
+		c.JSON(http.StatusOK, gin.H{"profile": nil, "latest_records": []recordOut{}})
+		return
+	}
+
 	var baby model.Baby
-	query := h.DB.Where("user_id = ?", uid).Order("id ASC")
+	query := h.DB.Where("family_id IN ?", familyIDs).Order("id ASC")
 	if babyID > 0 {
 		query = query.Where("id = ?", babyID)
 	}
@@ -80,8 +90,18 @@ func (h *Handler) MotherDashboard(c *gin.Context) {
 		return
 	}
 
+	familyIDs, err := h.userFamilyIDs(uid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "query"})
+		return
+	}
+	if len(familyIDs) == 0 {
+		c.JSON(http.StatusOK, gin.H{"profile": nil, "latest_records": []motherRecordOut{}})
+		return
+	}
+
 	var mother model.Mother
-	query := h.DB.Where("user_id = ?", uid).Order("id ASC")
+	query := h.DB.Where("family_id IN ?", familyIDs).Order("id ASC")
 	if motherID > 0 {
 		query = query.Where("id = ?", motherID)
 	}

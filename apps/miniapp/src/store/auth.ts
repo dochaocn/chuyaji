@@ -27,6 +27,13 @@ export const useAuthStore = defineStore("auth", {
         uni.setStorageSync("chuyaji_token", t);
       } catch {}
     },
+    setUserId(id: number) {
+      this.userId = id;
+      try {
+        if (id) uni.setStorageSync("chuyaji_user_id", id);
+        else uni.removeStorageSync("chuyaji_user_id");
+      } catch {}
+    },
     loadToken() {
       try {
         const t = uni.getStorageSync("chuyaji_token") as string;
@@ -35,7 +42,19 @@ export const useAuthStore = defineStore("auth", {
           this.sessionBooting = false;
           this.sessionBootError = "";
         }
+        const uid = Number(uni.getStorageSync("chuyaji_user_id") || 0);
+        if (uid) this.userId = uid;
       } catch {}
+    },
+    async ensureUserId() {
+      this.loadToken();
+      if (!this.token || this.userId) return;
+      try {
+        const me = await request<{ id: number }>({ path: "/api/v1/me" });
+        if (me?.id) this.setUserId(me.id);
+      } catch (e) {
+        console.error(e);
+      }
     },
     async loginWithWeChatCode(code: string) {
       const data = await request<LoginResp>({
@@ -45,7 +64,7 @@ export const useAuthStore = defineStore("auth", {
         token: "",
       });
       this.setToken(data.token);
-      this.userId = data.user.id;
+      this.setUserId(data.user.id);
       useSessionStore().clearFamilyCache();
       return data;
     },
@@ -56,6 +75,7 @@ export const useAuthStore = defineStore("auth", {
       this.loadToken();
       if (this.token) {
         this.sessionBootError = "";
+        await this.ensureUserId();
         return;
       }
       if (ensureWeChatSessionPromise) {
@@ -77,7 +97,7 @@ export const useAuthStore = defineStore("auth", {
           console.error(e);
           this.sessionBootError = "运行环境准备失败，请检查网络后重试";
           this.token = "";
-          this.userId = 0;
+          this.setUserId(0);
           try {
             uni.removeStorageSync("chuyaji_token");
           } catch {}
@@ -91,7 +111,7 @@ export const useAuthStore = defineStore("auth", {
     },
     logout() {
       this.token = "";
-      this.userId = 0;
+      this.setUserId(0);
       this.sessionBootError = "";
       this.sessionBooting = true;
       clearWeChatLoginCodeCache();

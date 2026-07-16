@@ -3,6 +3,7 @@ import { request } from "./http";
 export interface Baby {
   id: number;
   user_id: number;
+  family_id?: number;
   nickname: string;
   gender?: string;
   lmp_date?: string;
@@ -18,6 +19,7 @@ export interface Baby {
 export interface Mother {
   id: number;
   user_id: number;
+  family_id?: number;
   name: string;
   birthday?: string;
   height_cm?: number;
@@ -28,6 +30,46 @@ export interface Mother {
   status?: "pregnant" | "postpartum" | "parenting";
   delivery_date?: string;
   note?: string;
+}
+
+export type FamilyRole = "owner" | "write" | "read";
+
+export interface FamilyMember {
+  user_id: number;
+  nickname: string;
+  avatar_url?: string;
+  role: FamilyRole;
+  created_at: string;
+}
+
+export interface Family {
+  id: number;
+  name: string;
+  created_by: number;
+  my_user_id?: number;
+  my_role: FamilyRole;
+  members: FamilyMember[];
+}
+
+export type FamilyInfo = Family;
+
+export interface FamilyInviteConflict {
+  has_existing_family: boolean;
+  family_name?: string;
+  baby_count: number;
+  mother_count: number;
+  has_other_members: boolean;
+  my_role?: string;
+}
+
+export interface FamilyInvitePreview {
+  family_name: string;
+  inviter_nickname: string;
+  role: "write" | "read";
+  expires_at: string;
+  member_count: number;
+  already_member: boolean;
+  conflict?: FamilyInviteConflict;
 }
 
 export interface RecordItem {
@@ -109,17 +151,37 @@ export interface GrowthSeriesPoint {
   occurred_at: string;
   value: number;
   unit: string;
+  percentile?: number;
+}
+
+export interface GrowthRefPoint {
+  age_days: number;
+  p3: number;
+  p50: number;
+  p97: number;
 }
 
 export interface GrowthSeriesResponse {
   baby_id: number;
   birth_date?: string;
+  gender?: string;
+  standard?: "who";
+  hint?: string;
   series: Record<GrowthMetricKey, GrowthSeriesPoint[]>;
+  reference?: Record<GrowthMetricKey, GrowthRefPoint[]>;
 }
 
 
 export async function apiMe() {
   return request<{ id: number; nickname: string; avatar_url: string }>({ path: "/api/v1/me" });
+}
+
+export async function apiPatchMe(body: { nickname: string }) {
+  return request<{ id: number; nickname: string; avatar_url: string }>({
+    path: "/api/v1/me",
+    method: "PATCH",
+    data: body,
+  });
 }
 
 export async function apiListBabies() {
@@ -290,5 +352,66 @@ export async function apiDeleteReminder(id: number) {
 
 export async function apiGrowthSeries(babyId: number) {
   return request<GrowthSeriesResponse>({ path: `/api/v1/babies/${babyId}/growth-series` });
+}
+
+export async function apiGetCurrentFamily() {
+  return request<FamilyInfo>({ path: "/api/v1/families/current" });
+}
+
+export async function apiCreateCurrentFamily() {
+  return request<FamilyInfo>({ path: "/api/v1/families/current", method: "POST" });
+}
+
+export async function apiPatchCurrentFamily(body: { name: string }) {
+  return request<FamilyInfo>({ path: "/api/v1/families/current", method: "PATCH", data: body });
+}
+
+export async function apiLeaveCurrentFamily() {
+  return request<unknown>({ path: "/api/v1/families/current/leave", method: "POST" });
+}
+
+export async function apiCreateFamilyInvite(role: "write" | "read") {
+  return request<{ token: string; path: string; role: string; expires_at: string }>({
+    path: "/api/v1/families/current/invites",
+    method: "POST",
+    data: { role },
+  });
+}
+
+export async function apiPreviewFamilyInvite(token: string) {
+  return request<FamilyInvitePreview>({
+    path: `/api/v1/invites/${encodeURIComponent(token)}/preview`,
+  });
+}
+
+export async function apiAcceptFamilyInvite(token: string) {
+  return request<FamilyInfo>({ path: `/api/v1/invites/${encodeURIComponent(token)}/accept`, method: "POST" });
+}
+
+export async function apiPatchFamilyMember(userId: number, role: FamilyRole) {
+  return request<FamilyInfo>({
+    path: `/api/v1/families/current/members/${userId}`,
+    method: "PATCH",
+    data: { role },
+  });
+}
+
+export async function apiTransferFamilyOwner(userId: number) {
+  return request<FamilyInfo>({
+    path: `/api/v1/families/current/members/${userId}/transfer-owner`,
+    method: "POST",
+  });
+}
+
+export async function apiPatchFamilyMemberNickname(userId: number, nickname: string) {
+  return request<FamilyInfo>({
+    path: `/api/v1/families/current/members/${userId}/nickname`,
+    method: "PATCH",
+    data: { nickname },
+  });
+}
+
+export async function apiRemoveFamilyMember(userId: number) {
+  return request<unknown>({ path: `/api/v1/families/current/members/${userId}`, method: "DELETE" });
 }
 

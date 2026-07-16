@@ -32,14 +32,26 @@
         <text class="summary-value">{{ latestLabel }}</text>
       </view>
       <view class="summary-card">
-        <text class="summary-label">较上次</text>
-        <text class="summary-value">{{ deltaLabel }}</text>
+        <text class="summary-label">百分位</text>
+        <text class="summary-value">{{ latestPercentileLabel }}</text>
       </view>
     </view>
 
-    <view v-if="activePoints.length >= 2" class="chart">
+    <view v-if="activePoints.length >= 1 || refSegments.length" class="chart">
       <view class="axis-line axis-line--x" />
       <view class="axis-line axis-line--y" />
+      <view
+        v-for="(segment, idx) in refSegments"
+        :key="`ref-${segment.band}-${idx}`"
+        class="ref-segment"
+        :class="`ref-segment--${segment.band}`"
+        :style="{
+          left: `${segment.left}%`,
+          bottom: `${segment.bottom}%`,
+          width: `${segment.width}%`,
+          transform: `rotate(${segment.angle}deg)`,
+        }"
+      />
       <view
         v-for="(segment, idx) in segments"
         :key="`seg-${idx}`"
@@ -63,18 +75,20 @@
     </view>
 
     <view v-else class="empty">
-      <text class="empty-title">{{ activePoints.length === 1 ? "已有 1 个记录点" : "暂无生长记录" }}</text>
-      <text class="empty-desc">{{ activePoints.length === 1 ? "再记录一次可查看趋势。" : "新增生长记录后会在这里生成曲线。" }}</text>
+      <text class="empty-title">暂无生长记录</text>
+      <text class="empty-desc">新增生长记录后会在这里生成曲线。</text>
     </view>
 
     <view v-if="activePoints.length" class="table">
       <view class="row head">
         <text class="c">日龄</text>
         <text class="c">{{ activeMetric.label }} ({{ activeMetric.unit }})</text>
+        <text class="c">百分位</text>
       </view>
       <view v-for="(p, idx) in activePoints" :key="`table-${idx}`" class="row">
         <text class="c">{{ p.age_days }}</text>
         <text class="c">{{ formatValue(p.value) }}</text>
+        <text class="c">{{ formatPercentile(p.percentile) }}</text>
       </view>
     </view>
 
@@ -92,10 +106,19 @@ export type GrowthPoint = {
   age_days: number;
   value: number;
   occurred_at: string;
+  percentile?: number;
+};
+
+export type RefPoint = {
+  age_days: number;
+  p3: number;
+  p50: number;
+  p97: number;
 };
 
 const props = defineProps<{
   series: Record<GrowthMetricKey, GrowthPoint[]>;
+  reference?: Record<GrowthMetricKey, RefPoint[]>;
   refLabel?: string;
 }>();
 
@@ -141,39 +164,64 @@ const activePoints = computed(() => {
   return sorted.filter((point) => point.age_days >= maxAge - range.days!);
 });
 
+const activeRef = computed(() => {
+  const refs = [...(props.reference?.[selectedMetric.value] ?? [])].sort((a, b) => a.age_days - b.age_days);
+  if (!activePoints.value.length) return refs;
+  const minAge = activePoints.value[0].age_days;
+  const maxAge = activePoints.value[activePoints.value.length - 1].age_days;
+  const pad = Math.max(30, Math.floor((maxAge - minAge) * 0.1));
+  return refs.filter((p) => p.age_days >= minAge - pad && p.age_days <= maxAge + pad);
+});
+
 const latestLabel = computed(() => {
   const latest = activePoints.value[activePoints.value.length - 1];
   return latest ? formatValue(latest.value) : "暂无";
 });
 
-const deltaLabel = computed(() => {
-  const points = activePoints.value;
-  if (points.length < 2) return "暂无";
-  const delta = points[points.length - 1].value - points[points.length - 2].value;
-  const sign = delta > 0 ? "+" : "";
-  return `${sign}${formatValue(delta)}`;
+const latestPercentileLabel = computed(() => {
+  const latest = activePoints.value[activePoints.value.length - 1];
+  return formatPercentile(latest?.percentile);
 });
 
-const normalizedPoints = computed(() => {
+const chartBounds = computed(() => {
   const points = activePoints.value;
-  if (!points.length) return [];
-  const minAge = Math.min(...points.map((point) => point.age_days));
-  const maxAge = Math.max(...points.map((point) => point.age_days));
-  const minValue = Math.min(...points.map((point) => point.value));
-  const maxValue = Math.max(...points.map((point) => point.value));
+  const refs = activeRef.value;
+  const ages = [...points.map((p) => p.age_days), ...refs.map((p) => p.age_days)];
+  const values = [
+    ...points.map((p) => p.value),
+    ...refs.flatMap((p) => [p.p3, p.p50, p.p97]),
+  ];
+  if (!ages.length || !values.length) {
+    return { minAge: 0, maxAge: 1, minValue: 0, maxValue: 1 };
+  }
+  return {
+    minAge: Math.min(...ages),
+    maxAge: Math.max(...ages),
+    minValue: Math.min(...values),
+    maxValue: Math.max(...values),
+  };
+});
+
+function project(age: number, value: number) {
+  const { minAge, maxAge, minValue, maxValue } = chartBounds.value;
   const ageRange = Math.max(maxAge - minAge, 1);
   const valueRange = Math.max(maxValue - minValue, 1);
-  return points.map((point) => ({
-    ...point,
-    x: 8 + ((point.age_days - minAge) / ageRange) * 84,
-    y: 10 + ((point.value - minValue) / valueRange) * 78,
-  }));
+  return {
+    x: 8 + ((age - minAge) / ageRange) * 84,
+    y: 10 + ((value - minValue) / valueRange) * 78,
+  };
+}
+
+const normalizedPoints = computed(() => {
+  return activePoints.value.map((point) => {
+    const pos = project(point.age_days, point.value);
+    return { ...point, x: pos.x, y: pos.y };
+  });
 });
 
-const segments = computed(() => {
-  const points = normalizedPoints.value;
-  return points.slice(1).map((point, idx) => {
-    const prev = points[idx];
+function buildSegments(coords: { x: number; y: number }[]) {
+  return coords.slice(1).map((point, idx) => {
+    const prev = coords[idx];
     const dx = point.x - prev.x;
     const dy = point.y - prev.y;
     return {
@@ -183,10 +231,31 @@ const segments = computed(() => {
       angle: -Math.atan2(dy, dx) * (180 / Math.PI),
     };
   });
+}
+
+const segments = computed(() => buildSegments(normalizedPoints.value));
+
+const refSegments = computed(() => {
+  const refs = activeRef.value;
+  if (refs.length < 2) return [];
+  const bands: Array<"p3" | "p50" | "p97"> = ["p3", "p50", "p97"];
+  const out: Array<{ band: string; left: number; bottom: number; width: number; angle: number }> = [];
+  for (const band of bands) {
+    const coords = refs.map((r) => project(r.age_days, r[band]));
+    for (const seg of buildSegments(coords)) {
+      out.push({ band, ...seg });
+    }
+  }
+  return out;
 });
 
 function formatValue(value: number) {
   return activeMetric.value.key === "weight" ? value.toFixed(2) : value.toFixed(1);
+}
+
+function formatPercentile(value?: number) {
+  if (value === undefined || value === null || Number.isNaN(value)) return "—";
+  return `P${Math.round(value)}`;
 }
 
 function openPoint(id: number) {
@@ -325,6 +394,28 @@ function openPoint(id: number) {
   border-radius: $cj-radius-pill;
   background: linear-gradient(90deg, $cj-mint 0%, $cj-primary 100%);
   transform-origin: left center;
+  z-index: 2;
+}
+
+.ref-segment {
+  position: absolute;
+  height: 2rpx;
+  border-radius: $cj-radius-pill;
+  transform-origin: left center;
+  opacity: 0.55;
+  z-index: 1;
+}
+
+.ref-segment--p3 {
+  background: #d4a574;
+}
+
+.ref-segment--p50 {
+  background: #7dab98;
+}
+
+.ref-segment--p97 {
+  background: #c96b5c;
 }
 
 .point {
@@ -337,6 +428,7 @@ function openPoint(id: number) {
   background: $cj-primary;
   border: 3rpx solid #fffefb;
   box-shadow: 0 3rpx 10rpx rgba(120, 72, 60, 0.14);
+  z-index: 3;
 }
 
 .point-label {

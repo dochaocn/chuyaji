@@ -13,6 +13,7 @@ import (
 type babyOut struct {
 	ID            uint64     `json:"id"`
 	UserID        uint64     `json:"user_id"`
+	FamilyID      uint64     `json:"family_id"`
 	Nickname      string     `json:"nickname"`
 	Gender        string     `json:"gender,omitempty"`
 	LMPDate       *time.Time `json:"lmp_date,omitempty"`
@@ -29,6 +30,7 @@ func babyToOut(b *model.Baby) babyOut {
 	return babyOut{
 		ID:            b.ID,
 		UserID:        b.UserID,
+		FamilyID:      b.FamilyID,
 		Nickname:      b.Nickname,
 		Gender:        b.Gender,
 		LMPDate:       b.LMPDate,
@@ -48,8 +50,17 @@ func (h *Handler) ListBabies(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
+	familyIDs, err := h.userFamilyIDs(uid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "query"})
+		return
+	}
 	var babies []model.Baby
-	if err := h.DB.Where("user_id = ?", uid).Order("id ASC").Find(&babies).Error; err != nil {
+	if len(familyIDs) == 0 {
+		c.JSON(http.StatusOK, gin.H{"items": []babyOut{}})
+		return
+	}
+	if err := h.DB.Where("family_id IN ?", familyIDs).Order("id ASC").Find(&babies).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "query"})
 		return
 	}
@@ -84,8 +95,19 @@ func (h *Handler) CreateBaby(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
 		return
 	}
+	familyID, err := h.getOrCreateUserFamilyID(uid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "family"})
+		return
+	}
+	role, okRole, err := h.resolveFamilyRole(uid, familyID)
+	if err != nil || !okRole || !roleCanWrite(role) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+		return
+	}
 	b := model.Baby{
 		UserID:        uid,
+		FamilyID:      familyID,
 		Nickname:      req.Nickname,
 		Gender:        req.Gender,
 		LMPDate:       req.LMPDate,
@@ -152,7 +174,7 @@ func (h *Handler) PatchBaby(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "bad id"})
 		return
 	}
-	ok2, err := h.canAccessBaby(uid, id)
+	ok2, err := h.requireBabyWrite(uid, id)
 	if err != nil || !ok2 {
 		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
 		return
@@ -215,7 +237,7 @@ func (h *Handler) DeleteBaby(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "bad id"})
 		return
 	}
-	ok2, err := h.canAccessBaby(uid, id)
+	ok2, err := h.requireBabyOwner(uid, id)
 	if err != nil || !ok2 {
 		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
 		return

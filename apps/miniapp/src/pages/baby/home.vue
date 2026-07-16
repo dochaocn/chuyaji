@@ -21,44 +21,28 @@
 
     <template v-else-if="auth.token">
 
-      
-      <view class="hero">
-        <view class="hero-top">
-          <text class="hero-kicker">宝宝工作台</text>
-          <text v-if="dashboard?.profile" :class="['stage-badge', babyStageBadgeClass]">{{ babyStageLabel }}</text>
-          <text v-if="dashboard?.profile" class="hero-edit-link" @click="goProfileEdit">编辑档案</text>
-        </view>
-        <view class="hero-headline">
-          <text v-if="dashboard?.profile" class="hero-name">{{ dashboard.profile.nickname || "未命名宝宝" }}</text>
-          <text
-            class="hero-title"
-            :class="{ 'hero-title--solo': !dashboard?.profile }"
-          >{{ stageTitle }}</text>
-        </view>
-        <text class="hero-desc">{{ stageDesc }}</text>
-      </view>
+      <WorkbenchHeader
+        workspace-label="宝宝工作台"
+        :badge-label="dashboard?.profile ? babyStageLabel : undefined"
+        :badge-class="babyStageBadgeClass"
+        :name="dashboard?.profile?.nickname"
+        :stage-title="stageTitle"
+        :stage-desc="stageDesc"
+        :profile-label="dashboard?.profile ? (session.canWrite ? '编辑档案' : '查看档案') : '创建档案'"
+        profile-icon="👶"
+        :show-next-step="nextStep.type !== 'none'"
+        :next-step-title="nextStepTitle"
+        :next-step-btn-label="nextStepBtnLabel"
+        @profile="goProfileEdit"
+        @family="goFamily"
+        @next="onNextStepAction"
+      />
 
-      
-      <view v-if="nextStep.type !== 'none'" class="next-card">
-        <text class="next-label">现在可以做</text>
-        <text class="next-title">{{ nextStepTitle }}</text>
-        <button class="next-btn" @click="onNextStepAction">{{ nextStepBtnLabel }}</button>
-      </view>
-
-      <view v-if="dashboard?.profile" class="shortcut-section">
-        <text class="section-label">快速记录</text>
-        <view class="shortcut-grid">
-          <view
-            v-for="item in shortcuts"
-            :key="item.value"
-            class="shortcut-tile"
-            @click="onShortcut(item)"
-          >
-            <text class="shortcut-title">{{ item.entryLabel }}</text>
-            <text class="shortcut-mode">{{ item.mode === 'quick' ? '一键' : '标准' }}</text>
-          </view>
-        </view>
-      </view>
+      <QuickRecordStrip
+        v-if="dashboard?.profile && shortcuts.length"
+        :shortcuts="shortcuts"
+        @shortcut="onShortcut"
+      />
 
       
       <view v-if="isPostnatalStage && hasTrendData" class="trend-section trend-panel">
@@ -199,6 +183,8 @@ import {
 import { calcGestation, calcAgeDays, calcAgeMonths, isPostnatal } from "@/utils/gestation";
 import { getBabyNextStep } from "@/utils/homeRules";
 import QuickRecordSheet from "@/components/QuickRecordSheet.vue";
+import WorkbenchHeader from "@/components/WorkbenchHeader.vue";
+import QuickRecordStrip from "@/components/QuickRecordStrip.vue";
 
 const auth = useAuthStore();
 const session = useSessionStore();
@@ -357,6 +343,7 @@ onShow(async () => {
     await auth.ensureWeChatSession();
   }
   if (auth.token) {
+    await session.refreshFamilyContext();
     loadDashboard();
   }
 });
@@ -459,6 +446,10 @@ function goPrivacy() {
   uni.navigateTo({ url: "/pages/privacy/privacy" });
 }
 
+function goFamily() {
+  uni.navigateTo({ url: "/pages/family/index" });
+}
+
 function goProfileEdit() {
   const id = dashboard.value?.profile?.id || session.babyId || 0;
   const suffix = id ? `?id=${id}` : "";
@@ -547,134 +538,6 @@ function goReminders() {
   box-shadow: $cj-shadow-soft;
 }
 
-.hero {
-  margin-bottom: $cj-gap-xl;
-  padding-top: 8rpx;
-}
-
-.hero-top {
-  display: flex;
-  align-items: center;
-  gap: 14rpx;
-  flex-wrap: wrap;
-  margin-bottom: 10rpx;
-}
-
-.hero-kicker {
-  font-size: 21rpx;
-  letter-spacing: 5rpx;
-  color: $cj-primary;
-  font-weight: 500;
-}
-
-.stage-badge {
-  padding: 5rpx 16rpx;
-  border-radius: $cj-radius-pill;
-  font-size: 19rpx;
-  font-weight: 500;
-  letter-spacing: 0.5rpx;
-}
-
-.badge--pre {
-  background: $cj-tag-prenatal-bg;
-  color: $cj-tag-prenatal-text;
-}
-
-.badge--post {
-  background: $cj-tag-postnatal-bg;
-  color: $cj-tag-postnatal-text;
-}
-
-.hero-edit-link {
-  margin-left: auto;
-  font-size: 23rpx;
-  color: $cj-primary;
-  padding: 8rpx 0;
-  font-weight: 500;
-}
-
-.hero-headline {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 24rpx;
-  min-width: 0;
-}
-
-.hero-name {
-  flex-shrink: 0;
-  max-width: 48%;
-  font-size: 34rpx;
-  font-weight: $cj-fw-title;
-  color: $cj-primary-dark;
-  letter-spacing: 1rpx;
-}
-
-.hero-title {
-  flex: 1;
-  min-width: 0;
-  font-size: 40rpx;
-  line-height: 1.3;
-  color: $cj-ink;
-  font-weight: $cj-fw-display;
-  text-align: right;
-  letter-spacing: -0.5rpx;
-}
-
-.hero-title--solo {
-  flex: none;
-  width: 100%;
-  text-align: left;
-}
-
-.hero-desc {
-  display: block;
-  margin-top: 12rpx;
-  font-size: 25rpx;
-  color: $cj-text-secondary;
-  line-height: 1.65;
-}
-
-.next-card {
-  background: linear-gradient(135deg, $cj-warn-bg 0%, #fff9f2 100%);
-  border: 1rpx solid $cj-border-faint;
-  border-radius: $cj-radius-xl;
-  box-shadow: $cj-shadow-card;
-  padding: 28rpx $cj-gap-md;
-  margin-bottom: $cj-gap-md;
-}
-
-.next-label {
-  display: block;
-  font-size: 21rpx;
-  color: $cj-text-muted;
-  margin-bottom: 8rpx;
-  letter-spacing: 1rpx;
-}
-
-.next-title {
-  display: block;
-  font-size: 30rpx;
-  font-weight: $cj-fw-display;
-  color: $cj-ink;
-  margin-bottom: $cj-gap-md;
-  letter-spacing: 0.3rpx;
-}
-
-.next-btn {
-  border-radius: $cj-radius-pill !important;
-  background: linear-gradient(160deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%) !important;
-  color: #fffefb !important;
-  border: none !important;
-  font-size: 26rpx;
-  padding: 0 36rpx !important;
-  height: 72rpx !important;
-  line-height: 72rpx !important;
-  box-shadow: $cj-shadow-soft;
-  letter-spacing: 1rpx;
-}
-
-.shortcut-section,
 .trend-section,
 .section {
   margin-bottom: $cj-gap-md;
@@ -745,53 +608,6 @@ function goReminders() {
 
 .panel-head--inline .panel-head-rule {
   margin-bottom: 0;
-}
-
-.section-label {
-  display: block;
-  font-size: 21rpx;
-  color: $cj-text-muted;
-  letter-spacing: 3rpx;
-  margin-bottom: $cj-gap-sm;
-  font-weight: 500;
-}
-
-.shortcut-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: $cj-gap-sm;
-}
-
-.shortcut-tile {
-  flex: 1;
-  min-width: 140rpx;
-  padding: 28rpx;
-  background: $cj-surface;
-  border: 1rpx solid $cj-border-faint;
-  border-radius: $cj-radius-xl;
-  box-shadow: $cj-shadow-card;
-  transition: opacity 0.15s;
-
-  &:active {
-    opacity: 0.8;
-    transform: scale(0.98);
-  }
-}
-
-.shortcut-title {
-  display: block;
-  font-size: 28rpx;
-  font-weight: $cj-fw-display;
-  color: $cj-ink;
-  letter-spacing: 0.3rpx;
-}
-
-.shortcut-mode {
-  display: block;
-  margin-top: 6rpx;
-  font-size: 19rpx;
-  color: $cj-text-muted;
-  letter-spacing: 0.5rpx;
 }
 
 .summary-grid {

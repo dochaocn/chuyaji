@@ -192,7 +192,7 @@ func (h *Handler) CreateRecord(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "bad baby id"})
 		return
 	}
-	ok2, err := h.canAccessBaby(uid, babyID)
+	ok2, err := h.requireBabyWrite(uid, babyID)
 	if err != nil || !ok2 {
 		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
 		return
@@ -277,7 +277,7 @@ func (h *Handler) PatchRecord(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "bad id"})
 		return
 	}
-	ok2, err := h.canAccessRecord(uid, id)
+	ok2, err := h.requireRecordWrite(uid, id)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
@@ -344,7 +344,7 @@ func (h *Handler) DeleteRecord(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "bad id"})
 		return
 	}
-	ok2, err := h.canAccessRecord(uid, id)
+	ok2, err := h.requireRecordWrite(uid, id)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return

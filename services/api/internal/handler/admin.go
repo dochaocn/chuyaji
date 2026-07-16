@@ -2,7 +2,6 @@ package handler
 
 import (
 	"crypto/subtle"
-	"encoding/json"
 	"net/http"
 	"strconv"
 	"time"
@@ -141,23 +140,54 @@ func (h *Handler) AdminGetUser(c *gin.Context) {
 	}
 
 	var babies []model.Baby
-	h.DB.Where("user_id = ?", id).Order("id ASC").Find(&babies)
+	familyIDs := []uint64{}
+	var memberships []model.FamilyMember
+	h.DB.Where("user_id = ?", id).Find(&memberships)
+	membersOut := make([]gin.H, 0)
+	for _, m := range memberships {
+		familyIDs = append(familyIDs, m.FamilyID)
+		var fam model.Family
+		_ = h.DB.First(&fam, m.FamilyID)
+		var allMembers []model.FamilyMember
+		h.DB.Where("family_id = ?", m.FamilyID).Find(&allMembers)
+		memberItems := make([]gin.H, 0, len(allMembers))
+		for _, am := range allMembers {
+			var mu model.User
+			_ = h.DB.First(&mu, am.UserID)
+			memberItems = append(memberItems, gin.H{
+				"user_id": am.UserID, "nickname": mu.Nickname, "role": am.Role,
+			})
+		}
+		membersOut = append(membersOut, gin.H{
+			"family_id": fam.ID, "family_name": fam.Name, "my_role": m.Role, "members": memberItems,
+		})
+	}
+	if len(familyIDs) > 0 {
+		h.DB.Where("family_id IN ?", familyIDs).Order("id ASC").Find(&babies)
+	} else {
+		h.DB.Where("user_id = ?", id).Order("id ASC").Find(&babies)
+	}
 	babyOuts := make([]babyOut, 0, len(babies))
 	for i := range babies {
 		babyOuts = append(babyOuts, babyToOut(&babies[i]))
 	}
 
 	var mothers []model.Mother
-	h.DB.Where("user_id = ?", id).Order("id ASC").Find(&mothers)
+	if len(familyIDs) > 0 {
+		h.DB.Where("family_id IN ?", familyIDs).Order("id ASC").Find(&mothers)
+	} else {
+		h.DB.Where("user_id = ?", id).Order("id ASC").Find(&mothers)
+	}
 	motherOuts := make([]motherOut, 0, len(mothers))
 	for i := range mothers {
 		motherOuts = append(motherOuts, motherToOut(&mothers[i]))
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"user":    gin.H{"id": u.ID, "open_id": u.OpenID, "nickname": u.Nickname, "avatar_url": u.AvatarURL, "created_at": u.CreatedAt},
-		"babies":  babyOuts,
-		"mothers": motherOuts,
+		"user":     gin.H{"id": u.ID, "open_id": u.OpenID, "nickname": u.Nickname, "avatar_url": u.AvatarURL, "created_at": u.CreatedAt},
+		"babies":   babyOuts,
+		"mothers":  motherOuts,
+		"families": membersOut,
 	})
 }
 
@@ -745,50 +775,7 @@ func (h *Handler) AdminAnalyticsGrowth(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "baby not found"})
 		return
 	}
-
-	series := gin.H{
-		"weight": []growthPointOut{},
-		"height": []growthPointOut{},
-		"head":   []growthPointOut{},
-	}
-	if baby.BirthDate == nil {
-		c.JSON(http.StatusOK, gin.H{"baby_id": babyID, "birth_date": nil, "series": series})
-		return
-	}
-
-	var rows []model.Record
-	if err := h.DB.Where("baby_id = ? AND record_type = ?", babyID, "growth").
-		Order("occurred_at ASC, id ASC").
-		Find(&rows).Error; err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "query"})
-		return
-	}
-
-	weight := []growthPointOut{}
-	height := []growthPointOut{}
-	head := []growthPointOut{}
-	for i := range rows {
-		var payload map[string]any
-		if err := json.Unmarshal(rows[i].Payload, &payload); err != nil {
-			continue
-		}
-		ageDays := int(rows[i].OccurredAt.Sub(*baby.BirthDate).Hours() / 24)
-		if v, ok := numericPayloadValue(payload, "weight_g"); ok {
-			weight = append(weight, growthPointOut{RecordID: rows[i].ID, AgeDays: ageDays, OccurredAt: rows[i].OccurredAt, Value: v / 1000, Unit: "kg"})
-		}
-		if v, ok := numericPayloadValue(payload, "height_cm"); ok {
-			height = append(height, growthPointOut{RecordID: rows[i].ID, AgeDays: ageDays, OccurredAt: rows[i].OccurredAt, Value: v, Unit: "cm"})
-		}
-		if v, ok := numericPayloadValue(payload, "head_circumference_cm"); ok {
-			head = append(head, growthPointOut{RecordID: rows[i].ID, AgeDays: ageDays, OccurredAt: rows[i].OccurredAt, Value: v, Unit: "cm"})
-		}
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"baby_id":    babyID,
-		"birth_date": baby.BirthDate,
-		"series":     gin.H{"weight": weight, "height": height, "head": head},
-	})
+	c.JSON(http.StatusOK, h.buildGrowthSeriesResponse(babyID, &baby))
 }
 
 // --- Attachments (admin) ---

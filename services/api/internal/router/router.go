@@ -43,6 +43,7 @@ func New(h *handler.Handler, cfg *config.Config) *gin.Engine {
 	authed.Use(middleware.JWT(cfg.JWTSecret))
 	authed.Use(maxBody(1 << 20))
 	authed.GET("/me", h.Me)
+	authed.PATCH("/me", h.PatchMe)
 
 	authed.GET("/babies", h.ListBabies)
 	authed.POST("/babies", h.CreateBaby)
@@ -78,6 +79,18 @@ func New(h *handler.Handler, cfg *config.Config) *gin.Engine {
 	authed.GET("/reminders", h.ListReminders)
 	authed.PATCH("/reminders/:id", h.PatchReminder)
 	authed.DELETE("/reminders/:id", h.DeleteReminder)
+
+	authed.GET("/families/current", h.GetCurrentFamily)
+	authed.POST("/families/current", h.CreateCurrentFamily)
+	authed.PATCH("/families/current", h.PatchCurrentFamily)
+	authed.POST("/families/current/leave", h.LeaveCurrentFamily)
+	authed.POST("/families/current/invites", h.CreateFamilyInvite)
+	authed.GET("/invites/:token/preview", h.PreviewFamilyInvite)
+	authed.POST("/invites/:token/accept", h.AcceptFamilyInvite)
+	authed.POST("/families/current/members/:userId/transfer-owner", h.TransferFamilyOwner)
+	authed.PATCH("/families/current/members/:userId", h.PatchFamilyMember)
+	authed.PATCH("/families/current/members/:userId/nickname", h.PatchFamilyMemberNickname)
+	authed.DELETE("/families/current/members/:userId", h.DeleteFamilyMember)
 
 	upload := v1.Group("")
 	upload.Use(middleware.JWT(cfg.JWTSecret))

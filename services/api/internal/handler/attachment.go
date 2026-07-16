@@ -52,6 +52,17 @@ func (h *Handler) ensureAttachmentOwnerAccess(uid, ownerID uint64, ownerType str
 	}
 }
 
+func (h *Handler) ensureAttachmentOwnerWrite(uid, ownerID uint64, ownerType string) (bool, error) {
+	switch ownerType {
+	case "baby_record":
+		return h.requireRecordWrite(uid, ownerID)
+	case "mother_record":
+		return h.requireMotherRecordWrite(uid, ownerID)
+	default:
+		return false, gorm.ErrRecordNotFound
+	}
+}
+
 func (h *Handler) listAttachmentsByOwner(c *gin.Context, ownerType string) {
 	uid, ok := middleware.UserID(c)
 	if !ok {
@@ -95,7 +106,7 @@ func (h *Handler) createAttachmentByOwner(c *gin.Context, ownerType string) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "bad owner id"})
 		return
 	}
-	ok2, err := h.ensureAttachmentOwnerAccess(uid, ownerID, ownerType)
+	ok2, err := h.ensureAttachmentOwnerWrite(uid, ownerID, ownerType)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
@@ -156,7 +167,7 @@ func (h *Handler) DeleteAttachment(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 	}
-	ok2, err := h.ensureAttachmentOwnerAccess(uid, a.OwnerID, a.OwnerType)
+	ok2, err := h.ensureAttachmentOwnerWrite(uid, a.OwnerID, a.OwnerType)
 	if err != nil || !ok2 {
 		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
 		return

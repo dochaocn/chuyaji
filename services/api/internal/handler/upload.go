@@ -42,7 +42,7 @@ func (h *Handler) uploadAttachmentByOwner(c *gin.Context, ownerType string) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "bad owner id"})
 		return
 	}
-	ok2, err := h.ensureAttachmentOwnerAccess(uid, ownerID, ownerType)
+	ok2, err := h.ensureAttachmentOwnerWrite(uid, ownerID, ownerType)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return

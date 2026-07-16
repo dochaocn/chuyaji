@@ -18,6 +18,7 @@ import (
 type motherOut struct {
 	ID                   uint64     `json:"id"`
 	UserID               uint64     `json:"user_id"`
+	FamilyID             uint64     `json:"family_id"`
 	Name                 string     `json:"name"`
 	Birthday             *time.Time `json:"birthday,omitempty"`
 	HeightCM             *float64   `json:"height_cm,omitempty"`
@@ -34,6 +35,7 @@ func motherToOut(m *model.Mother) motherOut {
 	return motherOut{
 		ID:                   m.ID,
 		UserID:               m.UserID,
+		FamilyID:             m.FamilyID,
 		Name:                 m.Name,
 		Birthday:             m.Birthday,
 		HeightCM:             m.HeightCM,
@@ -68,8 +70,17 @@ func (h *Handler) ListMothers(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
+	familyIDs, err := h.userFamilyIDs(uid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "query"})
+		return
+	}
+	if len(familyIDs) == 0 {
+		c.JSON(http.StatusOK, gin.H{"items": []motherOut{}})
+		return
+	}
 	var mothers []model.Mother
-	if err := h.DB.Where("user_id = ?", uid).Order("id ASC").Find(&mothers).Error; err != nil {
+	if err := h.DB.Where("family_id IN ?", familyIDs).Order("id ASC").Find(&mothers).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "query"})
 		return
 	}
@@ -91,8 +102,18 @@ func (h *Handler) CreateMother(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid json"})
 		return
 	}
+	familyID, err := h.getOrCreateUserFamilyID(uid)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "family"})
+		return
+	}
+	role, okRole, err := h.resolveFamilyRole(uid, familyID)
+	if err != nil || !okRole || !roleCanWrite(role) {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+		return
+	}
 	var count int64
-	if err := h.DB.Model(&model.Mother{}).Where("user_id = ?", uid).Count(&count).Error; err != nil {
+	if err := h.DB.Model(&model.Mother{}).Where("family_id = ?", familyID).Count(&count).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "query"})
 		return
 	}
@@ -102,6 +123,7 @@ func (h *Handler) CreateMother(c *gin.Context) {
 	}
 	m := model.Mother{
 		UserID:               uid,
+		FamilyID:             familyID,
 		Name:                 req.Name,
 		Birthday:             req.Birthday,
 		HeightCM:             req.HeightCM,
@@ -155,7 +177,7 @@ func (h *Handler) PatchMother(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "bad id"})
 		return
 	}
-	ok2, err := h.canAccessMother(uid, id)
+	ok2, err := h.requireMotherWrite(uid, id)
 	if err != nil || !ok2 {
 		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
 		return
@@ -352,7 +374,7 @@ func (h *Handler) CreateMotherRecord(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "bad mother id"})
 		return
 	}
-	ok2, err := h.canAccessMother(uid, motherID)
+	ok2, err := h.requireMotherWrite(uid, motherID)
 	if err != nil || !ok2 {
 		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
 		return
@@ -428,7 +450,7 @@ func (h *Handler) PatchMotherRecord(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "bad id"})
 		return
 	}
-	ok2, err := h.canAccessMotherRecord(uid, id)
+	ok2, err := h.requireMotherRecordWrite(uid, id)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
@@ -492,7 +514,7 @@ func (h *Handler) DeleteMotherRecord(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "bad id"})
 		return
 	}
-	ok2, err := h.canAccessMotherRecord(uid, id)
+	ok2, err := h.requireMotherRecordWrite(uid, id)
 	if errors.Is(err, gorm.ErrRecordNotFound) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return

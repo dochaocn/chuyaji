@@ -11,6 +11,8 @@
     { "path": "pages/mom/record-edit", "style": { "navigationBarTitleText": "宝妈记录" } },
     { "path": "pages/mom/record-list", "style": { "navigationBarTitleText": "全部时间线" } },
     { "path": "pages/reminders/list", "style": { "navigationBarTitleText": "提醒" } },
+    { "path": "pages/family/index", "style": { "navigationBarTitleText": "家人共享" } },
+    { "path": "pages/family/join", "style": { "navigationBarTitleText": "加入家庭" } },
     { "path": "pages/privacy/privacy", "style": { "navigationBarTitleText": "隐私说明" } }
   ],
   "tabBar": {

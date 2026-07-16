@@ -6,6 +6,12 @@ import (
 	"gorm.io/datatypes"
 )
 
+const (
+	FamilyRoleOwner = "owner"
+	FamilyRoleWrite = "write"
+	FamilyRoleRead  = "read"
+)
+
 type User struct {
 	ID        uint64 `gorm:"primaryKey"`
 	OpenID    string `gorm:"uniqueIndex;size:64;not null"`
@@ -15,9 +21,41 @@ type User struct {
 	UpdatedAt time.Time
 }
 
+type Family struct {
+	ID        uint64 `gorm:"primaryKey"`
+	Name      string `gorm:"size:64;not null;default:我的家庭"`
+	CreatedBy uint64 `gorm:"index;not null"`
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+type FamilyMember struct {
+	ID        uint64 `gorm:"primaryKey"`
+	FamilyID  uint64 `gorm:"uniqueIndex:idx_family_member;not null"`
+	UserID    uint64 `gorm:"uniqueIndex:idx_family_member;index;not null"`
+	Role      string `gorm:"size:16;not null"` // owner | write | read
+	CreatedAt time.Time
+	UpdatedAt time.Time
+}
+
+type FamilyInvite struct {
+	ID         uint64 `gorm:"primaryKey"`
+	Token      string `gorm:"uniqueIndex;size:64;not null"`
+	FamilyID   uint64 `gorm:"index;not null"`
+	Role       string `gorm:"size:16;not null"` // write | read
+	InviterID  uint64 `gorm:"index;not null"`
+	ExpiresAt  time.Time
+	AcceptedBy *uint64
+	AcceptedAt *time.Time
+	RevokedAt  *time.Time
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+}
+
 type Baby struct {
 	ID            uint64 `gorm:"primaryKey"`
 	UserID        uint64 `gorm:"index;not null"`
+	FamilyID      uint64 `gorm:"index;not null"`
 	Nickname      string `gorm:"size:64;not null"`
 	Gender        string `gorm:"size:8"`
 	LMPDate       *time.Time
@@ -34,7 +72,8 @@ type Baby struct {
 
 type Mother struct {
 	ID                   uint64 `gorm:"primaryKey"`
-	UserID               uint64 `gorm:"uniqueIndex;not null"`
+	UserID               uint64 `gorm:"index;not null"`
+	FamilyID             uint64 `gorm:"uniqueIndex:idx_mother_family;index;not null"`
 	Name                 string `gorm:"size:64"`
 	Birthday             *time.Time
 	HeightCM             *float64
