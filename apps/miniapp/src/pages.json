@@ -6,6 +6,7 @@
     { "path": "pages/baby/record-edit", "style": { "navigationBarTitleText": "宝宝记录" } },
     { "path": "pages/baby/growth", "style": { "navigationBarTitleText": "生长趋势" } },
     { "path": "pages/baby/vaccine-plan", "style": { "navigationBarTitleText": "疫苗计划" } },
+    { "path": "pages/baby/album", "style": { "navigationBarTitleText": "成长相册" } },
     { "path": "pages/baby/record-list", "style": { "navigationBarTitleText": "全部时间线" } },
     { "path": "pages/mom/profile-edit", "style": { "navigationBarTitleText": "宝妈档案" } },
     { "path": "pages/mom/record-edit", "style": { "navigationBarTitleText": "宝妈记录" } },

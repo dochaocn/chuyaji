@@ -33,9 +33,11 @@
         :show-next-step="nextStep.type !== 'none'"
         :next-step-title="nextStepTitle"
         :next-step-btn-label="nextStepBtnLabel"
+        :can-switch="babies.length > 1"
         @profile="goProfileEdit"
         @family="goFamily"
         @next="onNextStepAction"
+        @switch="onSwitchBaby"
       />
 
       <QuickRecordStrip
@@ -44,8 +46,37 @@
         @shortcut="onShortcut"
       />
 
-      
-      <view v-if="isPostnatalStage && hasTrendData" class="trend-section trend-panel">
+      <view v-if="isPostnatalStage && dashboard?.profile" class="daily-section trend-panel">
+        <view class="panel-head panel-head--inline">
+          <view class="panel-head-text">
+            <text class="panel-kicker">今日</text>
+            <text class="panel-title">{{ dailyDateLabel }}</text>
+          </view>
+          <view class="panel-head-rule" />
+        </view>
+        <view class="summary-grid summary-grid--baby">
+          <view class="summary-card summary-card--baby summary-card--weight" @click="goDailyRecords('feeding')">
+            <view class="summary-card-accent summary-card-accent--coral" />
+            <text class="summary-label">喂养</text>
+            <text class="summary-value">{{ dailyFeedingLabel }}</text>
+            <text class="summary-hint">{{ dailySummary?.feeding?.count ?? 0 }} 次</text>
+          </view>
+          <view class="summary-card summary-card--baby summary-card--count" @click="goDailyRecords('sleep')">
+            <view class="summary-card-accent summary-card-accent--mint" />
+            <text class="summary-label">睡眠</text>
+            <text class="summary-value">{{ dailySleepLabel }}</text>
+            <text class="summary-hint">{{ dailySummary?.sleep?.count ?? 0 }} 次</text>
+          </view>
+          <view class="summary-card summary-card--baby" @click="goDailyRecords('diaper')">
+            <view class="summary-card-accent summary-card-accent--gold" />
+            <text class="summary-label">排便</text>
+            <text class="summary-value">{{ dailyDiaperLabel }}</text>
+            <text class="summary-hint">{{ dailySummary?.diaper?.count ?? 0 }} 条</text>
+          </view>
+        </view>
+      </view>
+
+      <view v-if="isPostnatalStage && dashboard?.profile" class="trend-section trend-panel">
         <view class="panel-head panel-head--inline">
           <view class="panel-head-text">
             <text class="panel-kicker">成长快照</text>
@@ -53,7 +84,7 @@
           </view>
           <view class="panel-head-rule" />
         </view>
-        <view class="summary-grid summary-grid--baby">
+        <view v-if="hasTrendData" class="summary-grid summary-grid--baby">
           <view v-if="latestWeightLabel" class="summary-card summary-card--baby summary-card--weight">
             <view class="summary-card-accent summary-card-accent--coral" />
             <text class="summary-label">最近体重</text>
@@ -79,6 +110,10 @@
           </view>
           <view class="growth-link" @click="goVaccinePlan">
             <text class="growth-link-text">查看疫苗计划</text>
+            <text class="growth-link-chev">›</text>
+          </view>
+          <view class="growth-link" @click="goAlbum">
+            <text class="growth-link-text">成长相册</text>
             <text class="growth-link-chev">›</text>
           </view>
         </view>
@@ -155,6 +190,7 @@
       v-if="quickTemplate"
       :visible="showQuickSheet"
       :template="quickTemplate"
+      :baby-id="Number(session.babyId) || Number(dashboard?.profile?.id) || 0"
       :last-payload="lastQuickPayload"
       :last-summary="lastQuickSummary"
       @close="showQuickSheet = false"
@@ -167,8 +203,17 @@
 <script setup lang="ts">
 import { onShow } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
-import { apiBabyDashboard, apiCreateRecord, apiLatestRecord, apiListReminders } from "@/api/chuyaji";
-import type { RecordItem, ReminderItem } from "@/api/chuyaji";
+import {
+  apiBabyDashboard,
+  apiCreateRecord,
+  apiLatestRecord,
+  apiListBabies,
+  apiListReminders,
+  type Baby,
+  type BabyDailySummary,
+  type RecordItem,
+  type ReminderItem,
+} from "@/api/chuyaji";
 import { useAuthStore } from "@/store/auth";
 import { useSessionStore } from "@/store/session";
 import {
@@ -201,7 +246,10 @@ const dashboard = ref<{
   phase_summary?: { stage: "prenatal" | "postnatal"; record_count: number };
   latest_records: RecordItem[];
   growth_summary?: Record<string, unknown>;
+  daily_summary?: BabyDailySummary;
 } | null>(null);
+
+const babies = ref<Baby[]>([]);
 
 const showQuickSheet = ref(false);
 const quickTemplate = ref<RecordTemplate | null>(null);
@@ -336,6 +384,35 @@ const hasTrendData = computed(() => {
   return !!latestWeightLabel.value || monthlyCount.value > 0;
 });
 
+const dailySummary = computed(() => dashboard.value?.daily_summary);
+
+const dailyDateLabel = computed(() => {
+  const d = dailySummary.value?.date;
+  if (!d) return "汇总";
+  const parts = d.split("-");
+  if (parts.length !== 3) return d;
+  return `${Number(parts[1])} 月 ${Number(parts[2])} 日`;
+});
+
+const dailyFeedingLabel = computed(() => {
+  const ml = dailySummary.value?.feeding?.total_ml ?? 0;
+  return ml > 0 ? `${ml} ml` : "—";
+});
+
+const dailySleepLabel = computed(() => {
+  const min = dailySummary.value?.sleep?.total_duration_min ?? 0;
+  if (min <= 0) return "—";
+  if (min < 60) return `${min} 分`;
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  return m > 0 ? `${h} 时 ${m} 分` : `${h} 时`;
+});
+
+const dailyDiaperLabel = computed(() => {
+  const times = dailySummary.value?.diaper?.total_times ?? 0;
+  return times > 0 ? `${times} 次` : "—";
+});
+
 onShow(async () => {
   auth.loadToken();
   session.load();
@@ -358,8 +435,12 @@ async function retryWeChatSession() {
 async function loadDashboard() {
   loading.value = true;
   try {
-    const data = await apiBabyDashboard(session.babyId || undefined);
+    const [data, babyPage] = await Promise.all([
+      apiBabyDashboard(session.babyId || undefined),
+      apiListBabies().catch(() => ({ items: [] as Baby[] })),
+    ]);
     dashboard.value = data;
+    babies.value = babyPage.items || [];
     if (data.profile?.id) {
       session.setBaby(data.profile.id);
       try {
@@ -378,6 +459,47 @@ async function loadDashboard() {
   } finally {
     loading.value = false;
   }
+}
+
+function discardTimerIfBabyMismatch(nextBabyId: number) {
+  try {
+    const raw = uni.getStorageSync("chuyaji_timer");
+    if (!raw) return;
+    const stored = typeof raw === "string" ? JSON.parse(raw) : raw;
+    if (stored?.babyId && Number(stored.babyId) !== nextBabyId) {
+      uni.removeStorageSync("chuyaji_timer");
+    }
+  } catch {}
+}
+
+function onSwitchBaby() {
+  if (babies.value.length <= 1) return;
+  const itemList = babies.value.map((b) =>
+    b.id === session.babyId ? `${b.nickname}（当前）` : b.nickname
+  );
+  uni.showActionSheet({
+    itemList,
+    success: (res) => {
+      const picked = babies.value[res.tapIndex];
+      if (!picked || picked.id === session.babyId) return;
+      discardTimerIfBabyMismatch(picked.id);
+      session.setBaby(picked.id);
+      void loadDashboard();
+    },
+  });
+}
+
+function goDailyRecords(recordType: "feeding" | "sleep" | "diaper") {
+  if (!session.babyId) return;
+  const date = dailySummary.value?.date || formatLocalDate(new Date());
+  // ListRecords 的 to=YYYY-MM-DD 会按「次日零点」排他，故 from/to 传同一天即可筛当日
+  uni.navigateTo({
+    url: `/pages/baby/record-list?baby_id=${session.babyId}&phase=postnatal&record_type=${recordType}&from=${date}&to=${date}`,
+  });
+}
+
+function formatLocalDate(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function onNextStepAction() {
@@ -479,6 +601,10 @@ function goVaccinePlan() {
   uni.navigateTo({ url: `/pages/baby/vaccine-plan?baby_id=${session.babyId}` });
 }
 
+function goAlbum() {
+  if (!session.babyId) return;
+  uni.navigateTo({ url: `/pages/baby/album?baby_id=${session.babyId}` });
+}
 
 function goTimeline() {
   if (!session.babyId) return;
@@ -539,8 +665,13 @@ function goReminders() {
 }
 
 .trend-section,
+.daily-section,
 .section {
   margin-bottom: $cj-gap-md;
+}
+
+.daily-section .summary-card:active {
+  opacity: 0.88;
 }
 
 .trend-panel {

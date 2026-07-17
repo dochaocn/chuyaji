@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/dochaocn/chuyaji/services/api/internal/middleware"
 	"github.com/dochaocn/chuyaji/services/api/internal/model"
@@ -137,6 +138,95 @@ func (h *Handler) createAttachmentByOwner(c *gin.Context, ownerType string) {
 
 func (h *Handler) ListAttachments(c *gin.Context) {
 	h.listAttachmentsByOwner(c, "baby_record")
+}
+
+type babyAttachmentOut struct {
+	ID         uint64    `json:"id"`
+	URL        string    `json:"url"`
+	ThumbURL   string    `json:"thumb_url,omitempty"`
+	CreatedAt  time.Time `json:"created_at"`
+	RecordID   uint64    `json:"record_id"`
+	RecordType string    `json:"record_type"`
+	OccurredAt time.Time `json:"occurred_at"`
+	Summary    string    `json:"summary"`
+}
+
+func (h *Handler) ListBabyAttachments(c *gin.Context) {
+	uid, ok := middleware.UserID(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+	babyID, err := strconv.ParseUint(c.Param("id"), 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "bad baby id"})
+		return
+	}
+	ok2, err := h.canAccessBaby(uid, babyID)
+	if err != nil || !ok2 {
+		c.JSON(http.StatusForbidden, gin.H{"error": "forbidden"})
+		return
+	}
+
+	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "40"))
+	if limit <= 0 || limit > 100 {
+		limit = 40
+	}
+	cursor := c.Query("cursor")
+
+	type babyAttRow struct {
+		ID         uint64
+		URL        string
+		ThumbURL   string
+		CreatedAt  time.Time
+		RecordID   uint64
+		RecordType string
+		OccurredAt time.Time
+		Summary    string
+	}
+
+	q := h.DB.Table("attachments AS a").
+		Select("a.id, a.url, a.thumb_url, a.created_at, r.id AS record_id, r.record_type, r.occurred_at, r.summary").
+		Joins("INNER JOIN records AS r ON r.id = a.owner_id AND a.owner_type = ?", "baby_record").
+		Where("r.baby_id = ?", babyID).
+		Order("a.created_at DESC, a.id DESC")
+
+	if cursor != "" {
+		t, id, err := decodeCursor(cursor)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "bad cursor"})
+			return
+		}
+		q = q.Where("(a.created_at < ?) OR (a.created_at = ? AND a.id < ?)", t, t, id)
+	}
+
+	var rows []babyAttRow
+	if err := q.Limit(limit + 1).Scan(&rows).Error; err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "query"})
+		return
+	}
+
+	next := ""
+	if len(rows) > limit {
+		last := rows[limit-1]
+		next = encodeCursor(last.CreatedAt, last.ID)
+		rows = rows[:limit]
+	}
+
+	out := make([]babyAttachmentOut, 0, len(rows))
+	for i := range rows {
+		out = append(out, babyAttachmentOut{
+			ID:         rows[i].ID,
+			URL:        rows[i].URL,
+			ThumbURL:   rows[i].ThumbURL,
+			CreatedAt:  rows[i].CreatedAt,
+			RecordID:   rows[i].RecordID,
+			RecordType: rows[i].RecordType,
+			OccurredAt: rows[i].OccurredAt,
+			Summary:    rows[i].Summary,
+		})
+	}
+	c.JSON(http.StatusOK, gin.H{"items": out, "next_cursor": next})
 }
 
 func (h *Handler) CreateAttachment(c *gin.Context) {

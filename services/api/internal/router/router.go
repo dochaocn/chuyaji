@@ -55,6 +55,7 @@ func New(h *handler.Handler, cfg *config.Config) *gin.Engine {
 	authed.GET("/babies/:id/records", h.ListRecords)
 	authed.GET("/babies/:id/records/latest", h.LatestRecord)
 	authed.GET("/babies/:id/growth-series", h.BabyGrowthSeries)
+	authed.GET("/babies/:id/attachments", h.ListBabyAttachments)
 	authed.POST("/babies/:id/records", h.CreateRecord)
 	authed.GET("/records/:id", h.GetRecord)
 	authed.PATCH("/records/:id", h.PatchRecord)

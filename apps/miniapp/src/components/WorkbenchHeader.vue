@@ -6,7 +6,10 @@
     </view>
 
     <view class="wb-header__main">
-      <text v-if="name" class="wb-header__name">{{ name }}</text>
+      <view v-if="name" :class="['wb-header__name-row', canSwitch && 'wb-header__name-row--switch']" @click="onNameTap">
+        <text class="wb-header__name">{{ name }}</text>
+        <text v-if="canSwitch" class="wb-header__switch-hint">切换 ▾</text>
+      </view>
       <text class="wb-header__stage" :class="{ 'wb-header__stage--solo': !name }">{{ stageTitle }}</text>
       <text v-if="stageDesc" class="wb-header__desc">{{ stageDesc }}</text>
     </view>
@@ -34,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-withDefaults(
+const props = withDefaults(
   defineProps<{
     workspaceLabel: string;
     badgeLabel?: string;
@@ -47,20 +50,27 @@ withDefaults(
     showNextStep?: boolean;
     nextStepTitle?: string;
     nextStepBtnLabel?: string;
+    canSwitch?: boolean;
   }>(),
   {
     profileIcon: "📋",
     showNextStep: false,
     nextStepTitle: "",
     nextStepBtnLabel: "",
+    canSwitch: false,
   }
 );
 
-defineEmits<{
+const emit = defineEmits<{
   profile: [];
   family: [];
   next: [];
+  switch: [];
 }>();
+
+function onNameTap() {
+  if (props.canSwitch) emit("switch");
+}
 </script>
 
 <style lang="scss" scoped>
@@ -109,14 +119,30 @@ defineEmits<{
   margin-bottom: 22rpx;
 }
 
+.wb-header__name-row {
+  display: flex;
+  align-items: baseline;
+  gap: 12rpx;
+  margin-bottom: 8rpx;
+}
+
+.wb-header__name-row--switch:active {
+  opacity: 0.75;
+}
+
 .wb-header__name {
-  display: block;
   font-size: 40rpx;
   font-weight: $cj-fw-display;
   color: $cj-primary-dark;
   letter-spacing: 0.5rpx;
   line-height: 1.25;
-  margin-bottom: 8rpx;
+}
+
+.wb-header__switch-hint {
+  font-size: 22rpx;
+  color: $cj-primary;
+  font-weight: 500;
+  flex-shrink: 0;
 }
 
 .wb-header__stage {

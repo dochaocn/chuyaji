@@ -10,6 +10,32 @@
 
       <scroll-view class="sheet-body-scroll" scroll-y :show-scrollbar="false" :enable-flex="true">
         <view class="sheet-body">
+        <view v-if="supportsTimer" class="timer-block">
+          <view class="timer-head">
+            <text class="timer-label">计时</text>
+            <text class="timer-display">{{ timerDisplay }}</text>
+          </view>
+          <view class="timer-actions">
+            <button
+              v-if="!timerRunning"
+              size="mini"
+              class="timer-btn timer-btn--start"
+              hover-class="timer-btn-hover"
+              @tap.stop="startTimer"
+            >
+              开始计时
+            </button>
+            <template v-else>
+              <button size="mini" class="timer-btn timer-btn--stop" hover-class="timer-btn-hover" @tap.stop="stopTimer">
+                结束并填入
+              </button>
+              <button size="mini" class="timer-btn timer-btn--reset" hover-class="timer-btn-hover" @tap.stop="resetTimer">
+                重置
+              </button>
+            </template>
+          </view>
+          <text v-if="timerHint" class="timer-hint">{{ timerHint }}</text>
+        </view>
         <view v-for="field in template.recommendedFields" :key="field.key" class="field">
           <text class="field-label">{{ field.label }}<text v-if="field.unit" class="field-unit">（{{ field.unit }}）</text></text>
           <template v-if="field.type === 'select'">
@@ -106,9 +132,19 @@
 import { computed, onUnmounted, ref, watch } from "vue";
 import type { RecordTemplate } from "@/utils/recordTypes";
 
+const TIMER_STORAGE_KEY = "chuyaji_timer";
+const TIMER_MAX_MS = 24 * 60 * 60 * 1000;
+
+type StoredTimer = {
+  type: string;
+  babyId: number;
+  startedAt: number;
+};
+
 const props = defineProps<{
   visible: boolean;
   template: RecordTemplate;
+  babyId?: number;
   lastPayload?: Record<string, unknown> | null;
   lastSummary?: string;
 }>();
@@ -123,6 +159,20 @@ const noteText = ref("");
 const showNote = ref(false);
 const showMore = ref(false);
 const loading = ref(false);
+
+const timerStartedAt = ref(0);
+const timerNow = ref(Date.now());
+const timerHint = ref("");
+let timerTick: ReturnType<typeof setInterval> | null = null;
+
+const supportsTimer = computed(
+  () => props.template.value === "feeding" || props.template.value === "sleep"
+);
+const timerRunning = computed(() => timerStartedAt.value > 0);
+const elapsedMs = computed(() =>
+  timerRunning.value ? Math.max(0, timerNow.value - timerStartedAt.value) : 0
+);
+const timerDisplay = computed(() => formatElapsed(elapsedMs.value));
 
 const inputCursorSpacing = 120;
 const hasLast = computed(() => !!props.lastPayload && Object.keys(props.lastPayload).length > 0);
@@ -160,8 +210,142 @@ function seedFields() {
   fieldValues.value = m;
 }
 
+function formatElapsed(ms: number) {
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) {
+    return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  }
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+function clearTimerTick() {
+  if (timerTick) {
+    clearInterval(timerTick);
+    timerTick = null;
+  }
+}
+
+function ensureTimerTick() {
+  clearTimerTick();
+  if (!timerRunning.value) return;
+  timerTick = setInterval(() => {
+    timerNow.value = Date.now();
+    if (elapsedMs.value > TIMER_MAX_MS) {
+      timerHint.value = "已超过 24 小时，请重置后重新计时";
+    }
+  }, 1000);
+}
+
+function readStoredTimer(): StoredTimer | null {
+  try {
+    const raw = uni.getStorageSync(TIMER_STORAGE_KEY);
+    if (!raw) return null;
+    if (typeof raw === "string") {
+      return JSON.parse(raw) as StoredTimer;
+    }
+    return raw as StoredTimer;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredTimer(data: StoredTimer | null) {
+  try {
+    if (!data) {
+      uni.removeStorageSync(TIMER_STORAGE_KEY);
+      return;
+    }
+    uni.setStorageSync(TIMER_STORAGE_KEY, data);
+  } catch {}
+}
+
+function applyDurationMinutes(ms: number) {
+  const minutes = Math.max(1, Math.round(ms / 60000));
+  fieldValues.value = { ...fieldValues.value, duration_min: String(minutes) };
+  if (props.template.value === "feeding") {
+    showMore.value = true;
+  }
+}
+
+function restoreTimerFromStorage() {
+  timerHint.value = "";
+  if (!supportsTimer.value) {
+    timerStartedAt.value = 0;
+    clearTimerTick();
+    return;
+  }
+  const stored = readStoredTimer();
+  if (!stored?.startedAt) {
+    timerStartedAt.value = 0;
+    clearTimerTick();
+    return;
+  }
+  const babyId = Number(props.babyId || 0);
+  if (stored.babyId && babyId && stored.babyId !== babyId) {
+    writeStoredTimer(null);
+    timerStartedAt.value = 0;
+    timerHint.value = "已切换宝宝，旧计时已清除";
+    clearTimerTick();
+    return;
+  }
+  if (stored.type !== props.template.value) {
+    timerStartedAt.value = 0;
+    clearTimerTick();
+    return;
+  }
+  timerStartedAt.value = stored.startedAt;
+  timerNow.value = Date.now();
+  if (elapsedMs.value > TIMER_MAX_MS) {
+    timerHint.value = "已超过 24 小时，请重置后重新计时";
+  }
+  ensureTimerTick();
+}
+
+function startTimer() {
+  const babyId = Number(props.babyId || 0);
+  const startedAt = Date.now();
+  timerStartedAt.value = startedAt;
+  timerNow.value = startedAt;
+  timerHint.value = "";
+  writeStoredTimer({ type: props.template.value, babyId, startedAt });
+  ensureTimerTick();
+}
+
+function stopTimer() {
+  if (!timerRunning.value) return;
+  const ms = elapsedMs.value;
+  if (ms > TIMER_MAX_MS) {
+    timerHint.value = "已超过 24 小时，请重置后重新计时";
+    return;
+  }
+  applyDurationMinutes(ms);
+  timerStartedAt.value = 0;
+  writeStoredTimer(null);
+  clearTimerTick();
+  timerHint.value = "已填入时长，可再手改";
+}
+
+function resetTimer() {
+  timerStartedAt.value = 0;
+  timerHint.value = "";
+  writeStoredTimer(null);
+  clearTimerTick();
+}
+
+function clearTimerAfterSave() {
+  if (supportsTimer.value) {
+    writeStoredTimer(null);
+    timerStartedAt.value = 0;
+    timerHint.value = "";
+    clearTimerTick();
+  }
+}
+
 watch(
-  () => [props.visible, props.template.value] as const,
+  () => [props.visible, props.template.value, props.babyId] as const,
   ([vis]) => {
     if (vis) {
       noteText.value = "";
@@ -169,10 +353,12 @@ watch(
       showMore.value = false;
       seedFields();
       bindKeyboardHeightListener();
+      restoreTimerFromStorage();
     } else {
       keyboardHeightPx.value = 0;
       offKeyboardHeight?.();
       offKeyboardHeight = undefined;
+      clearTimerTick();
     }
   },
   { immediate: true }
@@ -181,6 +367,7 @@ watch(
 onUnmounted(() => {
   offKeyboardHeight?.();
   offKeyboardHeight = undefined;
+  clearTimerTick();
 });
 
 function setSelect(key: string, value: string) {
@@ -240,6 +427,7 @@ async function onSave() {
   try {
     const payload = buildPayload();
     const summary = noteText.value.trim() || buildSummary(payload);
+    clearTimerAfterSave();
     emit("saved", payload, summary);
   } finally {
     loading.value = false;
@@ -250,6 +438,7 @@ function onReuseLast() {
   if (!props.lastPayload) return;
   const payload = { ...props.lastPayload };
   const summary = props.lastSummary?.trim() || buildSummary(payload);
+  clearTimerAfterSave();
   emit("saved", payload, summary);
 }
 </script>
@@ -310,6 +499,79 @@ function onReuseLast() {
 
 .sheet-body {
   margin-bottom: $cj-gap-lg;
+}
+
+.timer-block {
+  margin-bottom: $cj-gap-md;
+  padding: 20rpx 22rpx;
+  background: linear-gradient(155deg, rgba(255, 247, 240, 0.95) 0%, rgba(230, 241, 236, 0.45) 100%);
+  border: 1rpx solid $cj-border-faint;
+  border-radius: $cj-radius-lg;
+}
+
+.timer-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16rpx;
+  margin-bottom: 14rpx;
+}
+
+.timer-label {
+  font-size: 23rpx;
+  color: $cj-text-muted;
+  font-weight: 500;
+}
+
+.timer-display {
+  font-size: 40rpx;
+  font-weight: $cj-fw-display;
+  color: $cj-ink;
+  letter-spacing: 1rpx;
+  font-variant-numeric: tabular-nums;
+}
+
+.timer-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12rpx;
+}
+
+.timer-btn {
+  margin: 0 !important;
+  border-radius: $cj-radius-pill !important;
+  font-size: 24rpx !important;
+  padding: 0 28rpx !important;
+}
+
+.timer-btn--start {
+  background: linear-gradient(160deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%) !important;
+  color: #fffefb !important;
+  border: none !important;
+}
+
+.timer-btn--stop {
+  background: $cj-mint-soft !important;
+  color: $cj-tag-postnatal-text !important;
+  border: 1rpx solid rgba(125, 171, 152, 0.35) !important;
+}
+
+.timer-btn--reset {
+  background: $cj-surface !important;
+  color: $cj-text-secondary !important;
+  border: 1rpx solid $cj-border-faint !important;
+}
+
+.timer-btn-hover {
+  opacity: 0.9;
+}
+
+.timer-hint {
+  display: block;
+  margin-top: 12rpx;
+  font-size: 22rpx;
+  color: $cj-text-secondary;
+  line-height: 1.45;
 }
 
 .field {
