@@ -105,6 +105,17 @@ export interface AttachmentItem {
   size: number;
 }
 
+export interface BabyAlbumAttachment {
+  id: number;
+  url: string;
+  thumb_url?: string;
+  created_at: string;
+  record_id: number;
+  record_type: string;
+  occurred_at: string;
+  summary: string;
+}
+
 export interface ReminderItem {
   id: number;
   user_id: number;
@@ -204,6 +215,20 @@ export async function apiDeleteBaby(id: number) {
   return request<unknown>({ path: `/api/v1/babies/${id}`, method: "DELETE" });
 }
 
+export type DailyMetricBucket = {
+  count: number;
+  total_ml?: number;
+  total_duration_min?: number;
+  total_times?: number;
+};
+
+export type BabyDailySummary = {
+  date: string;
+  feeding: DailyMetricBucket;
+  sleep: DailyMetricBucket;
+  diaper: DailyMetricBucket;
+};
+
 export async function apiBabyDashboard(babyId?: number) {
   const path = babyId ? `/api/v1/dashboard/baby?baby_id=${babyId}` : "/api/v1/dashboard/baby";
   return request<{
@@ -211,6 +236,7 @@ export async function apiBabyDashboard(babyId?: number) {
     phase_summary?: { stage: "prenatal" | "postnatal"; record_count: number };
     latest_records: RecordItem[];
     growth_summary?: Record<string, unknown>;
+    daily_summary?: BabyDailySummary;
   }>({ path });
 }
 
@@ -313,6 +339,13 @@ export async function apiDeleteMotherRecord(id: number) {
 export async function apiListAttachments(recordId: number) {
   return request<{ items: AttachmentItem[] }>({
     path: `/api/v1/records/${recordId}/attachments`,
+  });
+}
+
+export async function apiListBabyAttachments(babyId: number, limit = 40, cursor?: string) {
+  const qs = queryString({ limit, cursor });
+  return request<{ items: BabyAlbumAttachment[]; next_cursor: string }>({
+    path: `/api/v1/babies/${babyId}/attachments?${qs}`,
   });
 }
 

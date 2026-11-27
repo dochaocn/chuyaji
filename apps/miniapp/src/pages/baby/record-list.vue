@@ -225,7 +225,15 @@ async function primeDefaultFilters() {
     const baby = await apiGetBaby(babyId.value);
     const post = isPostnatal(baby.birth_date);
     preferPostnatalFirst.value = post;
-    selectedPhase.value = post ? "postnatal" : "prenatal";
+    const boot = queryBootstrap.value;
+    if (boot?.phase) {
+      selectedPhase.value = boot.phase;
+    } else {
+      selectedPhase.value = post ? "postnatal" : "prenatal";
+    }
+    if (boot?.record_type) {
+      selectedTypes.value = new Set([boot.record_type]);
+    }
   } catch (e) {
     console.error(e);
     preferPostnatalFirst.value = false;
@@ -257,8 +265,24 @@ const groupedRecords = computed(() => {
   return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([, v]) => v);
 });
 
+const queryBootstrap = ref<{
+  phase?: PhaseChipValue;
+  record_type?: string;
+  from?: string;
+  to?: string;
+} | null>(null);
+
 onLoad((query: Record<string, string | undefined>) => {
   babyId.value = Number(query.baby_id || 0);
+  const phase = query.phase;
+  queryBootstrap.value = {
+    phase: phase === "prenatal" || phase === "postnatal" || phase === "all" ? phase : undefined,
+    record_type: query.record_type || undefined,
+    from: query.from || undefined,
+    to: query.to || undefined,
+  };
+  if (query.from) fromDate.value = query.from;
+  if (query.to) toDate.value = query.to;
 });
 
 onShow(async () => {
