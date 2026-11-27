@@ -1,8 +1,10 @@
+import { formatDurationMinutes } from "@/utils/duration";
+
 export type TemplateField = {
   key: string;
   label: string;
   placeholder?: string;
-  type: "text" | "number" | "date" | "select";
+  type: "text" | "number" | "date" | "select" | "duration";
   unit?: string;
   options?: { value: string; label: string }[];
 };
@@ -145,14 +147,13 @@ const postnatalTemplates: RecordTemplate[] = [
       { key: "amount_ml", label: "奶量", type: "number", placeholder: "例如 120", unit: "ml" },
     ],
     optionalFields: [
-      { key: "duration_min", label: "时长", type: "number", placeholder: "分钟", unit: "min" },
       {
         key: "feeding_type",
         label: "喂养方式",
         type: "select",
         options: [
+          { value: "formula", label: "奶粉" },
           { value: "breast", label: "母乳" },
-          { value: "formula", label: "配方奶" },
           { value: "mixed", label: "混合" },
         ],
       },
@@ -165,13 +166,10 @@ const postnatalTemplates: RecordTemplate[] = [
           { value: "yes", label: "是" },
         ],
       },
-      { key: "times", label: "次数", type: "number", placeholder: "例如 1" },
     ],
     autoSummary: (payload) => {
-      const ml = payload.amount_ml;
-      const min = payload.duration_min;
-      if (typeof ml === "number" && ml > 0) return `喂养 ${ml}ml`;
-      if (typeof min === "number" && min > 0) return `喂养 ${min}min`;
+      const ml = Number(payload.amount_ml);
+      if (Number.isFinite(ml) && ml > 0) return `喂养 ${ml}ml`;
       return "喂养已记录";
     },
   },
@@ -181,15 +179,41 @@ const postnatalTemplates: RecordTemplate[] = [
     entryLabel: "睡眠",
     mode: "quick",
     recommendedFields: [
-      { key: "duration_min", label: "总睡眠时长", type: "number", placeholder: "例如 480", unit: "min" },
+      {
+        key: "duration_min",
+        label: "睡眠时长",
+        type: "duration",
+        placeholder: "0",
+      },
     ],
     optionalFields: [
-      { key: "night_wake", label: "夜醒次数", type: "number", placeholder: "例如 2" },
-      { key: "fall_asleep", label: "入睡情况", type: "text", placeholder: "例如顺利、哭闹 10 分钟" },
+      {
+        key: "night_wake",
+        label: "夜醒次数",
+        type: "select",
+        options: [
+          { value: "0", label: "0 次" },
+          { value: "1", label: "1 次" },
+          { value: "2", label: "2 次" },
+          { value: "3", label: "3 次" },
+          { value: "4", label: "4 次及以上" },
+        ],
+      },
+      {
+        key: "fall_asleep",
+        label: "入睡情况",
+        type: "select",
+        options: [
+          { value: "easy", label: "顺利入睡" },
+          { value: "pat", label: "需拍哄" },
+          { value: "rock", label: "需抱睡" },
+          { value: "cry", label: "哭闹后入睡" },
+        ],
+      },
     ],
     autoSummary: (payload) => {
-      const min = payload.duration_min;
-      if (typeof min === "number" && min > 0) return `睡眠 ${min}min`;
+      const min = Number(payload.duration_min);
+      if (Number.isFinite(min) && min > 0) return `睡眠 ${formatDurationMinutes(min)}`;
       return "睡眠已记录";
     },
     metricKeys: ["duration_min"],
@@ -214,14 +238,17 @@ const postnatalTemplates: RecordTemplate[] = [
       },
     ],
     optionalFields: [
-      { key: "color", label: "颜色", type: "text", placeholder: "例如黄色、绿色" },
       {
-        key: "abnormal",
-        label: "是否异常",
+        key: "color",
+        label: "颜色",
         type: "select",
         options: [
-          { value: "no", label: "否" },
-          { value: "yes", label: "是" },
+          { value: "yellow", label: "黄色" },
+          { value: "green", label: "绿色" },
+          { value: "brown", label: "棕色" },
+          { value: "black", label: "黑色" },
+          { value: "red", label: "带血丝" },
+          { value: "other", label: "其他" },
         ],
       },
     ],
@@ -332,6 +359,9 @@ const postnatalTemplates: RecordTemplate[] = [
   },
 ];
 
+/** 首页只暴露三个日常记录类型（喂养/睡眠/排便）；生长改由生长趋势页进入 */
+export const ACTIVE_POSTNATAL_TYPES = ["feeding", "sleep", "diaper"] as const;
+
 export const BABY_TEMPLATES = {
   prenatal: prenatalTemplates,
   postnatal: postnatalTemplates,
@@ -353,15 +383,24 @@ export const BABY_RECORD_TYPE_FILTER_OPTIONS: { value: string; label: string }[]
   ...RECORD_TYPES.postnatal,
 ];
 
-export const BABY_HOME_PRENATAL_SHORTCUT_ORDER: readonly string[] = [
-  "prenatal_checkup",
-  "ultrasound",
-  "screening",
-];
-
-export function babyHomePostnatalShortcutOrder(ageMonths: number): string[] {
-  if (ageMonths < 6) return ["feeding", "sleep", "diaper", "growth"];
-  return ["feeding", "sleep", "growth", "vaccine"];
+/**
+ * 摘要展示统一入口：带 autoSummary 的类型（喂养/睡眠/排便）一律按 payload 重新推导，
+ * 避免历史记录里 summary 与字段值不一致（例如 summary 写「2 次」但 times=1）。
+ */
+export function resolveRecordSummary(record: {
+  phase: "prenatal" | "postnatal";
+  record_type: string;
+  payload: Record<string, unknown>;
+  summary?: string;
+}): string {
+  const tmpl = templateForType(record.phase, record.record_type);
+  if (tmpl?.autoSummary && record.payload) {
+    try {
+      const derived = tmpl.autoSummary(record.payload as Record<string, unknown>);
+      if (derived) return derived;
+    } catch {}
+  }
+  return String(record.summary || "").trim();
 }
 
 export function labelForType(phase: "prenatal" | "postnatal", type: string): string {
@@ -382,6 +421,10 @@ export function formatFieldValueForDisplay(
 ): string | null {
   const raw = payload[field.key];
   if (raw === null || raw === undefined || raw === "") return null;
+  if (field.type === "duration") {
+    const total = Number(raw);
+    return Number.isFinite(total) && total > 0 ? formatDurationMinutes(total) : null;
+  }
   if (field.type === "select") {
     const hit = field.options?.find((o) => o.value === String(raw));
     return hit?.label ?? String(raw);
@@ -404,18 +447,21 @@ export function previewValueForTemplateField(field: TemplateField, display: stri
 const BABY_RECORD_PREVIEW_MAX_FIELDS = 5;
 
 /** 宝宝记录首页/列表：按阶段模板展示已填关键字段 */
-export function getBabyRecordPreviewRows(record: {
-  phase: "prenatal" | "postnatal";
-  record_type: string;
-  payload: Record<string, unknown>;
-}): { label: string; value: string }[] {
+export function getBabyRecordPreviewRows(
+  record: {
+    phase: "prenatal" | "postnatal";
+    record_type: string;
+    payload: Record<string, unknown>;
+  },
+  maxFields = BABY_RECORD_PREVIEW_MAX_FIELDS
+): { label: string; value: string }[] {
   const tmpl = templateForType(record.phase, record.record_type);
   if (!tmpl) return [];
   const payload = (record.payload || {}) as Record<string, unknown>;
   const rows: { label: string; value: string }[] = [];
   const fields = [...tmpl.recommendedFields, ...tmpl.optionalFields];
   for (const field of fields) {
-    if (rows.length >= BABY_RECORD_PREVIEW_MAX_FIELDS) break;
+    if (rows.length >= maxFields) break;
     const raw = formatFieldValueForDisplay(field, payload);
     if (raw === null) continue;
     rows.push({ label: field.label, value: previewValueForTemplateField(field, raw) });

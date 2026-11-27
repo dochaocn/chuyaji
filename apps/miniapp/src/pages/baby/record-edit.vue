@@ -8,7 +8,7 @@
     </view>
 
     
-    <view class="section">
+    <view v-if="!recordId" class="section">
       <text class="section-label">阶段与类型</text>
       <view class="phase-type-stack">
         <picker :range="phaseLabels" :value="phaseIndex" @change="onPhase">
@@ -35,24 +35,65 @@
           <view :class="['picker-input', !occurredAt && 'is-placeholder']">{{ occurredAt || "请选择日期" }}</view>
         </picker>
       </view>
+      <view class="field">
+        <text class="lab">发生时间</text>
+        <picker mode="time" :value="occurredTime" @change="onOccurredTimeChange">
+          <view class="picker-input">{{ occurredTime || "请选择时间" }}</view>
+        </picker>
+      </view>
     </view>
 
     
-    <view v-if="recommendedFields.length" class="section">
-      <text class="section-label">关键信息</text>
-      <view v-for="field in recommendedFields" :key="field.key" class="field">
-        <text class="lab">{{ field.label }}<text v-if="field.unit" class="unit-text">（{{ field.unit }}）</text></text>
-        <template v-if="field.type === 'select'">
-          <picker :range="(field.options || []).map(o => o.label)" :value="selectIndex(field)" @change="(e) => onSelectChange(field, e)">
-            <view class="picker-input">{{ selectLabel(field) || "请选择" }}</view>
-          </picker>
+    <view v-if="visibleFields.length" class="section">
+      <text class="section-label">填写内容</text>
+      <view v-for="field in visibleFields" :key="field.key" class="field">
+        <text class="lab">
+          {{ field.label }}<text v-if="field.unit" class="unit-text">（{{ field.unit }}）</text><text v-if="isOptionalField(field)" class="opt-tag">选填</text>
+        </text>
+
+        <template v-if="field.type === 'duration'">
+          <view class="duration-row">
+            <view class="duration-box">
+              <input v-model="extras[durationKey(field.key, 'h')]" class="duration-field" type="number" placeholder="0" />
+              <text class="duration-unit">h</text>
+            </view>
+            <view class="duration-box">
+              <input v-model="extras[durationKey(field.key, 'm')]" class="duration-field" type="number" placeholder="0" />
+              <text class="duration-unit">m</text>
+            </view>
+          </view>
         </template>
+
+        <template v-else-if="field.type === 'select'">
+          <view class="chip-row">
+            <view
+              v-for="opt in field.options || []"
+              :key="opt.value"
+              :class="['chip', extras[field.key] === opt.value && 'chip--on']"
+              @click="extras[field.key] = opt.value"
+            >
+              {{ opt.label }}
+            </view>
+          </view>
+        </template>
+
         <template v-else-if="field.type === 'date'">
           <picker mode="date" :value="extras[field.key] || ''" @change="(e) => extras[field.key] = e.detail.value">
             <view :class="['picker-input', !extras[field.key] && 'is-placeholder']">{{ extras[field.key] || "请选择日期" }}</view>
           </picker>
         </template>
+
         <template v-else>
+          <view v-if="quickValuesFor(field).length" class="chip-row">
+            <view
+              v-for="v in quickValuesFor(field)"
+              :key="v"
+              :class="['chip', extras[field.key] === String(v) && 'chip--on']"
+              @click="extras[field.key] = String(v)"
+            >
+              {{ v }}
+            </view>
+          </view>
           <input
             v-model="extras[field.key]"
             class="input"
@@ -63,49 +104,24 @@
       </view>
     </view>
 
-    
     <view v-if="currentTemplate?.mode === 'standard'" class="section">
       <text class="section-label">摘要</text>
       <view class="field">
         <textarea
           v-model="summary"
-          class="area"
+          class="area area--compact"
           :placeholder="currentTemplate?.summaryPlaceholder || '一句话描述今天发生了什么'"
         />
       </view>
     </view>
 
-    
-    <view v-if="optionalFields.length" class="section">
-      <view class="optional-toggle" @click="showOptional = !showOptional">
-        <text class="optional-toggle-text">{{ showOptional ? "收起更多信息" : "展开更多信息" }}</text>
+    <view class="section">
+      <text class="section-label">备注</text>
+      <view class="field">
+        <input v-model="note" class="input" placeholder="可选，补充一句话" />
       </view>
-      <template v-if="showOptional">
-        <view v-for="field in optionalFields" :key="field.key" class="field" style="margin-top: 24rpx;">
-          <text class="lab">{{ field.label }}<text v-if="field.unit" class="unit-text">（{{ field.unit }}）</text></text>
-          <template v-if="field.type === 'select'">
-            <picker :range="(field.options || []).map(o => o.label)" :value="selectIndex(field)" @change="(e) => onSelectChange(field, e)">
-              <view class="picker-input">{{ selectLabel(field) || "请选择" }}</view>
-            </picker>
-          </template>
-          <template v-else-if="field.type === 'date'">
-            <picker mode="date" :value="extras[field.key] || ''" @change="(e) => extras[field.key] = e.detail.value">
-              <view :class="['picker-input', !extras[field.key] && 'is-placeholder']">{{ extras[field.key] || "请选择日期" }}</view>
-            </picker>
-          </template>
-          <template v-else>
-            <input
-              v-model="extras[field.key]"
-              class="input"
-              :type="field.type === 'number' ? 'digit' : 'text'"
-              :placeholder="field.placeholder || ''"
-            />
-          </template>
-        </view>
-      </template>
     </view>
 
-    
     <view class="section">
       <text class="section-label">图片补充</text>
       <text v-if="currentTemplate?.attachmentHint" class="section-hint">{{ currentTemplate.attachmentHint }}</text>
@@ -119,10 +135,16 @@
           </view>
         </view>
       </view>
-      <button class="add-photo-btn" @click="pickImages">添加图片</button>
+      <view class="photo-actions">
+        <button class="add-photo-btn" @click="pickImages('camera')">拍照</button>
+        <button class="add-photo-btn" @click="pickImages('album')">从相册选择</button>
+      </view>
     </view>
 
-    <button v-if="session.canWrite" class="main-btn" :loading="loading" @click="save">保存记录</button>
+    <view v-if="session.canWrite" :class="['bottom-actions', !recordId && 'bottom-actions--solo']">
+      <button class="main-btn" :loading="loading" @click="save">保存记录</button>
+      <button v-if="recordId" class="delete-btn" :loading="deleting" @click="onDelete">删除</button>
+    </view>
     <view v-else class="readonly-tip"><text>当前为只读成员，无法保存记录。</text></view>
   </view>
 </template>
@@ -131,13 +153,13 @@
 import { onLoad } from "@dcloudio/uni-app";
 import { computed, reactive, ref, watch } from "vue";
 import {
-  apiCreateRecord, apiDeleteAttachment, apiGetRecord, apiLatestRecord, apiListAttachments, apiPatchRecord,
+  apiCreateRecord, apiDeleteAttachment, apiDeleteRecord, apiGetRecord, apiLatestRecord, apiListAttachments, apiPatchRecord,
   type AttachmentItem,
 } from "@/api/chuyaji";
 import { uploadRecordAttachment } from "@/api/upload";
 import { ensureImageUnderMaxBytes } from "@/utils/imageCompress";
 import { resolvePublicMediaUrl } from "@/utils/mediaUrl";
-import { BABY_TEMPLATES, labelForType, type RecordTemplate, type TemplateField } from "@/utils/recordTypes";
+import { ACTIVE_POSTNATAL_TYPES, BABY_TEMPLATES, labelForType, type RecordTemplate, type TemplateField } from "@/utils/recordTypes";
 import { useSessionStore } from "@/store/session";
 
 const session = useSessionStore();
@@ -147,11 +169,12 @@ const recordId = ref(0);
 const phase = ref<"prenatal" | "postnatal">("prenatal");
 const recordType = ref("prenatal_checkup");
 const occurredAt = ref("");
+const occurredTime = ref("");
 const summary = ref("");
 const loading = ref(false);
-const showOptional = ref(false);
+const deleting = ref(false);
+const note = ref("");
 const extras = reactive<Record<string, string>>({});
-const serverPayload = ref<Record<string, unknown>>({});
 const serverAttachments = ref<AttachmentItem[]>([]);
 const pendingPaths = ref<{ key: string; path: string }[]>([]);
 
@@ -170,11 +193,22 @@ const displayPhotos = computed<DisplayPhoto[]>(() => {
   return [...server, ...local];
 });
 
+/** 新建时成长期只暴露三个日常类型；编辑历史记录时把当前类型补回列表 */
+const typeOptions = computed<RecordTemplate[]>(() => {
+  const all = BABY_TEMPLATES[phase.value];
+  if (phase.value === "prenatal") return all;
+  const allowed: readonly string[] = ACTIVE_POSTNATAL_TYPES;
+  const list = all.filter((t) => allowed.includes(t.value));
+  const current = all.find((t) => t.value === recordType.value);
+  if (current && !allowed.includes(current.value)) list.unshift(current);
+  return list;
+});
+
 const phaseLabels = ["怀孕期", "成长期"];
 const phaseIndex = computed(() => (phase.value === "prenatal" ? 0 : 1));
-const typeLabels = computed(() => BABY_TEMPLATES[phase.value].map((t) => t.label));
+const typeLabels = computed(() => typeOptions.value.map((t) => t.label));
 const typeIndex = computed(() => {
-  const idx = BABY_TEMPLATES[phase.value].findIndex((t) => t.value === recordType.value);
+  const idx = typeOptions.value.findIndex((t) => t.value === recordType.value);
   return idx >= 0 ? idx : 0;
 });
 const currentTypeLabel = computed(() => labelForType(phase.value, recordType.value));
@@ -187,6 +221,27 @@ const pageTitle = computed(() => currentTemplate.value?.label || "宝宝记录")
 
 const recommendedFields = computed(() => currentTemplate.value?.recommendedFields ?? []);
 const optionalFields = computed(() => currentTemplate.value?.optionalFields ?? []);
+/** 必填 + 选填平铺展示，不做折叠 */
+const visibleFields = computed<TemplateField[]>(() => [
+  ...recommendedFields.value,
+  ...optionalFields.value,
+]);
+
+function isOptionalField(field: TemplateField): boolean {
+  return optionalFields.value.some((f) => f.key === field.key);
+}
+
+/** 数值字段的常用值，点一下直接填入，避免手动键盘输入 */
+const QUICK_VALUES: Record<string, number[]> = {
+  amount_ml: [60, 90, 120, 150, 180],
+  times: [1, 2, 3, 4, 5],
+  temperature_celsius: [37, 37.5, 38, 38.5],
+};
+
+function quickValuesFor(field: TemplateField): number[] {
+  if (field.type !== "number") return [];
+  return QUICK_VALUES[field.key] || [];
+}
 
 function selectIndex(field: TemplateField): number {
   const opts = field.options || [];
@@ -211,7 +266,6 @@ watch(
   () => {
     recordType.value = BABY_TEMPLATES[phase.value][0].value;
     for (const key of Object.keys(extras)) delete extras[key];
-    showOptional.value = false;
   },
   { flush: "sync" }
 );
@@ -220,7 +274,6 @@ watch(
   () => recordType.value,
   () => {
     for (const key of Object.keys(extras)) delete extras[key];
-    showOptional.value = false;
   },
   { flush: "sync" }
 );
@@ -232,6 +285,7 @@ onLoad(async (query: Record<string, string | undefined>) => {
   if (query.type) recordType.value = query.type;
   const now = new Date();
   occurredAt.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  occurredTime.value = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
   if (recordId.value) {
     await loadExisting();
     return;
@@ -244,7 +298,7 @@ function onPhase(event: { detail: { value: string } }) {
 }
 
 function onType(event: { detail: { value: string } }) {
-  const next = BABY_TEMPLATES[phase.value][Number(event.detail.value)]?.value;
+  const next = typeOptions.value[Number(event.detail.value)]?.value;
   if (next) recordType.value = next;
 }
 
@@ -252,19 +306,33 @@ function onOccurredAtChange(event: { detail: { value: string } }) {
   occurredAt.value = event.detail.value || "";
 }
 
+function onOccurredTimeChange(event: { detail: { value: string } }) {
+  occurredTime.value = event.detail.value || "";
+}
+
 async function loadExisting() {
   try {
     const item = await apiGetRecord(recordId.value);
     phase.value = item.phase;
     recordType.value = item.record_type;
-    occurredAt.value = item.occurred_at.slice(0, 10);
+    const occurred = new Date(item.occurred_at);
+    if (Number.isNaN(occurred.getTime())) {
+      occurredAt.value = item.occurred_at.slice(0, 10);
+      occurredTime.value = "00:00";
+    } else {
+      const pad = (n: number) => String(n).padStart(2, "0");
+      occurredAt.value = `${occurred.getFullYear()}-${pad(occurred.getMonth() + 1)}-${pad(occurred.getDate())}`;
+      occurredTime.value = `${pad(occurred.getHours())}:${pad(occurred.getMinutes())}`;
+    }
     summary.value = item.summary || "";
     const pl = item.payload || {};
-    serverPayload.value = { ...pl };
     for (const key of Object.keys(extras)) delete extras[key];
+    note.value = String((pl as Record<string, unknown>).note || "");
     for (const [key, val] of Object.entries(pl)) {
+      if (key === "note") continue;
       if (val != null && val !== "") extras[key] = String(val);
     }
+    splitDurationFields();
     pendingPaths.value = [];
     const att = await apiListAttachments(recordId.value);
     serverAttachments.value = att.items || [];
@@ -290,16 +358,43 @@ async function loadPreset(prefill?: string) {
     }
   }
   if (!preset?.payload) return;
-  serverPayload.value = { ...preset.payload };
   for (const key of Object.keys(extras)) delete extras[key];
+  note.value = String((preset.payload as Record<string, unknown>).note || "");
   for (const [key, val] of Object.entries(preset.payload)) {
+    if (key === "note") continue;
     if (val != null && val !== "") extras[key] = String(val);
   }
+  splitDurationFields();
   if (currentTemplate.value?.mode === "standard") {
     summary.value = preset.summary || "";
   }
   pendingPaths.value = [];
   serverAttachments.value = [];
+}
+
+function durationKey(key: string, part: "h" | "m"): string {
+  return `${key}__${part}`;
+}
+
+/** 把 duration 字段的 时/分 输入合并成分钟数写回 extras[field.key] */
+function syncDurationFields() {
+  for (const field of [...recommendedFields.value, ...optionalFields.value]) {
+    if (field.type !== "duration") continue;
+    const h = Number(extras[durationKey(field.key, "h")] || 0);
+    const m = Number(extras[durationKey(field.key, "m")] || 0);
+    const total = Math.max(0, Math.round((Number.isFinite(h) ? h : 0) * 60 + (Number.isFinite(m) ? m : 0)));
+    extras[field.key] = total > 0 ? String(total) : "";
+  }
+}
+
+function splitDurationFields() {
+  for (const field of [...recommendedFields.value, ...optionalFields.value]) {
+    if (field.type !== "duration") continue;
+    const total = Number(extras[field.key] || 0);
+    extras[field.key] = "";
+    extras[durationKey(field.key, "h")] = total >= 60 ? String(Math.floor(total / 60)) : "";
+    extras[durationKey(field.key, "m")] = total % 60 > 0 ? String(total % 60) : "";
+  }
 }
 
 function buildPayload(): Record<string, unknown> {
@@ -309,14 +404,18 @@ function buildPayload(): Record<string, unknown> {
     const raw = extras[field.key]?.trim();
     if (!raw) continue;
     const maybeNumber = Number(raw);
-    base[field.key] = field.type === "number" && Number.isFinite(maybeNumber) ? maybeNumber : raw;
+    const wantsNumber = field.type === "number" || field.type === "duration";
+    base[field.key] = wantsNumber && Number.isFinite(maybeNumber) ? maybeNumber : raw;
   }
+  const noteText = note.value.trim();
+  if (noteText) base.note = noteText;
   return base;
 }
 
 function buildSummary(payload: Record<string, unknown>): string {
-  if (summary.value.trim()) return summary.value.trim();
+  // 日常类型（喂养/睡眠/排便）摘要必须按字段重算，否则改了奶量摘要还是旧的
   if (currentTemplate.value?.autoSummary) return currentTemplate.value.autoSummary(payload);
+  if (summary.value.trim()) return summary.value.trim();
   return currentTemplate.value?.label + "已记录";
 }
 
@@ -327,11 +426,12 @@ function previewPhoto(index: number) {
   uni.previewImage({ current: urls[index], urls });
 }
 
-function pickImages() {
+function pickImages(source: "camera" | "album") {
   const remain = 27 - displayPhotos.value.length;
   if (remain <= 0) { uni.showToast({ title: "图片数量已达上限", icon: "none" }); return; }
   uni.chooseImage({
-    count: Math.min(9, remain),
+    count: source === "camera" ? 1 : Math.min(9, remain),
+    sourceType: source === "camera" ? ["camera"] : ["album"],
     sizeType: ["original"],
     success: async (res) => {
       for (const path of res.tempFilePaths) {
@@ -364,15 +464,48 @@ async function uploadPendingForRecord(id: number) {
   if (failed > 0) uni.showToast({ title: `${failed} 张图片上传失败`, icon: "none" });
 }
 
+async function onDelete() {
+  if (!recordId.value) return;
+  const ok = await new Promise<boolean>((resolve) => {
+    uni.showModal({
+      title: "删除记录",
+      content: "删除后无法恢复，记录里的图片也会一并删除。",
+      confirmColor: "#c96b5c",
+      success: (r) => resolve(!!r.confirm),
+      fail: () => resolve(false),
+    });
+  });
+  if (!ok) return;
+  deleting.value = true;
+  try {
+    await apiDeleteRecord(recordId.value);
+    uni.showToast({ title: "已删除", icon: "success" });
+    setTimeout(() => uni.navigateBack({ delta: 1 }), 300);
+  } catch (error) {
+    console.error(error);
+    uni.showToast({ title: "删除失败", icon: "none" });
+  } finally {
+    deleting.value = false;
+  }
+}
+
 async function save() {
   if (!babyId.value) { uni.showToast({ title: "缺少宝宝档案", icon: "none" }); return; }
   if (!occurredAt.value.trim()) { uni.showToast({ title: "请选择发生日期", icon: "none" }); return; }
   loading.value = true;
   try {
-    const freshPayload = buildPayload();
-    const payload = recordId.value ? { ...serverPayload.value, ...freshPayload } : freshPayload;
+    syncDurationFields();
+    // 只提交当前模板里的字段，模板已下线的字段（如喂养时长）不再带回 payload
+    const payload = buildPayload();
     const finalSummary = buildSummary(payload);
-    const body = { phase: phase.value, record_type: recordType.value, occurred_at: new Date(`${occurredAt.value}T12:00:00`).toISOString(), summary: finalSummary, payload };
+    const time = occurredTime.value || "00:00";
+    const body = {
+      phase: phase.value,
+      record_type: recordType.value,
+      occurred_at: new Date(`${occurredAt.value}T${time}:00`).toISOString(),
+      summary: finalSummary,
+      payload,
+    };
     if (recordId.value) {
       await apiPatchRecord(recordId.value, body);
       await uploadPendingForRecord(recordId.value);
@@ -413,9 +546,6 @@ async function save() {
   letter-spacing: 3rpx;
   font-weight: 500;
 }
-
-.optional-toggle { padding: 4rpx 0; }
-.optional-toggle-text { font-size: 23rpx; color: $cj-primary; font-weight: 500; }
 
 .picker-line, .field { margin-bottom: $cj-gap-md; }
 .field:last-child { margin-bottom: 0; }
@@ -458,6 +588,19 @@ async function save() {
 
 .section-hint { display: block; margin-top: 8rpx; font-size: 21rpx; color: $cj-text-muted; line-height: 1.5; }
 
+.duration-row { display: flex; gap: 16rpx; }
+.duration-box { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8rpx; background: $cj-surface-2; border: 1rpx solid $cj-border-faint; border-radius: $cj-radius-md; padding: 0 20rpx; height: 108rpx; box-sizing: border-box; }
+.duration-field { flex: 1; min-width: 0; font-size: 32rpx; text-align: center; background: transparent; border: none; }
+.duration-unit { flex-shrink: 0; font-size: 26rpx; color: $cj-text-secondary; }
+
+.chip-row { display: flex; flex-wrap: wrap; gap: 12rpx; margin-bottom: 12rpx; }
+.chip { padding: 12rpx 26rpx; font-size: 24rpx; color: $cj-text; background: $cj-surface-2; border: 1rpx solid $cj-border-faint; border-radius: $cj-radius-pill; }
+.chip--on { color: $cj-primary-dark; border-color: $cj-primary; background: rgba(201, 107, 92, 0.1); font-weight: 500; }
+.opt-tag { margin-left: 10rpx; font-size: 19rpx; color: $cj-text-muted; }
+.area--compact { min-height: 132rpx; }
+.photo-actions { display: flex; gap: 14rpx; }
+.photo-actions .add-photo-btn { flex: 1; }
+
 .photo-placeholder { margin-top: $cj-gap-md; padding: 32rpx 0; text-align: center; font-size: 23rpx; color: $cj-text-muted; background: $cj-surface-2; border-radius: $cj-radius-lg; border: 1rpx dashed $cj-border-faint; }
 .photo-grid { display: flex; flex-wrap: wrap; gap: 14rpx; margin-top: $cj-gap-md; }
 .photo-cell { position: relative; width: calc((100% - 28rpx) / 3); box-sizing: border-box; }
@@ -465,6 +608,33 @@ async function save() {
 .photo-remove { position: absolute; top: 6rpx; right: 6rpx; width: 40rpx; height: 40rpx; border-radius: 50%; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; }
 .photo-remove-x { color: #fff; font-size: 30rpx; line-height: 1; }
 .add-photo-btn { margin-top: $cj-gap-md; border-radius: $cj-radius-pill !important; background: $cj-surface !important; color: $cj-text !important; border: 1rpx solid $cj-border-faint !important; }
+
+.bottom-actions {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: stretch;
+  gap: 16rpx;
+  margin-top: $cj-gap-sm;
+}
+.bottom-actions .main-btn,
+.bottom-actions .delete-btn {
+  flex: 1 1 0;
+  width: 0 !important;
+  min-width: 0;
+  box-sizing: border-box;
+  margin: 0 !important;
+  padding: 0 !important;
+  height: 88rpx;
+  line-height: 88rpx !important;
+  font-size: 28rpx;
+}
+
+.delete-btn {
+  border-radius: $cj-radius-pill !important;
+  background: $cj-danger-bg !important;
+  color: $cj-danger-text !important;
+  border: 1rpx solid rgba(140, 58, 52, 0.18) !important;
+}
 
 .main-btn, .ghost-btn { border-radius: $cj-radius-pill !important; }
 .main-btn { margin-top: $cj-gap-sm; background: linear-gradient(160deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%) !important; color: #fffefb !important; border: none !important; box-shadow: $cj-shadow-soft; }

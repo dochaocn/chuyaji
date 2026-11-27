@@ -16,22 +16,6 @@ export interface Baby {
   note?: string;
 }
 
-export interface Mother {
-  id: number;
-  user_id: number;
-  family_id?: number;
-  name: string;
-  birthday?: string;
-  height_cm?: number;
-  pre_pregnancy_weight_kg?: number;
-  blood_type?: string;
-  allergy_history?: string;
-  medical_history?: string;
-  status?: "pregnant" | "postpartum" | "parenting";
-  delivery_date?: string;
-  note?: string;
-}
-
 export type FamilyRole = "owner" | "write" | "read";
 
 export interface FamilyMember {
@@ -72,6 +56,12 @@ export interface FamilyInvitePreview {
   conflict?: FamilyInviteConflict;
 }
 
+export interface RecordAttachment {
+  id: number;
+  url: string;
+  thumb_url?: string;
+}
+
 export interface RecordItem {
   id: number;
   baby_id: number;
@@ -80,17 +70,8 @@ export interface RecordItem {
   occurred_at: string;
   summary: string;
   payload: Record<string, unknown>;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface MotherRecordItem {
-  id: number;
-  mother_id: number;
-  record_type: string;
-  occurred_at: string;
-  summary: string;
-  payload: Record<string, unknown>;
+  /** 图片附件，后端批量挂载；无图时不返回该字段 */
+  attachments?: RecordAttachment[];
   created_at: string;
   updated_at: string;
 }
@@ -116,38 +97,10 @@ export interface BabyAlbumAttachment {
   summary: string;
 }
 
-export interface ReminderItem {
-  id: number;
-  user_id: number;
-  owner_type: "baby" | "mother";
-  owner_id: number;
-  source_type: "baby_record" | "mother_record";
-  source_id: number;
-  source_record_type: string;
-  category?: "checkup" | "vaccine" | "followup" | "other" | string;
-  title: string;
-  note?: string;
-  due_at: string;
-  done_at?: string;
-  snoozed_until?: string;
-  status: "pending" | "done" | "ignored";
-  created_at: string;
-  updated_at: string;
-}
-
 export interface RecordListOptions {
   limit?: number;
   cursor?: string;
   phase?: "prenatal" | "postnatal";
-  record_type?: string;
-  q?: string;
-  from?: string;
-  to?: string;
-}
-
-export interface MotherRecordListOptions {
-  limit?: number;
-  cursor?: string;
   record_type?: string;
   q?: string;
   from?: string;
@@ -220,6 +173,12 @@ export type DailyMetricBucket = {
   total_ml?: number;
   total_duration_min?: number;
   total_times?: number;
+  /** 当日最后一次该类型记录时间，无记录为 null */
+  last_at?: string | null;
+  /** 睡眠专用：当日单次最长时长 */
+  longest_min?: number;
+  /** 排便专用：当日最后一条记录的性状 */
+  last_consistency?: string;
 };
 
 export type BabyDailySummary = {
@@ -229,39 +188,15 @@ export type BabyDailySummary = {
   diaper: DailyMetricBucket;
 };
 
-export async function apiBabyDashboard(babyId?: number) {
-  const path = babyId ? `/api/v1/dashboard/baby?baby_id=${babyId}` : "/api/v1/dashboard/baby";
+export async function apiBabyDashboard(babyId?: number, recordsLimit = 20) {
+  const qs = queryString({ baby_id: babyId, records_limit: recordsLimit });
+  const path = `/api/v1/dashboard/baby?${qs}`;
   return request<{
     profile: Baby | null;
     phase_summary?: { stage: "prenatal" | "postnatal"; record_count: number };
     latest_records: RecordItem[];
     growth_summary?: Record<string, unknown>;
     daily_summary?: BabyDailySummary;
-  }>({ path });
-}
-
-export async function apiListMothers() {
-  return request<{ items: Mother[] }>({ path: "/api/v1/mothers" });
-}
-
-export async function apiCreateMother(body: Partial<Mother>) {
-  return request<Mother>({ path: "/api/v1/mothers", method: "POST", data: body as Record<string, unknown> });
-}
-
-export async function apiGetMother(id: number) {
-  return request<Mother>({ path: `/api/v1/mothers/${id}` });
-}
-
-export async function apiPatchMother(id: number, body: Record<string, unknown>) {
-  return request<Mother>({ path: `/api/v1/mothers/${id}`, method: "PATCH", data: body });
-}
-
-export async function apiMotherDashboard(motherId?: number) {
-  const path = motherId ? `/api/v1/dashboard/mother?mother_id=${motherId}` : "/api/v1/dashboard/mother";
-  return request<{
-    profile: Mother | null;
-    health_summary?: { status?: string; record_count?: number };
-    latest_records: MotherRecordItem[];
   }>({ path });
 }
 
@@ -307,35 +242,6 @@ export async function apiDeleteRecord(id: number) {
   return request<unknown>({ path: `/api/v1/records/${id}`, method: "DELETE" });
 }
 
-export async function apiListMotherRecords(motherId: number, limitOrOptions: number | MotherRecordListOptions = 20, cursor?: string) {
-  const opts: MotherRecordListOptions =
-    typeof limitOrOptions === "number" ? { limit: limitOrOptions, cursor } : limitOrOptions;
-  const qs = queryString({ limit: opts.limit ?? 20, cursor: opts.cursor, record_type: opts.record_type, q: opts.q, from: opts.from, to: opts.to });
-  const path = `/api/v1/mothers/${motherId}/records?${qs}`;
-  return request<{ items: MotherRecordItem[]; next_cursor: string }>({ path });
-}
-
-export async function apiLatestMotherRecord(motherId: number, recordType: string) {
-  const qs = queryString({ record_type: recordType });
-  return request<{ item: MotherRecordItem | null }>({ path: `/api/v1/mothers/${motherId}/records/latest?${qs}` });
-}
-
-export async function apiCreateMotherRecord(motherId: number, body: Record<string, unknown>) {
-  return request<MotherRecordItem>({ path: `/api/v1/mothers/${motherId}/records`, method: "POST", data: body });
-}
-
-export async function apiGetMotherRecord(id: number) {
-  return request<MotherRecordItem>({ path: `/api/v1/mother-records/${id}` });
-}
-
-export async function apiPatchMotherRecord(id: number, body: Record<string, unknown>) {
-  return request<MotherRecordItem>({ path: `/api/v1/mother-records/${id}`, method: "PATCH", data: body });
-}
-
-export async function apiDeleteMotherRecord(id: number) {
-  return request<unknown>({ path: `/api/v1/mother-records/${id}`, method: "DELETE" });
-}
-
 export async function apiListAttachments(recordId: number) {
   return request<{ items: AttachmentItem[] }>({
     path: `/api/v1/records/${recordId}/attachments`,
@@ -349,38 +255,8 @@ export async function apiListBabyAttachments(babyId: number, limit = 40, cursor?
   });
 }
 
-export async function apiListMotherAttachments(recordId: number) {
-  return request<{ items: AttachmentItem[] }>({
-    path: `/api/v1/mother-records/${recordId}/attachments`,
-  });
-}
-
 export async function apiDeleteAttachment(id: number) {
   return request<unknown>({ path: `/api/v1/attachments/${id}`, method: "DELETE" });
-}
-
-export async function apiListReminders(
-  status: ReminderItem["status"] = "pending",
-  limit = 20,
-  owner?: { owner_type: ReminderItem["owner_type"]; owner_id: number },
-  extra?: { from?: string; to?: string; category?: string }
-) {
-  const params = [`status=${status}`, `limit=${limit}`];
-  if (owner) {
-    params.push(`owner_type=${owner.owner_type}`, `owner_id=${owner.owner_id}`);
-  }
-  if (extra?.from) params.push(`from=${encodeURIComponent(extra.from)}`);
-  if (extra?.to) params.push(`to=${encodeURIComponent(extra.to)}`);
-  if (extra?.category) params.push(`category=${encodeURIComponent(extra.category)}`);
-  return request<{ items: ReminderItem[] }>({ path: `/api/v1/reminders?${params.join("&")}` });
-}
-
-export async function apiPatchReminder(id: number, body: { status?: ReminderItem["status"]; due_at?: string; snoozed_until?: string; note?: string }) {
-  return request<ReminderItem>({ path: `/api/v1/reminders/${id}`, method: "PATCH", data: body });
-}
-
-export async function apiDeleteReminder(id: number) {
-  return request<unknown>({ path: `/api/v1/reminders/${id}`, method: "DELETE" });
 }
 
 export async function apiGrowthSeries(babyId: number) {

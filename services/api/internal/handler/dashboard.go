@@ -43,8 +43,20 @@ func (h *Handler) BabyDashboard(c *gin.Context) {
 		return
 	}
 
+	recordsLimit, _ := strconv.Atoi(c.DefaultQuery("records_limit", "20"))
+	if recordsLimit <= 0 || recordsLimit > 50 {
+		recordsLimit = 20
+	}
+
+	stage := "prenatal"
+	if baby.BirthDate != nil {
+		stage = "postnatal"
+	}
+
+	// 首页时间线只返回与宝宝当前阶段一致的记录；历史另一阶段的数据去「查看全部」里看
 	var records []model.Record
-	if err := h.DB.Where("baby_id = ?", baby.ID).Order("occurred_at DESC, id DESC").Limit(5).Find(&records).Error; err != nil {
+	if err := h.DB.Where("baby_id = ? AND phase = ?", baby.ID, stage).
+		Order("occurred_at DESC, id DESC").Limit(recordsLimit).Find(&records).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "query"})
 		return
 	}
@@ -53,11 +65,7 @@ func (h *Handler) BabyDashboard(c *gin.Context) {
 	for i := range records {
 		out = append(out, recordToOut(&records[i]))
 	}
-
-	stage := "prenatal"
-	if baby.BirthDate != nil {
-		stage = "postnatal"
-	}
+	out = h.attachRecordAttachments(out)
 
 	growthSummary := gin.H{}
 	var latestGrowth model.Record
@@ -130,6 +138,11 @@ func (h *Handler) buildBabyDailySummary(babyID uint64) gin.H {
 
 	var feedCount, sleepCount, diaperCount int
 	var feedML, feedDur, sleepDur, diaperTimes float64
+	// 最近一次（last_at）、当日最长单次睡眠、最后一条排便的性状
+	var feedLastAt, sleepLastAt, diaperLastAt time.Time
+	var sleepLongest float64
+	var diaperLastConsistency string
+	var diaperHasLast bool
 
 	var rows []model.Record
 	if err := h.DB.Where(
@@ -147,9 +160,19 @@ func (h *Handler) buildBabyDailySummary(babyID uint64) gin.H {
 				feedCount++
 				feedML += payloadFloat(payload, "amount_ml")
 				feedDur += payloadFloat(payload, "duration_min")
+				if rows[i].OccurredAt.After(feedLastAt) {
+					feedLastAt = rows[i].OccurredAt
+				}
 			case "sleep":
 				sleepCount++
-				sleepDur += payloadFloat(payload, "duration_min")
+				dur := payloadFloat(payload, "duration_min")
+				sleepDur += dur
+				if dur > sleepLongest {
+					sleepLongest = dur
+				}
+				if rows[i].OccurredAt.After(sleepLastAt) {
+					sleepLastAt = rows[i].OccurredAt
+				}
 			case "diaper":
 				diaperCount++
 				times := payloadFloat(payload, "times")
@@ -157,6 +180,15 @@ func (h *Handler) buildBabyDailySummary(babyID uint64) gin.H {
 					times = 1
 				}
 				diaperTimes += times
+				if !diaperHasLast || rows[i].OccurredAt.After(diaperLastAt) {
+					diaperLastAt = rows[i].OccurredAt
+					if consistency, ok := payload["consistency"].(string); ok {
+						diaperLastConsistency = consistency
+					} else {
+						diaperLastConsistency = ""
+					}
+					diaperHasLast = true
+				}
 			}
 		}
 	}
@@ -164,19 +196,32 @@ func (h *Handler) buildBabyDailySummary(babyID uint64) gin.H {
 	return gin.H{
 		"date": dateStr,
 		"feeding": gin.H{
-			"count":               feedCount,
-			"total_ml":            int(feedML + 0.5),
-			"total_duration_min":  int(feedDur + 0.5),
+			"count":              feedCount,
+			"total_ml":           int(feedML + 0.5),
+			"total_duration_min": int(feedDur + 0.5),
+			"last_at":            nullableTime(feedLastAt),
 		},
 		"sleep": gin.H{
 			"count":              sleepCount,
 			"total_duration_min": int(sleepDur + 0.5),
+			"longest_min":        int(sleepLongest + 0.5),
+			"last_at":            nullableTime(sleepLastAt),
 		},
 		"diaper": gin.H{
-			"count":       diaperCount,
-			"total_times": int(diaperTimes + 0.5),
+			"count":            diaperCount,
+			"total_times":      int(diaperTimes + 0.5),
+			"last_consistency": diaperLastConsistency,
+			"last_at":          nullableTime(diaperLastAt),
 		},
 	}
+}
+
+// nullableTime 零值返回 nil，便于 JSON 输出 null
+func nullableTime(t time.Time) *time.Time {
+	if t.IsZero() {
+		return nil
+	}
+	return &t
 }
 
 func (h *Handler) MotherDashboard(c *gin.Context) {

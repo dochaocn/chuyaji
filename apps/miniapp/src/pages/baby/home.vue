@@ -1,7 +1,5 @@
 <template>
   <view class="page">
-
-    
     <view v-if="!session.privacyOk" class="notice">
       <text class="notice-title">先阅读隐私说明</text>
       <text class="notice-desc">记录只保存在你的账号范围内，进入正式记录前先确认使用说明。</text>
@@ -10,193 +8,139 @@
 
     <view v-if="!auth.token && auth.sessionBooting" class="empty-card">
       <text class="empty-title">正在准备运行环境…</text>
-      <text class="empty-desc">请稍候，完成环境与内容加载后即可使用。</text>
     </view>
 
     <view v-else-if="!auth.token && auth.sessionBootError" class="empty-card">
       <text class="empty-title">{{ auth.sessionBootError }}</text>
-      <text class="empty-desc">请检查网络设置后重试。</text>
       <button class="main-btn" @click="retryWeChatSession">重试</button>
     </view>
 
-    <template v-else-if="auth.token">
+    <view v-else-if="!auth.token" class="empty-card">
+      <text class="empty-title">未登录</text>
+      <button class="main-btn" @click="retryWeChatSession">重新登录</button>
+    </view>
 
+    <template v-else>
       <WorkbenchHeader
-        workspace-label="宝宝工作台"
         :badge-label="dashboard?.profile ? babyStageLabel : undefined"
         :badge-class="babyStageBadgeClass"
+        :identity-label="resolvedIdentity"
         :name="dashboard?.profile?.nickname"
         :stage-title="stageTitle"
-        :stage-desc="stageDesc"
         :profile-label="dashboard?.profile ? (session.canWrite ? '编辑档案' : '查看档案') : '创建档案'"
         profile-icon="👶"
-        :show-next-step="nextStep.type !== 'none'"
-        :next-step-title="nextStepTitle"
-        :next-step-btn-label="nextStepBtnLabel"
         :can-switch="babies.length > 1"
         @profile="goProfileEdit"
         @family="goFamily"
-        @next="onNextStepAction"
+        @identity="goFamily"
         @switch="onSwitchBaby"
       />
 
-      <QuickRecordStrip
-        v-if="dashboard?.profile && shortcuts.length"
-        :shortcuts="shortcuts"
-        @shortcut="onShortcut"
-      />
-
-      <view v-if="isPostnatalStage && dashboard?.profile" class="daily-section trend-panel">
-        <view class="panel-head panel-head--inline">
-          <view class="panel-head-text">
-            <text class="panel-kicker">今日</text>
-            <text class="panel-title">{{ dailyDateLabel }}</text>
-          </view>
-          <view class="panel-head-rule" />
-        </view>
-        <view class="summary-grid summary-grid--baby">
-          <view class="summary-card summary-card--baby summary-card--weight" @click="goDailyRecords('feeding')">
-            <view class="summary-card-accent summary-card-accent--coral" />
-            <text class="summary-label">喂养</text>
-            <text class="summary-value">{{ dailyFeedingLabel }}</text>
-            <text class="summary-hint">{{ dailySummary?.feeding?.count ?? 0 }} 次</text>
-          </view>
-          <view class="summary-card summary-card--baby summary-card--count" @click="goDailyRecords('sleep')">
-            <view class="summary-card-accent summary-card-accent--mint" />
-            <text class="summary-label">睡眠</text>
-            <text class="summary-value">{{ dailySleepLabel }}</text>
-            <text class="summary-hint">{{ dailySummary?.sleep?.count ?? 0 }} 次</text>
-          </view>
-          <view class="summary-card summary-card--baby" @click="goDailyRecords('diaper')">
-            <view class="summary-card-accent summary-card-accent--gold" />
-            <text class="summary-label">排便</text>
-            <text class="summary-value">{{ dailyDiaperLabel }}</text>
-            <text class="summary-hint">{{ dailySummary?.diaper?.count ?? 0 }} 条</text>
-          </view>
-        </view>
+      <view v-if="!dashboard?.profile && !loading" class="empty-card">
+        <button class="main-btn" @click="goProfileEdit">创建宝宝档案</button>
       </view>
 
-      <view v-if="isPostnatalStage && dashboard?.profile" class="trend-section trend-panel">
-        <view class="panel-head panel-head--inline">
-          <view class="panel-head-text">
-            <text class="panel-kicker">成长快照</text>
-            <text class="panel-title">近况</text>
+      <template v-else-if="dashboard?.profile">
+        <!-- 今日汇总：总量优先 -->
+        <view class="panel">
+          <view class="panel-head">
+            <text class="panel-title">今日</text>
+            <text class="panel-date">{{ dailyDateLabel }}</text>
           </view>
-          <view class="panel-head-rule" />
-        </view>
-        <view v-if="hasTrendData" class="summary-grid summary-grid--baby">
-          <view v-if="latestWeightLabel" class="summary-card summary-card--baby summary-card--weight">
-            <view class="summary-card-accent summary-card-accent--coral" />
-            <text class="summary-label">最近体重</text>
-            <text class="summary-value">{{ latestWeightLabel }}</text>
-            <text v-if="weightAgeDays !== null" class="summary-hint">{{ weightAgeDays }} 天前</text>
-          </view>
-          <view class="summary-card summary-card--baby summary-card--count">
-            <view class="summary-card-accent summary-card-accent--mint" />
-            <text class="summary-label">本月记录</text>
-            <text class="summary-value">{{ monthlyCount }}</text>
-            <text class="summary-hint">条</text>
-          </view>
-          <view v-if="latestMilestone" class="summary-card summary-card--baby summary-card--milestone">
-            <view class="summary-card-accent summary-card-accent--gold" />
-            <text class="summary-label">最近里程碑</text>
-            <text class="summary-value milestone-value">{{ latestMilestone }}</text>
-          </view>
-        </view>
-        <view class="growth-link-list">
-          <view class="growth-link" @click="goGrowth">
-            <text class="growth-link-text">查看生长趋势</text>
-            <text class="growth-link-chev">›</text>
-          </view>
-          <view class="growth-link" @click="goVaccinePlan">
-            <text class="growth-link-text">查看疫苗计划</text>
-            <text class="growth-link-chev">›</text>
-          </view>
-          <view class="growth-link" @click="goAlbum">
-            <text class="growth-link-text">成长相册</text>
-            <text class="growth-link-chev">›</text>
-          </view>
-        </view>
-      </view>
-
-      
-      <view v-if="dashboard?.profile" class="section records-panel">
-        <view class="panel-head panel-head--inline">
-          <view class="panel-head-text">
-            <text class="panel-kicker">时间线</text>
-            <text class="panel-title">最近记录</text>
-          </view>
-          <view class="panel-head-rule" />
-          <view v-if="(dashboard?.latest_records?.length || 0) > 0" class="section-meta">
-            <text class="section-meta-hint" @click="goTimeline">查看全部</text>
-          </view>
-          <view v-else-if="!loading" class="section-meta">
-            <text class="section-meta-hint">在快速记录里新增一条</text>
-          </view>
-        </view>
-        <view v-if="loading" class="placeholder">加载中…</view>
-        <view v-else-if="!dashboard?.latest_records?.length" class="placeholder placeholder--soft">
-          还没有记录，从推荐模板开始。
-        </view>
-        <view v-else class="record-timeline">
-          <view
-            v-for="(row, idx) in recentBabyRecordsWithPreview"
-            :key="row.item.id"
-            class="record-timeline-row"
-            @click="openRecord(row.item.id)"
-          >
-            <view class="record-rail">
-              <view
-                :class="[
-                  'record-dot',
-                  row.item.phase === 'prenatal' ? 'record-dot--pre' : 'record-dot--post',
-                ]"
-              />
-              <view
-                v-if="idx < recentBabyRecordsWithPreview.length - 1"
-                class="record-line"
-                :class="row.item.phase === 'prenatal' ? 'record-line--pre' : 'record-line--post'"
-              />
+          <view class="daily-grid">
+            <view class="daily-card" @click="onDailyCardTap('feeding')">
+              <text class="daily-label">喂养</text>
+              <text class="daily-main">{{ feedingTotalMl }}</text>
+              <view class="daily-meta">
+                <text>{{ feedingCount }} 次</text>
+              </view>
             </view>
-            <view class="record-card record-card--timeline">
-              <view class="record-card-head">
-                <view class="record-card-head-row">
-                  <view class="record-type-row">
-                    <text class="record-type">{{ labelForType(row.item.phase, row.item.record_type) }}</text>
-                    <text :class="['record-tag', row.item.phase === 'prenatal' ? 'pre' : 'post']">
-                      {{ row.item.phase === "prenatal" ? "怀孕期" : "成长期" }}
-                    </text>
-                  </view>
-                  <text class="record-date">{{ row.item.occurred_at.slice(0, 10) }}</text>
-                </view>
+            <view class="daily-card" @click="onDailyCardTap('sleep')">
+              <text class="daily-label">睡眠</text>
+              <text class="daily-main">{{ sleepTotalLabel }}</text>
+              <view class="daily-meta">
+                <text>{{ sleepCount }} 次</text>
               </view>
-              <view v-if="row.keyRows.length" class="record-body">
-                <view v-for="(kv, ki) in row.keyRows" :key="ki" class="record-kv-row">
-                  <view class="record-key-label">{{ kv.label }}</view>
-                  <view class="record-key-value">{{ kv.value }}</view>
-                </view>
+            </view>
+            <view class="daily-card" @click="onDailyCardTap('diaper')">
+              <text class="daily-label">排便</text>
+              <text class="daily-main">{{ diaperTotalLabel }}</text>
+              <view class="daily-meta">
+                <text>{{ diaperStatusLabel }}</text>
               </view>
-              <text v-else class="record-summary">{{ row.item.summary?.trim() || "未填写内容" }}</text>
-              <text v-if="row.showSummaryNote" class="record-summary-note">{{ row.item.summary }}</text>
             </view>
           </view>
         </view>
-      </view>
 
+        <!-- 时间线 -->
+        <view class="panel">
+          <view class="panel-head">
+            <text class="panel-title">记录</text>
+            <text class="panel-link" @click="goTimeline">查看全部</text>
+          </view>
+
+          <view v-if="loading && !timelineRows.length" class="tl-empty">加载中…</view>
+          <view v-else-if="!timelineRows.length" class="tl-empty">还没有记录</view>
+
+          <view v-else class="tl-list">
+            <view v-for="row in timelineRows" :key="row.item.id" class="tl-card" @click="openRecord(row.item.id)">
+              <view class="tl-head">
+                <text class="tl-type">{{ row.typeLabel }}</text>
+                <text class="tl-time">{{ row.timeLabel }}</text>
+              </view>
+
+              <view v-if="row.metrics.length" class="tl-metrics">
+                <view v-for="m in row.metrics" :key="m.label" class="tl-metric">
+                  <text class="tl-metric-label">{{ m.label }}</text>
+                  <text class="tl-metric-value">{{ m.value }}</text>
+                </view>
+              </view>
+
+              <text v-if="row.summary" class="tl-summary">{{ row.summary }}</text>
+              <text v-if="row.note" class="tl-note">备注 · {{ row.note }}</text>
+
+              <view v-if="row.thumbs.length" class="tl-thumbs">
+                <image
+                  v-for="(thumb, idx) in row.thumbs"
+                  :key="thumb.id"
+                  class="tl-thumb"
+                  :src="thumb.src"
+                  mode="aspectFill"
+                  @click.stop="previewRow(row, idx)"
+                />
+                <text v-if="row.moreCount" class="tl-thumb-more">+{{ row.moreCount }}</text>
+              </view>
+            </view>
+          </view>
+        </view>
+
+        <!-- 更多入口 -->
+        <view class="more-list">
+          <view class="more-item" @click="goGrowth">
+            <text class="more-text">生长趋势</text>
+            <text class="more-chev">›</text>
+          </view>
+          <view class="more-item" @click="goAlbum">
+            <text class="more-text">成长相册</text>
+            <text class="more-chev">›</text>
+          </view>
+          <view class="more-item" @click="goVaccinePlan">
+            <text class="more-text">疫苗计划</text>
+            <text class="more-chev">›</text>
+          </view>
+        </view>
+      </template>
     </template>
 
-    
     <QuickRecordSheet
       v-if="quickTemplate"
       :visible="showQuickSheet"
       :template="quickTemplate"
       :baby-id="Number(session.babyId) || Number(dashboard?.profile?.id) || 0"
-      :last-payload="lastQuickPayload"
-      :last-summary="lastQuickSummary"
+      :today-count="feedingTodayCount"
       @close="showQuickSheet = false"
       @saved="onQuickSaved"
     />
-
   </view>
 </template>
 
@@ -206,34 +150,38 @@ import { computed, ref } from "vue";
 import {
   apiBabyDashboard,
   apiCreateRecord,
-  apiLatestRecord,
   apiListBabies,
-  apiListReminders,
+  apiMe,
   type Baby,
   type BabyDailySummary,
   type RecordItem,
-  type ReminderItem,
 } from "@/api/chuyaji";
+import { uploadRecordAttachment } from "@/api/upload";
 import { useAuthStore } from "@/store/auth";
 import { useSessionStore } from "@/store/session";
 import {
-  labelForType,
+  ACTIVE_POSTNATAL_TYPES,
   BABY_TEMPLATES,
-  BABY_HOME_PRENATAL_SHORTCUT_ORDER,
-  babyHomePostnatalShortcutOrder,
+  labelForType,
   getBabyRecordPreviewRows,
+  resolveRecordSummary,
   templateForType,
   type RecordTemplate,
 } from "@/utils/recordTypes";
-import { calcGestation, calcAgeDays, calcAgeMonths, isPostnatal } from "@/utils/gestation";
-import { getBabyNextStep } from "@/utils/homeRules";
+import { calcGestation, calcAgeDays, isPostnatal } from "@/utils/gestation";
+import { resolvePublicMediaUrl } from "@/utils/mediaUrl";
+import { formatDateTime } from "@/utils/datetime";
+import { formatDurationMinutes } from "@/utils/duration";
 import QuickRecordSheet from "@/components/QuickRecordSheet.vue";
 import WorkbenchHeader from "@/components/WorkbenchHeader.vue";
-import QuickRecordStrip from "@/components/QuickRecordStrip.vue";
 
 const auth = useAuthStore();
 const session = useSessionStore();
 const loading = ref(false);
+/** 首页展示用的身份；家庭接口同步失败时用 /me 的昵称兜底 */
+const identityLabel = ref("");
+const resolvedIdentity = computed(() => identityLabel.value || session.myNickname);
+let identityChecked = false;
 
 const dashboard = ref<{
   profile: {
@@ -250,168 +198,122 @@ const dashboard = ref<{
 } | null>(null);
 
 const babies = ref<Baby[]>([]);
-
 const showQuickSheet = ref(false);
 const quickTemplate = ref<RecordTemplate | null>(null);
-const lastQuickPayload = ref<Record<string, unknown> | null>(null);
-const lastQuickSummary = ref("");
-const reminders = ref<ReminderItem[]>([]);
 
-const isPostnatalStage = computed(() => {
-  return isPostnatal(dashboard.value?.profile?.birth_date);
-});
+const isPostnatalStage = computed(() => isPostnatal(dashboard.value?.profile?.birth_date));
 
-/** 与「最近记录」阶段标签一致，样式对齐宝妈工作台时期徽章 */
 const babyStageLabel = computed(() => (isPostnatalStage.value ? "成长期" : "怀孕期"));
 const babyStageBadgeClass = computed(() => (isPostnatalStage.value ? "badge--post" : "badge--pre"));
 
 const ageDays = computed(() => calcAgeDays(dashboard.value?.profile?.birth_date));
-const ageMonths = computed(() => calcAgeMonths(dashboard.value?.profile?.birth_date));
-
 const gestationResult = computed(() => {
   const p = dashboard.value?.profile;
   return calcGestation(p?.edd_date, p?.lmp_date);
 });
 
 const stageTitle = computed(() => {
-  if (!dashboard.value?.profile) return "检查与成长，一站记下。";
-  if (isPostnatalStage.value) {
-    return `宝宝出生第 ${ageDays.value ?? 0} 天`;
-  }
-  if (gestationResult.value.available) {
-    return `孕 ${gestationResult.value.weeks} 周 ${gestationResult.value.days} 天`;
-  }
-  return "检查与成长，一站记下。";
+  if (!dashboard.value?.profile) return "还没有宝宝档案";
+  if (isPostnatalStage.value) return `出生第 ${ageDays.value ?? 0} 天`;
+  if (gestationResult.value.available) return `孕 ${gestationResult.value.weeks} 周 ${gestationResult.value.days} 天`;
+  return "宝宝档案";
 });
 
-const stageDesc = computed(() => {
-  if (!dashboard.value?.profile) return "先创建一个宝宝档案，后续所有孕期和成长期记录都围绕它展开。";
-  if (isPostnatalStage.value) {
-    return "喂养和生长变化都值得记一记。";
-  }
-  return "继续把每次检查安心记下。";
-});
-
-const shortcuts = computed<RecordTemplate[]>(() => {
-  if (!dashboard.value?.profile) return [];
-  if (isPostnatalStage.value) {
-    const types = babyHomePostnatalShortcutOrder(ageMonths.value ?? 0);
-    return types
-      .map((t) => BABY_TEMPLATES.postnatal.find((tmpl) => tmpl.value === t))
-      .filter((t): t is RecordTemplate => !!t);
-  }
-  return BABY_HOME_PRENATAL_SHORTCUT_ORDER.map((t) => BABY_TEMPLATES.prenatal.find((tmpl) => tmpl.value === t)).filter(
+/** 三个日常记录模板（顺序固定：喂养 / 睡眠 / 排便） */
+const dailyTemplates = computed<RecordTemplate[]>(() =>
+  ACTIVE_POSTNATAL_TYPES.map((t) => BABY_TEMPLATES.postnatal.find((tmpl) => tmpl.value === t)).filter(
     (t): t is RecordTemplate => !!t
-  );
-});
-
-const recentBabyRecordsWithPreview = computed(() => {
-  const list = dashboard.value?.latest_records?.slice(0, 3) ?? [];
-  return list.map((item) => {
-    const keyRows = getBabyRecordPreviewRows({
-      phase: item.phase,
-      record_type: item.record_type,
-      payload: item.payload as Record<string, unknown>,
-    });
-    const tmpl = templateForType(item.phase, item.record_type);
-    const sum = item.summary?.trim() || "";
-    const showSummaryNote = tmpl?.mode === "standard" && !!sum && keyRows.length > 0;
-    return { item, keyRows, showSummaryNote };
-  });
-});
-
-const activeReminder = computed(() => reminders.value[0] ?? null);
-
-const nextStep = computed(() => {
-  if (activeReminder.value) return { type: "check_reminder" as const };
-  const hasProfile = !!dashboard.value?.profile;
-  const lastAt = dashboard.value?.latest_records?.[0]?.occurred_at ?? null;
-  return getBabyNextStep(hasProfile, lastAt);
-});
-
-const nextStepTitle = computed(() => {
-  if (activeReminder.value) {
-    const more = reminders.value.length > 1 ? `，还有 ${reminders.value.length - 1} 条` : "";
-    return `${activeReminder.value.title}：${activeReminder.value.due_at.slice(0, 10)}${more}`;
-  }
-  switch (nextStep.value.type) {
-    case "create_profile": return "还没有宝宝档案";
-    case "add_record": return `已经 ${nextStep.value.daysSinceLast} 天没有新记录了`;
-    case "check_reminder": return "有即将到来的提醒";
-    default: return "";
-  }
-});
-
-const nextStepBtnLabel = computed(() => {
-  switch (nextStep.value.type) {
-    case "create_profile": return "去建档";
-    case "add_record": return "补一条记录";
-    case "check_reminder": return "查看提醒";
-    default: return "";
-  }
-});
-
-const latestWeightLabel = computed(() => {
-  const value = dashboard.value?.growth_summary?.latest_weight_g;
-  if (typeof value !== "number") return null;
-  return `${(value / 1000).toFixed(2)} kg`;
-});
-
-const weightAgeDays = computed(() => {
-  const at = dashboard.value?.growth_summary?.latest_weight_at as string | undefined;
-  if (!at) return null;
-  const diff = Math.floor((Date.now() - Date.parse(at)) / (24 * 60 * 60 * 1000));
-  return diff >= 0 ? diff : null;
-});
-
-const monthlyCount = computed(() => {
-  const records = dashboard.value?.latest_records ?? [];
-  const now = new Date();
-  return records.filter((r) => {
-    const d = new Date(r.occurred_at);
-    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-  }).length;
-});
-
-const latestMilestone = computed(() => {
-  const records = dashboard.value?.latest_records ?? [];
-  const hit = records.find((r) => r.record_type === "development");
-  if (!hit) return null;
-  return (hit.payload as Record<string, unknown>)?.milestone as string ?? hit.summary ?? "已记录";
-});
-
-const hasTrendData = computed(() => {
-  return !!latestWeightLabel.value || monthlyCount.value > 0;
-});
+  )
+);
 
 const dailySummary = computed(() => dashboard.value?.daily_summary);
 
 const dailyDateLabel = computed(() => {
   const d = dailySummary.value?.date;
-  if (!d) return "汇总";
+  if (!d) return "";
   const parts = d.split("-");
   if (parts.length !== 3) return d;
   return `${Number(parts[1])} 月 ${Number(parts[2])} 日`;
 });
 
-const dailyFeedingLabel = computed(() => {
+const feedingTotalMl = computed(() => {
   const ml = dailySummary.value?.feeding?.total_ml ?? 0;
-  return ml > 0 ? `${ml} ml` : "—";
+  return `${ml} ml`;
 });
+const feedingCount = computed(() => dailySummary.value?.feeding?.count ?? 0);
 
-const dailySleepLabel = computed(() => {
-  const min = dailySummary.value?.sleep?.total_duration_min ?? 0;
-  if (min <= 0) return "—";
-  if (min < 60) return `${min} 分`;
-  const h = Math.floor(min / 60);
-  const m = min % 60;
-  return m > 0 ? `${h} 时 ${m} 分` : `${h} 时`;
-});
+const sleepTotalLabel = computed(() => formatDurationMinutes(dailySummary.value?.sleep?.total_duration_min ?? 0));
+const sleepCount = computed(() => dailySummary.value?.sleep?.count ?? 0);
 
-const dailyDiaperLabel = computed(() => {
+const diaperTotalLabel = computed(() => {
   const times = dailySummary.value?.diaper?.total_times ?? 0;
-  return times > 0 ? `${times} 次` : "—";
+  return `${times} 次`;
 });
+
+/** 当日排便状态：有异常性状记「异常」，其余（含未填性状）记「正常」，当天无记录显示 — */
+const diaperStatusLabel = computed(() => {
+  const summary = dailySummary.value?.diaper;
+  if (!summary?.count) return "—";
+  const raw = summary.last_consistency || "";
+  return raw && raw !== "normal" ? "异常" : "正常";
+});
+const feedingTodayCount = computed(() => dailySummary.value?.feeding?.count ?? 0);
+
+type TimelineRow = {
+  item: RecordItem;
+  typeLabel: string;
+  timeLabel: string;
+  /** 关键字段（来自 payload，最多 3 条），保证展示与记录内容一致 */
+  metrics: { label: string; value: string }[];
+  /** 仅标准类型展示手写摘要，日常类型不再重复显示自动摘要 */
+  summary: string;
+  note: string;
+  thumbs: { id: number; src: string; full: string }[];
+  moreCount: number;
+};
+
+const MAX_THUMBS = 3;
+
+const timelineRows = computed<TimelineRow[]>(() => {
+  const list = dashboard.value?.latest_records ?? [];
+  return list.map((item) => {
+    const tmpl = templateForType(item.phase, item.record_type);
+    // 尽量把录入过的字段都摊在卡片上，一眼能看清这条记录的内容
+    const metrics = getBabyRecordPreviewRows(
+      {
+        phase: item.phase,
+        record_type: item.record_type,
+        payload: item.payload as Record<string, unknown>,
+      },
+      12
+    );
+    const payload = (item.payload || {}) as Record<string, unknown>;
+    const note = String(payload.note || "").trim();
+    // 日常类型（有 autoSummary）不展示摘要，避免与关键字段重复或历史脏摘要冲突
+    const summary = tmpl?.mode === "standard" ? resolveRecordSummary(item) : "";
+    const atts = item.attachments ?? [];
+    const thumbs = atts.slice(0, MAX_THUMBS).map((a) => ({
+      id: a.id,
+      src: resolvePublicMediaUrl(a.thumb_url || a.url),
+      full: resolvePublicMediaUrl(a.url),
+    }));
+    return {
+      item,
+      typeLabel: labelForType(item.phase, item.record_type),
+      timeLabel: formatDateTime(item.occurred_at),
+      metrics,
+      summary,
+      note,
+      thumbs,
+      moreCount: Math.max(0, atts.length - MAX_THUMBS),
+    };
+  });
+});
+
+function previewRow(row: TimelineRow, idx: number) {
+  const urls = row.thumbs.map((t) => t.full);
+  uni.previewImage({ current: urls[idx], urls });
+}
 
 onShow(async () => {
   auth.loadToken();
@@ -421,9 +323,32 @@ onShow(async () => {
   }
   if (auth.token) {
     await session.refreshFamilyContext();
+    await syncIdentity();
     loadDashboard();
   }
 });
+
+/**
+ * 身份以家庭接口同步到 session 为准；万一家庭成员里取不到，
+ * 再用当前用户昵称兜底，避免家人页已有身份、首页仍显示未设置。
+ */
+async function syncIdentity() {
+  const sessionName = session.myNickname;
+  if (sessionName) {
+    identityLabel.value = sessionName;
+    return;
+  }
+  if (identityLabel.value || identityChecked) return;
+  identityChecked = true;
+  try {
+    const me = await apiMe();
+    const name = String(me.nickname || "").trim();
+    identityLabel.value = name;
+    if (name) session.setMyNickname(name);
+  } catch (error) {
+    console.error(error);
+  }
+}
 
 async function retryWeChatSession() {
   await auth.ensureWeChatSession();
@@ -443,15 +368,6 @@ async function loadDashboard() {
     babies.value = babyPage.items || [];
     if (data.profile?.id) {
       session.setBaby(data.profile.id);
-      try {
-        const reminderPage = await apiListReminders("pending", 20, { owner_type: "baby", owner_id: data.profile.id });
-        reminders.value = reminderPage.items;
-      } catch (error) {
-        console.error(error);
-        reminders.value = [];
-      }
-    } else {
-      reminders.value = [];
     }
   } catch (error) {
     console.error(error);
@@ -461,102 +377,62 @@ async function loadDashboard() {
   }
 }
 
-function discardTimerIfBabyMismatch(nextBabyId: number) {
-  try {
-    const raw = uni.getStorageSync("chuyaji_timer");
-    if (!raw) return;
-    const stored = typeof raw === "string" ? JSON.parse(raw) : raw;
-    if (stored?.babyId && Number(stored.babyId) !== nextBabyId) {
-      uni.removeStorageSync("chuyaji_timer");
-    }
-  } catch {}
-}
-
 function onSwitchBaby() {
   if (babies.value.length <= 1) return;
-  const itemList = babies.value.map((b) =>
-    b.id === session.babyId ? `${b.nickname}（当前）` : b.nickname
-  );
+  const itemList = babies.value.map((b) => (b.id === session.babyId ? `${b.nickname}（当前）` : b.nickname));
   uni.showActionSheet({
     itemList,
     success: (res) => {
       const picked = babies.value[res.tapIndex];
       if (!picked || picked.id === session.babyId) return;
-      discardTimerIfBabyMismatch(picked.id);
       session.setBaby(picked.id);
       void loadDashboard();
     },
   });
 }
 
-function goDailyRecords(recordType: "feeding" | "sleep" | "diaper") {
-  if (!session.babyId) return;
-  const date = dailySummary.value?.date || formatLocalDate(new Date());
-  // ListRecords 的 to=YYYY-MM-DD 会按「次日零点」排他，故 from/to 传同一天即可筛当日
-  uni.navigateTo({
-    url: `/pages/baby/record-list?baby_id=${session.babyId}&phase=postnatal&record_type=${recordType}&from=${date}&to=${date}`,
-  });
+function onDailyCardTap(value: "feeding" | "sleep" | "diaper") {
+  const tmpl = dailyTemplates.value.find((t) => t.value === value);
+  if (tmpl) onDailyRecord(tmpl);
 }
 
-function formatLocalDate(d: Date) {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
-
-function onNextStepAction() {
-  if (activeReminder.value) return goReminders();
-  const step = nextStep.value;
-  if (step.type === "create_profile") return goProfileEdit();
-  if (step.type === "add_record") return goNewRecord();
-}
-
-async function onShortcut(tmpl: RecordTemplate) {
-  if (tmpl.mode === "quick") {
-    quickTemplate.value = tmpl;
-    lastQuickPayload.value = null;
-    lastQuickSummary.value = "";
-    const bid = Number(session.babyId) || Number(dashboard.value?.profile?.id) || 0;
-    const phase = isPostnatalStage.value ? "postnatal" : "prenatal";
-    if (bid) {
-      try {
-        const latest = await apiLatestRecord(bid, tmpl.value, phase);
-        lastQuickPayload.value = (latest.item?.payload || null) as Record<string, unknown> | null;
-        lastQuickSummary.value = latest.item?.summary || "";
-      } catch (e) {
-        console.error(e);
-      }
-    }
-    showQuickSheet.value = true;
-  } else {
-    const phase = isPostnatalStage.value ? "postnatal" : "prenatal";
-    if (!session.babyId) {
-      uni.showToast({ title: "请先创建宝宝档案", icon: "none" });
-      return;
-    }
-    uni.navigateTo({ url: `/pages/baby/record-edit?baby_id=${session.babyId}&phase=${phase}&type=${tmpl.value}` });
+function onDailyRecord(tmpl: RecordTemplate) {
+  const bid = Number(session.babyId) || Number(dashboard.value?.profile?.id) || 0;
+  if (!bid) {
+    uni.showToast({ title: "请先创建宝宝档案", icon: "none" });
+    return;
   }
+  quickTemplate.value = tmpl;
+  showQuickSheet.value = true;
 }
 
-async function onQuickSaved(payload: Record<string, unknown>, summary: string) {
+async function onQuickSaved(payload: Record<string, unknown>, summary: string, photos: string[] = []) {
   const bid = Number(session.babyId) || Number(dashboard.value?.profile?.id) || 0;
   if (!bid) {
     uni.showToast({ title: "缺少宝宝档案", icon: "none" });
     showQuickSheet.value = false;
     return;
   }
-  if (bid !== Number(session.babyId)) {
-    session.setBaby(bid);
-  }
-  const phase = isPostnatalStage.value ? "postnatal" : "prenatal";
+  if (bid !== Number(session.babyId)) session.setBaby(bid);
   try {
-    await apiCreateRecord(bid, {
-      phase,
+    const created = await apiCreateRecord(bid, {
+      phase: "postnatal",
       record_type: quickTemplate.value!.value,
       occurred_at: new Date().toISOString(),
       summary,
       payload,
     });
+    let failed = 0;
+    for (const path of photos) {
+      try {
+        await uploadRecordAttachment(created.id, path);
+      } catch (e) {
+        console.error(e);
+        failed++;
+      }
+    }
     showQuickSheet.value = false;
-    uni.showToast({ title: "已保存", icon: "success" });
+    uni.showToast({ title: failed ? `${failed} 张图片上传失败` : "已保存", icon: failed ? "none" : "success" });
     await loadDashboard();
   } catch (e) {
     console.error(e);
@@ -576,15 +452,6 @@ function goProfileEdit() {
   const id = dashboard.value?.profile?.id || session.babyId || 0;
   const suffix = id ? `?id=${id}` : "";
   uni.navigateTo({ url: `/pages/baby/profile-edit${suffix}` });
-}
-
-function goNewRecord() {
-  if (!session.babyId) {
-    uni.showToast({ title: "请先创建宝宝档案", icon: "none" });
-    return;
-  }
-  const phase = isPostnatalStage.value ? "postnatal" : "prenatal";
-  uni.navigateTo({ url: `/pages/baby/record-edit?baby_id=${session.babyId}&phase=${phase}` });
 }
 
 function openRecord(id: number) {
@@ -611,9 +478,6 @@ function goTimeline() {
   uni.navigateTo({ url: `/pages/baby/record-list?baby_id=${session.babyId}` });
 }
 
-function goReminders() {
-  uni.navigateTo({ url: "/pages/reminders/list" });
-}
 </script>
 
 <style lang="scss" scoped>
@@ -639,482 +503,262 @@ function goReminders() {
 .notice-title,
 .empty-title {
   display: block;
-  color: $cj-ink;
-  font-weight: $cj-fw-display;
   font-size: 30rpx;
-  letter-spacing: 0.5rpx;
+  font-weight: $cj-fw-display;
+  color: $cj-primary-dark;
+  margin-bottom: 12rpx;
 }
 
-.notice-desc,
-.empty-desc {
+.notice-desc {
   display: block;
-  margin-top: 10rpx;
+  font-size: 24rpx;
   color: $cj-text-secondary;
-  font-size: 25rpx;
-  line-height: 1.65;
+  line-height: 1.6;
+  margin-bottom: 18rpx;
 }
 
-.notice-btn,
+.notice-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8rpx 28rpx;
+  font-size: 22rpx;
+  color: #fffefb;
+  background: linear-gradient(160deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%);
+  border-radius: $cj-radius-pill;
+}
+
 .main-btn {
-  margin-top: $cj-gap-md;
-  border-radius: $cj-radius-pill !important;
-  background: linear-gradient(160deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%) !important;
-  color: #fffefb !important;
-  border: none !important;
+  margin-top: 8rpx;
+  padding: 20rpx 0;
+  font-size: 28rpx;
+  color: #fffefb;
+  background: linear-gradient(160deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%);
+  border-radius: $cj-radius-pill;
   box-shadow: $cj-shadow-soft;
 }
 
-.trend-section,
-.daily-section,
-.section {
-  margin-bottom: $cj-gap-md;
-}
-
-.daily-section .summary-card:active {
-  opacity: 0.88;
-}
-
-.trend-panel {
-  position: relative;
-  padding: 28rpx $cj-gap-md calc($cj-gap-md + 4rpx);
-  background: linear-gradient(155deg, rgba(255, 253, 249, 0.97) 0%, rgba(255, 247, 240, 0.95) 60%, rgba(230, 241, 236, 0.3) 100%);
+.panel {
+  background: $cj-surface;
   border: 1rpx solid $cj-border-faint;
   border-radius: $cj-radius-xl;
   box-shadow: $cj-shadow-card;
-  overflow: hidden;
-
-  &::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    pointer-events: none;
-    background:
-      radial-gradient(ellipse 110% 70% at 100% 0%, rgba(232, 184, 150, 0.18) 0%, transparent 50%),
-      radial-gradient(ellipse 80% 50% at 0% 100%, rgba(125, 171, 152, 0.12) 0%, transparent 45%);
-    opacity: 0.85;
-  }
-}
-
-.panel-head {
-  position: relative;
-  z-index: 1;
-  display: flex;
-  align-items: flex-end;
-  gap: $cj-gap-sm;
+  padding: 28rpx $cj-gap-md;
   margin-bottom: $cj-gap-md;
 }
 
-.panel-head--inline {
-  align-items: center;
-}
-
-.panel-head-text {
-  flex-shrink: 0;
+.panel-head {
   display: flex;
-  flex-direction: column;
-  gap: 4rpx;
-}
-
-.panel-kicker {
-  font-size: 19rpx;
-  letter-spacing: 6rpx;
-  text-transform: uppercase;
-  color: $cj-text-muted;
-  font-weight: 500;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 22rpx;
 }
 
 .panel-title {
   font-size: 32rpx;
   font-weight: $cj-fw-display;
   color: $cj-ink;
-  letter-spacing: 0.5rpx;
+  letter-spacing: 1rpx;
 }
 
-.panel-head-rule {
+.panel-date {
+  font-size: 22rpx;
+  color: $cj-text-muted;
+}
+
+.panel-link {
+  font-size: 24rpx;
+  color: $cj-primary;
+}
+
+/* 今日汇总 */
+.daily-grid {
+  display: flex;
+  gap: 14rpx;
+}
+
+.daily-card {
   flex: 1;
-  height: 1rpx;
-  background: linear-gradient(90deg, $cj-border-faint 0%, transparent 100%);
+  min-width: 0;
+  padding: 20rpx 18rpx;
+  background: $cj-surface-2;
+  border: 1rpx solid $cj-border-faint;
+  border-radius: $cj-radius-lg;
+
+  &:active {
+    opacity: 0.85;
+  }
+}
+
+.daily-label {
+  display: block;
+  font-size: 22rpx;
+  color: $cj-text-muted;
   margin-bottom: 10rpx;
 }
 
-.panel-head--inline .panel-head-rule {
-  margin-bottom: 0;
-}
-
-.summary-grid {
-  display: flex;
-  flex-wrap: wrap;
-  gap: $cj-gap-sm;
-}
-
-.summary-grid--baby {
-  position: relative;
-  z-index: 1;
-}
-
-.summary-card {
-  flex: 1;
-  min-width: 180rpx;
-  padding: 28rpx;
-  background: $cj-surface;
-  border: 1rpx solid $cj-border-faint;
-  border-radius: $cj-radius-xl;
-  box-shadow: $cj-shadow-card;
-}
-
-.summary-card--baby {
-  position: relative;
-  overflow: hidden;
-  border: 1rpx solid $cj-border-faint;
-  background: rgba(255, 253, 249, 0.94);
-}
-
-.summary-card-accent {
-  position: absolute;
-  left: 0;
-  top: 0;
-  bottom: 0;
-  width: 5rpx;
-  border-radius: $cj-radius-xl 0 0 $cj-radius-xl;
-}
-
-.summary-card-accent--coral {
-  background: linear-gradient(180deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%);
-}
-
-.summary-card-accent--mint {
-  background: linear-gradient(180deg, $cj-mint 0%, #5d9482 100%);
-}
-
-.summary-card-accent--gold {
-  background: linear-gradient(180deg, $cj-accent-warm 0%, $cj-accent 100%);
-}
-
-.summary-card--milestone {
-  flex: 1 1 100%;
-  min-width: 100%;
-}
-
-.summary-label {
+.daily-main {
   display: block;
-  color: $cj-text-muted;
-  font-size: 21rpx;
-  font-weight: 500;
-  letter-spacing: 0.5rpx;
-}
-
-.summary-value {
-  display: block;
-  margin-top: 10rpx;
-  color: $cj-ink;
-  font-size: 32rpx;
+  font-size: 36rpx;
   font-weight: $cj-fw-display;
-  letter-spacing: -0.3rpx;
-}
-
-.milestone-value {
-  font-size: 24rpx;
-  letter-spacing: 0;
-}
-
-.summary-hint {
-  display: block;
-  margin-top: 6rpx;
-  font-size: 19rpx;
-  color: $cj-text-muted;
-}
-
-.growth-link-list {
-  position: relative;
-  z-index: 1;
-  margin-top: $cj-gap-md;
-  display: flex;
-  flex-direction: column;
-  gap: 6rpx;
-}
-
-.growth-link {
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 6rpx;
-  padding: 10rpx 0;
-}
-
-.growth-link-text {
-  font-size: 23rpx;
   color: $cj-primary-dark;
-  font-weight: 500;
-  letter-spacing: 0.3rpx;
+  line-height: 1.2;
+  margin-bottom: 10rpx;
 }
 
-.growth-link-chev {
-  font-size: 28rpx;
-  color: $cj-primary;
-  line-height: 1;
-  opacity: 0.75;
-}
-
-.records-panel {
-  position: relative;
-  background: linear-gradient(180deg, $cj-surface 0%, rgba(255, 253, 249, 0.98) 100%);
-  border: 1rpx solid $cj-border-faint;
-  border-radius: $cj-radius-xl;
-  box-shadow: $cj-shadow-card;
-  padding: 28rpx $cj-gap-md $cj-gap-lg;
-  overflow: hidden;
-
-  &::after {
-    content: "";
-    position: absolute;
-    right: -40rpx;
-    top: -48rpx;
-    width: 180rpx;
-    height: 180rpx;
-    border-radius: 50%;
-    background: radial-gradient(circle, rgba(201, 107, 92, 0.06) 0%, transparent 70%);
-    pointer-events: none;
-  }
-}
-
-.records-panel .panel-head {
-  margin-bottom: $cj-gap-md;
-}
-
-.records-panel .section-meta {
-  flex-shrink: 0;
-}
-
-.section-meta-hint {
-  font-size: 21rpx;
-  color: $cj-primary;
-  padding: 7rpx 18rpx;
-  border-radius: $cj-radius-pill;
-  background: rgba(201, 107, 92, 0.07);
-  font-weight: 500;
-  letter-spacing: 0.3rpx;
-}
-
-.placeholder {
-  position: relative;
-  z-index: 1;
-  padding: 40rpx 0;
-  text-align: center;
-  color: $cj-text-muted;
-  font-size: 24rpx;
-}
-
-.placeholder--soft {
-  padding: 52rpx 24rpx;
-  background: $cj-surface-2;
-  border-radius: $cj-radius-lg;
-  border: 1rpx dashed $cj-border-faint;
-}
-
-.record-timeline {
-  position: relative;
-  z-index: 1;
+.daily-meta {
   display: flex;
   flex-direction: column;
-  gap: 10rpx;
+  gap: 4rpx;
+  font-size: 20rpx;
+  color: $cj-text-secondary;
 }
 
-.record-timeline-row {
-  display: flex;
-  flex-direction: row;
-  align-items: stretch;
-  gap: 18rpx;
-}
-
-.record-rail {
-  flex-shrink: 0;
-  width: 28rpx;
+/* 时间线 */
+.tl-list {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  padding-top: 28rpx;
+  gap: 12rpx;
 }
 
-.record-dot {
-  width: 16rpx;
-  height: 16rpx;
-  border-radius: 50%;
-  border: 3rpx solid $cj-surface;
-  box-shadow: 0 0 0 2rpx $cj-border-faint;
-}
-
-.record-dot--pre {
-  background: linear-gradient(145deg, #e8c4d4 0%, #b87a92 100%);
-}
-
-.record-dot--post {
-  background: linear-gradient(145deg, #b8e0d0 0%, #5a9d82 100%);
-}
-
-.record-line {
-  flex: 1;
-  width: 2rpx;
-  min-height: 32rpx;
-  margin-top: 8rpx;
-  border-radius: 2rpx;
-  background: linear-gradient(180deg, $cj-border-faint 0%, transparent 100%);
-}
-
-.record-line--pre {
-  background: linear-gradient(180deg, rgba(184, 122, 146, 0.3) 0%, transparent 100%);
-}
-
-.record-line--post {
-  background: linear-gradient(180deg, rgba(90, 157, 130, 0.3) 0%, transparent 100%);
-}
-
-.record-card {
-  flex: 1;
-  min-width: 0;
-  padding: 24rpx 26rpx;
+.tl-card {
+  padding: 20rpx 22rpx;
   background: $cj-surface;
+  border: 1rpx solid $cj-border-faint;
   border-radius: $cj-radius-lg;
-  border: 1rpx solid $cj-border-faint;
-  box-shadow: $cj-shadow-xs;
-}
-
-.record-card--timeline {
-  background: linear-gradient(160deg, rgba(255, 253, 249, 0.98) 0%, rgba(255, 249, 242, 0.95) 100%);
-  border: 1rpx solid $cj-border-faint;
-  box-shadow: $cj-shadow-xs;
 
   &:active {
-    opacity: 0.92;
+    background: $cj-surface-2;
   }
 }
 
-.record-card-head {
-  margin-bottom: 2rpx;
-}
-
-.record-card-head-row {
+.tl-head {
   display: flex;
-  align-items: flex-start;
+  align-items: baseline;
   justify-content: space-between;
-  gap: 16rpx;
+  gap: 12rpx;
 }
 
-.record-type-row {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  flex-wrap: nowrap;
-  gap: 10rpx;
-}
-
-.record-type-row .record-type {
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.record-type-row .record-tag {
-  flex-shrink: 0;
-}
-
-.record-tag {
-  padding: 5rpx 14rpx;
-  border-radius: $cj-radius-pill;
-  font-size: 19rpx;
-  font-weight: $cj-fw-title;
+.tl-type {
+  font-size: 27rpx;
+  font-weight: 600;
+  color: $cj-ink;
   letter-spacing: 0.3rpx;
 }
 
-.record-tag.pre {
-  background: $cj-tag-prenatal-bg;
-  color: $cj-tag-prenatal-text;
-}
-
-.record-tag.post {
-  background: $cj-tag-postnatal-bg;
-  color: $cj-tag-postnatal-text;
-}
-
-.record-type {
-  flex: 1;
-  min-width: 0;
-  font-size: 29rpx;
-  color: $cj-ink;
-  font-weight: $cj-fw-display;
-  line-height: 1.4;
-  letter-spacing: 0.2rpx;
-}
-
-.record-date {
+.tl-time {
   flex-shrink: 0;
-  padding-top: 4rpx;
   font-size: 21rpx;
   color: $cj-text-muted;
-  letter-spacing: 0.5rpx;
+  font-variant-numeric: tabular-nums;
 }
 
-.record-body {
-  margin-top: 14rpx;
-  padding: 4rpx 16rpx 2rpx;
-  background: $cj-surface-2;
-  border-radius: $cj-radius-md;
-  border: 1rpx solid $cj-border-faint;
-}
-
-.record-kv-row {
+.tl-metrics {
   display: flex;
-  flex-direction: row;
-  flex-wrap: nowrap;
-  align-items: flex-start;
-  gap: 14rpx;
-  padding: 14rpx 0;
-  border-bottom: 1rpx solid $cj-border-faint;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6rpx 22rpx;
+  margin-top: 10rpx;
 }
 
-.record-kv-row:last-child {
-  border-bottom: none;
-  padding-bottom: 10rpx;
+.tl-metric {
+  display: flex;
+  align-items: baseline;
+  gap: 6rpx;
+  max-width: 100%;
 }
 
-.record-kv-row:first-child {
-  padding-top: 10rpx;
+.tl-metric-label {
+  font-size: 20rpx;
+  color: $cj-text-muted;
 }
 
-.record-key-label {
-  flex-shrink: 0;
-  width: 148rpx;
+.tl-metric-value {
+  font-size: 26rpx;
+  color: $cj-text;
+  font-weight: 500;
 }
 
-.record-key-value {
-  flex: 1;
-  min-width: 0;
-}
-
-.record-summary {
-  display: block;
-  margin-top: 12rpx;
-  padding: 14rpx 16rpx;
-  background: $cj-surface-2;
-  border-radius: $cj-radius-md;
-  border: 1rpx solid $cj-border-faint;
-  font-size: 25rpx;
-  color: $cj-text-secondary;
-  line-height: 1.65;
-}
-
-.record-summary-note {
+.tl-summary {
   display: block;
   margin-top: 10rpx;
-  padding-top: 12rpx;
-  border-top: 1rpx solid $cj-border-faint;
-  font-size: 22rpx;
-  color: $cj-text-muted;
-  line-height: 1.55;
+  font-size: 25rpx;
+  color: $cj-text-secondary;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
-@import "@/styles/cj-record-kv-fields.scss";
+.tl-note {
+  display: block;
+  margin-top: 10rpx;
+  font-size: 22rpx;
+  color: $cj-text-muted;
+  line-height: 1.45;
+  padding-left: 12rpx;
+  border-left: 3rpx solid rgba(201, 107, 92, 0.35);
+}
+
+.tl-thumbs {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
+  margin-top: 14rpx;
+}
+
+.tl-thumb {
+  width: 112rpx;
+  height: 112rpx;
+  border-radius: $cj-radius-sm;
+  background: $cj-surface-2;
+}
+
+.tl-thumb-more {
+  font-size: 21rpx;
+  color: $cj-text-muted;
+  padding-left: 4rpx;
+}
+
+.tl-empty {
+  padding: 40rpx 0;
+  text-align: center;
+  font-size: 24rpx;
+  color: $cj-text-muted;
+}
+
+/* 更多入口 */
+.more-list {
+  background: $cj-surface;
+  border: 1rpx solid $cj-border-faint;
+  border-radius: $cj-radius-xl;
+  box-shadow: $cj-shadow-card;
+  overflow: hidden;
+}
+
+.more-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 26rpx $cj-gap-md;
+
+  & + & {
+    border-top: 1rpx solid $cj-border-faint;
+  }
+
+  &:active {
+    background: $cj-surface-2;
+  }
+}
+
+.more-text {
+  font-size: 27rpx;
+  color: $cj-text;
+}
+
+.more-chev {
+  font-size: 30rpx;
+  color: $cj-text-muted;
+}
 </style>

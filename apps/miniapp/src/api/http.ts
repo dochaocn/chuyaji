@@ -1,4 +1,4 @@
-import { API_BASE } from "./config";
+import { API_BASE, devToken } from "./config";
 
 type Method = "GET" | "POST" | "PATCH" | "DELETE";
 
@@ -12,10 +12,9 @@ export interface RequestOptions {
 export function getStoredToken(): string {
   try {
     const t = uni.getStorageSync("chuyaji_token") as string;
-    return t || "";
-  } catch {
-    return "";
-  }
+    if (t) return t;
+  } catch {}
+  return devToken();
 }
 
 export function request<T>(opts: RequestOptions): Promise<T> {

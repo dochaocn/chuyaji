@@ -1,31 +1,27 @@
 {
   "pages": [
-    { "path": "pages/baby/home", "style": { "navigationBarTitleText": "宝宝" } },
-    { "path": "pages/mom/home", "style": { "navigationBarTitleText": "宝妈" } },
+    { "path": "pages/baby/home", "style": { "navigationBarTitleText": "" } },
     { "path": "pages/baby/profile-edit", "style": { "navigationBarTitleText": "宝宝档案" } },
     { "path": "pages/baby/record-edit", "style": { "navigationBarTitleText": "宝宝记录" } },
     { "path": "pages/baby/growth", "style": { "navigationBarTitleText": "生长趋势" } },
     { "path": "pages/baby/vaccine-plan", "style": { "navigationBarTitleText": "疫苗计划" } },
     { "path": "pages/baby/album", "style": { "navigationBarTitleText": "成长相册" } },
     { "path": "pages/baby/record-list", "style": { "navigationBarTitleText": "全部时间线" } },
-    { "path": "pages/mom/profile-edit", "style": { "navigationBarTitleText": "宝妈档案" } },
-    { "path": "pages/mom/record-edit", "style": { "navigationBarTitleText": "宝妈记录" } },
-    { "path": "pages/mom/record-list", "style": { "navigationBarTitleText": "全部时间线" } },
-    { "path": "pages/reminders/list", "style": { "navigationBarTitleText": "提醒" } },
     { "path": "pages/family/index", "style": { "navigationBarTitleText": "家人共享" } },
     { "path": "pages/family/join", "style": { "navigationBarTitleText": "加入家庭" } },
     { "path": "pages/privacy/privacy", "style": { "navigationBarTitleText": "隐私说明" } }
   ],
+  // 仅 H5 开发预览需要：uni-h5 的 Layout 在缺少 tabBar 配置时会抛错导致白屏，
+  // 小程序端不生成 tabBar（单 tab 无意义）。见 docs/miniapp_baby_first_redesign.md §3.9
+  // #ifdef H5
   "tabBar": {
     "color": "#8b8077",
     "selectedColor": "#c96b5c",
     "backgroundColor": "#fffdf9",
     "borderStyle": "black",
-    "list": [
-      { "pagePath": "pages/baby/home", "text": "宝宝" },
-      { "pagePath": "pages/mom/home", "text": "宝妈" }
-    ]
+    "list": [{ "pagePath": "pages/baby/home", "text": "宝宝" }]
   },
+  // #endif
   "globalStyle": {
     "navigationBarTextStyle": "black",
     "navigationBarTitleText": "初芽记",

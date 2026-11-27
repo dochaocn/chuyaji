@@ -35,28 +35,3 @@ export function uploadRecordAttachment(recordId: number, filePath: string): Prom
     });
   });
 }
-
-export function uploadMotherRecordAttachment(recordId: number, filePath: string): Promise<UploadResult> {
-  const token = getStoredToken();
-  return new Promise((resolve, reject) => {
-    uni.uploadFile({
-      url: `${API_BASE}/api/v1/mother-records/${recordId}/attachments/upload`,
-      filePath,
-      name: "file",
-      header: token ? { Authorization: `Bearer ${token}` } : {},
-      success: (res) => {
-        const status = res.statusCode || 0;
-        if (status >= 200 && status < 300) {
-          try {
-            resolve(JSON.parse(res.data as string) as UploadResult);
-          } catch (e) {
-            reject(e);
-          }
-          return;
-        }
-        reject(new Error(`upload ${status}: ${res.data}`));
-      },
-      fail: (e) => reject(e),
-    });
-  });
-}

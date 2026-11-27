@@ -1,62 +1,50 @@
 <template>
   <view class="wb-header">
-    <view class="wb-header__meta">
-      <text class="wb-header__workspace">{{ workspaceLabel }}</text>
-      <text v-if="badgeLabel" :class="['wb-header__badge', badgeClass]">{{ badgeLabel }}</text>
-    </view>
+    <view class="wb-row">
+      <view class="wb-info">
+        <view class="wb-name-line">
+          <text :class="['wb-name', !name && 'wb-name--solo']" @click="onNameTap">{{ name || stageTitle }}</text>
+          <text v-if="canSwitch" class="wb-switch" @click="onNameTap">切换 ▾</text>
+          <text v-if="badgeLabel" :class="['wb-badge', badgeClass]">{{ badgeLabel }}</text>
+          <text v-if="identityLabel" class="wb-ident">· {{ identityLabel }}</text>
+          <text v-else class="wb-ident wb-ident--empty" @click="$emit('identity')">设置身份 ›</text>
+        </view>
+        <text v-if="name" class="wb-stage">{{ stageTitle }}</text>
+      </view>
 
-    <view class="wb-header__main">
-      <view v-if="name" :class="['wb-header__name-row', canSwitch && 'wb-header__name-row--switch']" @click="onNameTap">
-        <text class="wb-header__name">{{ name }}</text>
-        <text v-if="canSwitch" class="wb-header__switch-hint">切换 ▾</text>
+      <view class="wb-actions">
+        <view class="wb-btn" @click="$emit('profile')">
+          <text class="wb-btn-icon">{{ profileIcon }}</text>
+          <text class="wb-btn-text">{{ shortProfileLabel }}</text>
+        </view>
+        <view class="wb-btn" @click="$emit('family')">
+          <text class="wb-btn-icon">👨‍👩‍👧</text>
+          <text class="wb-btn-text">家人</text>
+        </view>
       </view>
-      <text class="wb-header__stage" :class="{ 'wb-header__stage--solo': !name }">{{ stageTitle }}</text>
-      <text v-if="stageDesc" class="wb-header__desc">{{ stageDesc }}</text>
-    </view>
-
-    <view class="wb-header__actions">
-      <view class="wb-header__action" @click="$emit('profile')">
-        <text class="wb-header__action-icon">{{ profileIcon }}</text>
-        <text class="wb-header__action-text">{{ profileLabel }}</text>
-      </view>
-      <view class="wb-header__action-divider" />
-      <view class="wb-header__action" @click="$emit('family')">
-        <text class="wb-header__action-icon">👨‍👩‍👧</text>
-        <text class="wb-header__action-text">家人</text>
-      </view>
-    </view>
-
-    <view v-if="showNextStep" class="wb-header__next" @click="$emit('next')">
-      <view class="wb-header__next-body">
-        <text class="wb-header__next-kicker">建议</text>
-        <text class="wb-header__next-title">{{ nextStepTitle }}</text>
-      </view>
-      <text class="wb-header__next-btn">{{ nextStepBtnLabel }}</text>
     </view>
   </view>
 </template>
 
 <script setup lang="ts">
+import { computed } from "vue";
+
 const props = withDefaults(
   defineProps<{
-    workspaceLabel: string;
+    workspaceLabel?: string;
     badgeLabel?: string;
     badgeClass?: string;
+    /** 当前人的家庭身份（家人页设置的昵称，如「爸爸」） */
+    identityLabel?: string;
     name?: string;
     stageTitle: string;
-    stageDesc?: string;
     profileLabel: string;
     profileIcon?: string;
-    showNextStep?: boolean;
-    nextStepTitle?: string;
-    nextStepBtnLabel?: string;
     canSwitch?: boolean;
   }>(),
   {
+    workspaceLabel: "",
     profileIcon: "📋",
-    showNextStep: false,
-    nextStepTitle: "",
-    nextStepBtnLabel: "",
     canSwitch: false,
   }
 );
@@ -64,9 +52,18 @@ const props = withDefaults(
 const emit = defineEmits<{
   profile: [];
   family: [];
-  next: [];
+  identity: [];
   switch: [];
 }>();
+
+/** 「编辑档案 / 查看档案 / 创建档案」→「编辑 / 查看 / 建档」，横向缩短 */
+const shortProfileLabel = computed(() => {
+  const raw = props.profileLabel || "档案";
+  if (raw.startsWith("编辑")) return "编辑";
+  if (raw.startsWith("查看")) return "查看";
+  if (raw.startsWith("创建")) return "建档";
+  return raw;
+});
 
 function onNameTap() {
   if (props.canSwitch) emit("switch");
@@ -76,32 +73,60 @@ function onNameTap() {
 <style lang="scss" scoped>
 .wb-header {
   margin-bottom: $cj-gap-md;
-  padding: 28rpx $cj-gap-md 24rpx;
+  padding: 22rpx $cj-gap-md;
   background: linear-gradient(155deg, rgba(255, 253, 249, 0.98) 0%, rgba(255, 247, 240, 0.96) 100%);
   border: 1rpx solid $cj-border-faint;
-  border-radius: $cj-radius-xl;
-  box-shadow: $cj-shadow-card;
+  border-radius: $cj-radius-lg;
+  box-shadow: $cj-shadow-xs;
 }
 
-.wb-header__meta {
+.wb-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 12rpx;
-  margin-bottom: 18rpx;
+  gap: 16rpx;
 }
 
-.wb-header__workspace {
-  font-size: 22rpx;
-  letter-spacing: 4rpx;
+.wb-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.wb-name-line {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  min-width: 0;
+}
+
+.wb-name {
+  flex-shrink: 1;
+  min-width: 0;
+  font-size: 34rpx;
+  font-weight: $cj-fw-display;
+  color: $cj-primary-dark;
+  line-height: 1.25;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wb-name--solo {
+  font-size: 30rpx;
+  color: $cj-ink;
+}
+
+.wb-switch {
+  flex-shrink: 0;
+  font-size: 21rpx;
   color: $cj-primary;
-  font-weight: 500;
 }
 
-.wb-header__badge {
-  padding: 6rpx 18rpx;
+.wb-badge {
+  flex-shrink: 0;
+  padding: 4rpx 14rpx;
   border-radius: $cj-radius-pill;
-  font-size: 20rpx;
+  font-size: 19rpx;
   font-weight: 500;
 }
 
@@ -115,145 +140,63 @@ function onNameTap() {
   color: $cj-tag-postnatal-text;
 }
 
-.wb-header__main {
-  margin-bottom: 22rpx;
-}
-
-.wb-header__name-row {
-  display: flex;
-  align-items: baseline;
-  gap: 12rpx;
-  margin-bottom: 8rpx;
-}
-
-.wb-header__name-row--switch:active {
-  opacity: 0.75;
-}
-
-.wb-header__name {
-  font-size: 40rpx;
-  font-weight: $cj-fw-display;
-  color: $cj-primary-dark;
-  letter-spacing: 0.5rpx;
-  line-height: 1.25;
-}
-
-.wb-header__switch-hint {
-  font-size: 22rpx;
-  color: $cj-primary;
-  font-weight: 500;
+.wb-ident {
   flex-shrink: 0;
-}
-
-.wb-header__stage {
-  display: block;
-  font-size: 30rpx;
-  font-weight: $cj-fw-title;
-  color: $cj-ink;
-  line-height: 1.35;
-}
-
-.wb-header__stage--solo {
-  font-size: 36rpx;
-  font-weight: $cj-fw-display;
-}
-
-.wb-header__desc {
-  display: block;
-  margin-top: 10rpx;
-  font-size: 24rpx;
-  color: $cj-text-secondary;
-  line-height: 1.6;
-}
-
-.wb-header__actions {
-  display: flex;
-  align-items: stretch;
-  background: rgba(255, 255, 255, 0.72);
-  border: 1rpx solid $cj-border-faint;
-  border-radius: $cj-radius-lg;
-  overflow: hidden;
-}
-
-.wb-header__action {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10rpx;
-  padding: 20rpx 12rpx;
-
-  &:active {
-    background: rgba(201, 107, 92, 0.06);
-  }
-}
-
-.wb-header__action-divider {
-  width: 1rpx;
-  background: $cj-border-faint;
-  margin: 12rpx 0;
-}
-
-.wb-header__action-icon {
-  font-size: 28rpx;
-  line-height: 1;
-}
-
-.wb-header__action-text {
-  font-size: 26rpx;
-  color: $cj-primary-dark;
+  max-width: 220rpx;
+  font-size: 22rpx;
   font-weight: 500;
-}
-
-.wb-header__next {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 16rpx;
-  margin-top: 18rpx;
-  padding: 18rpx 20rpx;
-  background: linear-gradient(135deg, $cj-warn-bg 0%, #fff9f2 100%);
-  border: 1rpx solid rgba(212, 165, 116, 0.25);
-  border-radius: $cj-radius-lg;
-
-  &:active {
-    opacity: 0.9;
-  }
-}
-
-.wb-header__next-body {
-  flex: 1;
-  min-width: 0;
-}
-
-.wb-header__next-kicker {
-  display: block;
-  font-size: 20rpx;
-  color: $cj-text-muted;
-  margin-bottom: 4rpx;
-}
-
-.wb-header__next-title {
-  display: block;
-  font-size: 26rpx;
-  font-weight: $cj-fw-display;
-  color: $cj-ink;
+  color: $cj-primary-dark;
   line-height: 1.4;
   overflow: hidden;
   text-overflow: ellipsis;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
 }
 
-.wb-header__next-btn {
+.wb-ident--empty {
+  color: $cj-primary;
+  font-weight: 400;
+}
+
+.wb-stage {
+  display: block;
+  margin-top: 4rpx;
+  font-size: 23rpx;
+  color: $cj-text-secondary;
+  line-height: 1.4;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.wb-actions {
   flex-shrink: 0;
-  font-size: 24rpx;
-  color: #fffefb;
-  font-weight: 500;
-  padding: 12rpx 24rpx;
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+}
+
+.wb-btn {
+  display: flex;
+  align-items: center;
+  gap: 6rpx;
+  padding: 10rpx 16rpx;
+  background: rgba(255, 255, 255, 0.8);
+  border: 1rpx solid $cj-border-faint;
   border-radius: $cj-radius-pill;
-  background: linear-gradient(160deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%);
-  box-shadow: $cj-shadow-xs;
+
+  &:active {
+    background: rgba(201, 107, 92, 0.08);
+  }
+}
+
+.wb-btn-icon {
+  font-size: 24rpx;
+  line-height: 1;
+}
+
+.wb-btn-text {
+  font-size: 22rpx;
+  color: $cj-primary-dark;
+  font-weight: 500;
 }
 </style>

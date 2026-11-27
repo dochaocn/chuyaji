@@ -24,7 +24,7 @@
         />
         <view class="cell-meta">
           <text class="cell-type">{{ typeLabel(item.record_type) }}</text>
-          <text class="cell-date">{{ item.occurred_at.slice(0, 10) }}</text>
+          <text class="cell-date">{{ formatDateTime(item.occurred_at) }}</text>
         </view>
         <text class="cell-link" @click="openRecord(item.record_id)">查看来源 ›</text>
       </view>
@@ -42,6 +42,7 @@ import { onLoad, onShow } from "@dcloudio/uni-app";
 import { apiListBabyAttachments, type BabyAlbumAttachment } from "@/api/chuyaji";
 import { useSessionStore } from "@/store/session";
 import { BABY_TEMPLATES } from "@/utils/recordTypes";
+import { formatDateTime } from "@/utils/datetime";
 
 const session = useSessionStore();
 const babyId = ref(0);

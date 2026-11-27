@@ -17,16 +17,57 @@ import (
 
 var errInvalidPayloadJSON = errors.New("invalid payload json")
 
+type recordAttachmentOut struct {
+	ID       uint64 `json:"id"`
+	URL      string `json:"url"`
+	ThumbURL string `json:"thumb_url,omitempty"`
+}
+
 type recordOut struct {
-	ID         uint64          `json:"id"`
-	BabyID     uint64          `json:"baby_id"`
-	Phase      string          `json:"phase"`
-	RecordType string          `json:"record_type"`
-	OccurredAt time.Time       `json:"occurred_at"`
-	Summary    string          `json:"summary"`
-	Payload    json.RawMessage `json:"payload"`
-	CreatedAt  time.Time       `json:"created_at"`
-	UpdatedAt  time.Time       `json:"updated_at"`
+	ID          uint64                `json:"id"`
+	BabyID      uint64                `json:"baby_id"`
+	Phase       string                `json:"phase"`
+	RecordType  string                `json:"record_type"`
+	OccurredAt  time.Time             `json:"occurred_at"`
+	Summary     string                `json:"summary"`
+	Payload     json.RawMessage       `json:"payload"`
+	Attachments []recordAttachmentOut `json:"attachments,omitempty"`
+	CreatedAt   time.Time             `json:"created_at"`
+	UpdatedAt   time.Time             `json:"updated_at"`
+}
+
+// attachRecordAttachments 给一批记录批量挂上图片附件（一次 IN 查询，避免 N+1）。
+// 只处理 owner_type = baby_record，且失败时保持原样返回，不影响主流程。
+func (h *Handler) attachRecordAttachments(list []recordOut) []recordOut {
+	if len(list) == 0 {
+		return list
+	}
+	ids := make([]uint64, 0, len(list))
+	for i := range list {
+		ids = append(ids, list[i].ID)
+	}
+	var rows []model.Attachment
+	if err := h.DB.Where("owner_type = ? AND owner_id IN ?", "baby_record", ids).
+		Order("sort_order ASC, id ASC").Find(&rows).Error; err != nil {
+		return list
+	}
+	if len(rows) == 0 {
+		return list
+	}
+	grouped := make(map[uint64][]recordAttachmentOut, len(ids))
+	for i := range rows {
+		grouped[rows[i].OwnerID] = append(grouped[rows[i].OwnerID], recordAttachmentOut{
+			ID:       rows[i].ID,
+			URL:      rows[i].URL,
+			ThumbURL: rows[i].ThumbURL,
+		})
+	}
+	for i := range list {
+		if atts, ok := grouped[list[i].ID]; ok {
+			list[i].Attachments = atts
+		}
+	}
+	return list
 }
 
 func recordToOut(r *model.Record) recordOut {
@@ -129,6 +170,7 @@ func (h *Handler) ListRecords(c *gin.Context) {
 	for i := range rows {
 		out = append(out, recordToOut(&rows[i]))
 	}
+	out = h.attachRecordAttachments(out)
 	c.JSON(http.StatusOK, gin.H{"items": out, "next_cursor": next})
 }
 
@@ -255,7 +297,9 @@ func (h *Handler) GetRecord(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
 		return
 	}
-	c.JSON(http.StatusOK, recordToOut(&r))
+	out := recordToOut(&r)
+	out = h.attachRecordAttachments([]recordOut{out})[0]
+	c.JSON(http.StatusOK, out)
 }
 
 type patchRecordReq struct {
@@ -330,7 +374,9 @@ func (h *Handler) PatchRecord(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "save"})
 		return
 	}
-	c.JSON(http.StatusOK, recordToOut(&r))
+	out := recordToOut(&r)
+	out = h.attachRecordAttachments([]recordOut{out})[0]
+	c.JSON(http.StatusOK, out)
 }
 
 func (h *Handler) DeleteRecord(c *gin.Context) {

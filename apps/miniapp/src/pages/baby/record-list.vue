@@ -13,30 +13,26 @@
         </picker>
         <view v-if="fromDate || toDate || searchText" class="date-clear" @click="clearSearch">清除</view>
       </view>
-      <scroll-view scroll-x class="filter-scroll" :show-scrollbar="false">
-        <view class="filter-inner">
-          <view
-            v-for="opt in phaseFilterOptions"
-            :key="`p-${opt.value}`"
-            :class="['filter-chip', phaseChipActive(opt.value) && 'active']"
-            @click="togglePhaseFilter(opt.value)"
-          >
-            <text class="filter-chip-text">{{ opt.label }}</text>
-          </view>
+      <view class="filter-row filter-row--phase">
+        <view
+          v-for="opt in phaseFilterOptions"
+          :key="`p-${opt.value}`"
+          :class="['filter-chip', phaseChipActive(opt.value) && 'active']"
+          @click="togglePhaseFilter(opt.value)"
+        >
+          <text class="filter-chip-text">{{ opt.label }}</text>
         </view>
-      </scroll-view>
-      <scroll-view scroll-x class="filter-scroll filter-scroll--types" :show-scrollbar="false">
-        <view class="filter-inner">
-          <view
-            v-for="opt in typeFilterOptions"
-            :key="`t-${opt.value}`"
-            :class="['filter-chip', typeChipActive(opt.value) && 'active']"
-            @click="toggleTypeFilter(opt.value)"
-          >
-            <text class="filter-chip-text">{{ opt.label }}</text>
-          </view>
+      </view>
+      <view class="filter-row filter-row--types">
+        <view
+          v-for="opt in typeFilterOptions"
+          :key="`t-${opt.value}`"
+          :class="['filter-chip', typeChipActive(opt.value) && 'active']"
+          @click="toggleTypeFilter(opt.value)"
+        >
+          <text class="filter-chip-text">{{ opt.label }}</text>
         </view>
-      </scroll-view>
+      </view>
     </view>
 
     
@@ -75,7 +71,7 @@
                     {{ entry.item.phase === "prenatal" ? "怀孕期" : "成长期" }}
                   </text>
                   <text class="record-type">{{ labelForType(entry.item.phase, entry.item.record_type) }}</text>
-                  <text class="record-date">{{ formatDate(entry.item.occurred_at) }}</text>
+                  <text class="record-date">{{ formatDateTime(entry.item.occurred_at) }}</text>
                 </view>
                 <view v-if="entry.keyRows.length" class="record-key-grid">
                   <view v-for="(kv, ki) in entry.keyRows" :key="ki" class="record-key-line">
@@ -83,8 +79,8 @@
                     <text class="record-key-value">{{ kv.value }}</text>
                   </view>
                 </view>
-                <text v-else class="record-summary">{{ entry.item.summary?.trim() || "未填写内容" }}</text>
-                <text v-if="entry.showSummaryNote" class="record-summary-note">{{ entry.item.summary }}</text>
+                <text v-else class="record-summary">{{ entry.summary || "未填写内容" }}</text>
+                <text v-if="entry.showSummaryNote" class="record-summary-note">{{ entry.summary }}</text>
               </view>
             </view>
           </template>
@@ -112,8 +108,10 @@ import {
   RECORD_TYPES,
   getBabyRecordPreviewRows,
   labelForType,
+  resolveRecordSummary,
   templateForType,
 } from "@/utils/recordTypes";
+import { formatDateTime } from "@/utils/datetime";
 
 /** 首屏与每次触底加载条数 */
 const PAGE_SIZE = 30;
@@ -150,7 +148,7 @@ const phaseFilterOptions = computed(() => {
 });
 
 /** 二级联动：「全部」下展示所有类型（顺序随宝宝阶段）；选定某一时期后仅展示该期类型（类型可多选） */
-const typeFilterOptions = computed(() => {
+function allTypeOptionsForPhase() {
   if (selectedPhase.value === "all") {
     if (preferPostnatalFirst.value) {
       return [...RECORD_TYPES.postnatal, ...RECORD_TYPES.prenatal];
@@ -159,7 +157,10 @@ const typeFilterOptions = computed(() => {
   }
   if (selectedPhase.value === "prenatal") return [...RECORD_TYPES.prenatal];
   return [...RECORD_TYPES.postnatal];
-});
+}
+
+/** 类型清单固定跟随阶段，不随筛选结果收缩（否则选中一个类型后其余选项会消失） */
+const typeFilterOptions = computed(() => allTypeOptionsForPhase());
 
 function pruneSelectedTypesToPhase() {
   const allowed = new Set(typeFilterOptions.value.map((o) => o.value));
@@ -182,6 +183,7 @@ type BabyListEntry = {
   item: RecordItem;
   keyRows: ReturnType<typeof getBabyRecordPreviewRows>;
   showSummaryNote: boolean;
+  summary: string;
 };
 
 function phaseChipActive(val: PhaseChipValue) {
@@ -252,15 +254,19 @@ const groupedRecords = computed(() => {
       const [y, m] = key.split("-");
       map.set(key, { label: `${y} 年 ${Number(m)} 月`, items: [] });
     }
-    const keyRows = getBabyRecordPreviewRows({
-      phase: r.phase,
-      record_type: r.record_type,
-      payload: r.payload as Record<string, unknown>,
-    });
+    const keyRows = getBabyRecordPreviewRows(
+      {
+        phase: r.phase,
+        record_type: r.record_type,
+        payload: r.payload as Record<string, unknown>,
+      },
+      12
+    );
     const tmpl = templateForType(r.phase, r.record_type);
     const sum = r.summary?.trim() || "";
-    const showSummaryNote = tmpl?.mode === "standard" && !!sum && keyRows.length > 0;
-    map.get(key)!.items.push({ item: r, keyRows, showSummaryNote });
+    const resolved = resolveRecordSummary(r);
+    const showSummaryNote = tmpl?.mode === "standard" && !!resolved && keyRows.length > 0;
+    map.get(key)!.items.push({ item: r, keyRows, showSummaryNote, summary: resolved });
   }
   return [...map.entries()].sort((a, b) => b[0].localeCompare(a[0])).map(([, v]) => v);
 });
@@ -359,12 +365,6 @@ function clearSearch() {
   void loadRecords(true);
 }
 
-function formatDate(iso: string) {
-  const d = iso.slice(0, 10);
-  const [, m, day] = d.split("-");
-  return `${Number(m)} 月 ${Number(day)} 日`;
-}
-
 function openRecord(id: number) {
   uni.navigateTo({ url: `/pages/baby/record-edit?id=${id}&baby_id=${babyId.value}` });
 }
@@ -429,23 +429,20 @@ function openRecord(id: number) {
   font-weight: 500;
 }
 
-.filter-scroll {
+.filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
   width: 100%;
 }
 
-.filter-scroll--types {
+.filter-row--phase {
+  margin-top: 12rpx;
+}
+
+.filter-row--types {
   margin-top: 4rpx;
-}
-
-.filter-scroll--types .filter-inner {
-  padding-bottom: 14rpx;
-}
-
-.filter-inner {
-  display: flex;
-  gap: 12rpx;
-  padding-bottom: 14rpx;
-  white-space: nowrap;
+  padding-bottom: 6rpx;
 }
 
 .filter-chip {
@@ -455,7 +452,6 @@ function openRecord(id: number) {
   border-radius: $cj-radius-pill;
   border: 1rpx solid $cj-border-faint;
   background: $cj-surface;
-  flex-shrink: 0;
   transition: all 0.15s;
 
   &.active {

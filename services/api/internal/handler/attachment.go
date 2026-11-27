@@ -168,6 +168,17 @@ func (h *Handler) ListBabyAttachments(c *gin.Context) {
 		return
 	}
 
+	// 成长相册只展示与宝宝当前阶段一致的图片：已出生则不再混入孕期检查单
+	var baby model.Baby
+	if err := h.DB.First(&baby, babyID).Error; err != nil {
+		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		return
+	}
+	stage := "prenatal"
+	if baby.BirthDate != nil {
+		stage = "postnatal"
+	}
+
 	limit, _ := strconv.Atoi(c.DefaultQuery("limit", "40"))
 	if limit <= 0 || limit > 100 {
 		limit = 40
@@ -188,7 +199,7 @@ func (h *Handler) ListBabyAttachments(c *gin.Context) {
 	q := h.DB.Table("attachments AS a").
 		Select("a.id, a.url, a.thumb_url, a.created_at, r.id AS record_id, r.record_type, r.occurred_at, r.summary").
 		Joins("INNER JOIN records AS r ON r.id = a.owner_id AND a.owner_type = ?", "baby_record").
-		Where("r.baby_id = ?", babyID).
+		Where("r.baby_id = ? AND r.phase = ?", babyID, stage).
 		Order("a.created_at DESC, a.id DESC")
 
 	if cursor != "" {

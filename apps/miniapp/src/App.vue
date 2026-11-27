@@ -66,3 +66,13 @@ onHide(() => {
   console.log("App Hide");
 });
 </script>
+
+<style>
+/* #ifdef H5 */
+/* H5 预览专用：pages.json 里为兼容 uni-h5 保留了单 tab 配置，这里把它藏掉，
+   让浏览器预览与小程序真实观感一致（小程序端不生成 tabBar）。 */
+uni-tabbar {
+  display: none !important;
+}
+/* #endif */
+</style>

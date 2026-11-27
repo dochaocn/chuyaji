@@ -1,6 +1,6 @@
 import { defineStore } from "pinia";
 import { request } from "@/api/http";
-import { isDevWechatLogin } from "@/api/config";
+import { isDevWechatLogin, devToken } from "@/api/config";
 import { useSessionStore } from "@/store/session";
 import { clearWeChatLoginCodeCache, getWeChatLoginCode } from "@/utils/wechatLoginCode";
 
@@ -35,6 +35,9 @@ export const useAuthStore = defineStore("auth", {
       } catch {}
     },
     loadToken() {
+      // 开发态注入的 JWT 优先，且写回 storage，保证 http 层与 store 用同一个 token
+      const injected = devToken();
+      if (injected) this.setToken(injected);
       try {
         const t = uni.getStorageSync("chuyaji_token") as string;
         if (t) {

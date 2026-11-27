@@ -20,7 +20,12 @@
           <text class="hero-count">{{ memberCount }} 位成员</text>
           <view class="hero-role-pill">{{ roleLabel }}</view>
         </view>
-        <text class="hero-desc">一起记录宝宝与宝妈的成长点滴</text>
+        <view class="hero-ident" @click="editMyIdentity">
+          <text class="hero-ident-label">我的身份</text>
+          <text :class="['hero-ident-value', !myNickname && 'hero-ident-value--empty']">{{ myNickname || "未设置" }}</text>
+          <text class="hero-ident-action">{{ myNickname ? "修改" : "去设置" }} ›</text>
+        </view>
+        <text class="hero-desc">一起记录宝宝的成长点滴</text>
       </view>
 
       <view class="panel">
@@ -156,6 +161,8 @@ const myUserId = computed(() => auth.userId || family.value?.my_user_id || 0);
 const isOwner = computed(() => family.value?.my_role === "owner");
 const roleLabel = computed(() => roleText(family.value?.my_role || session.familyRole || "owner"));
 const memberCount = computed(() => family.value?.members?.length || 0);
+const myMember = computed(() => family.value?.members?.find((m) => m.user_id === myUserId.value) || null);
+const myNickname = computed(() => String(myMember.value?.nickname || "").trim());
 const canLeave = computed(() => {
   if (!family.value) return false;
   if (family.value.my_role !== "owner") return true;
@@ -261,6 +268,7 @@ async function load() {
       auth.setUserId(family.value.my_user_id);
     }
     session.setFamilyMeta(family.value.id, family.value.my_role);
+    syncSessionIdentity();
   } catch (e: any) {
     const msg = String(e?.message || "");
     if (msg.includes("404") && msg.includes("no family")) {
@@ -279,6 +287,7 @@ async function createFamily() {
     family.value = await apiCreateCurrentFamily();
     noFamily.value = false;
     session.setFamilyMeta(family.value.id, family.value.my_role);
+    syncSessionIdentity();
     uni.showToast({ title: "家庭已创建", icon: "success" });
   } catch (e: any) {
     uni.showToast({ title: e?.message || "创建失败", icon: "none" });
@@ -320,6 +329,21 @@ function pickRoleLabel(role: FamilyRole) {
   return getRoleMeta(role).text;
 }
 
+function editMyIdentity() {
+  const self = myMember.value;
+  if (!self) {
+    uni.showToast({ title: "未找到我的成员信息", icon: "none" });
+    return;
+  }
+  editMemberNickname(self);
+}
+
+/** 我的昵称即「我的身份」，同步到全局，首页顶部直接展示 */
+function syncSessionIdentity() {
+  const self = family.value?.members?.find((m) => m.user_id === myUserId.value);
+  session.setMyNickname(String(self?.nickname || "").trim());
+}
+
 function editMemberNickname(m: FamilyMember) {
   const isSelf = m.user_id === myUserId.value;
   uni.showModal({
@@ -337,6 +361,7 @@ function editMemberNickname(m: FamilyMember) {
       try {
         if (isSelf) {
           await apiPatchMe({ nickname });
+          session.setMyNickname(nickname);
           await load();
         } else {
           family.value = await apiPatchFamilyMemberNickname(m.user_id, nickname);
@@ -531,6 +556,48 @@ onShareAppMessage(() => {
   font-size: 24rpx;
   color: $cj-text-muted;
   line-height: 1.5;
+}
+
+.hero-ident {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  margin-top: 14rpx;
+  padding: 10rpx 16rpx;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1rpx solid $cj-border-faint;
+  border-radius: $cj-radius-md;
+
+  &:active {
+    background: rgba(201, 107, 92, 0.06);
+  }
+}
+
+.hero-ident-label {
+  font-size: 22rpx;
+  color: $cj-text-muted;
+}
+
+.hero-ident-value {
+  padding: 2rpx 14rpx;
+  border-radius: $cj-radius-pill;
+  font-size: 23rpx;
+  font-weight: 600;
+  color: $cj-primary-dark;
+  background: $cj-primary-soft;
+}
+
+.hero-ident-value--empty {
+  padding: 0;
+  font-weight: 500;
+  color: $cj-text-muted;
+  background: transparent;
+}
+
+.hero-ident-action {
+  margin-left: auto;
+  font-size: 21rpx;
+  color: $cj-primary;
 }
 
 .panel {
