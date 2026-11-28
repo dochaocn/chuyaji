@@ -1,5 +1,8 @@
 export const API_BASE = import.meta.env.VITE_CHUYAJI_API_BASE || "http://127.0.0.1:8282";
 
+const familyFeaturesValue = String(import.meta.env.VITE_SHOW_FAMILY_FEATURES || "").toLowerCase();
+export const SHOW_FAMILY_FEATURES = ["true", "1", "yes"].includes(familyFeaturesValue);
+
 export function isDevWechatLogin(): boolean {
   const v = import.meta.env.VITE_DEV_WECHAT_LOGIN;
   return v === "true" || v === "1" || v === "yes";

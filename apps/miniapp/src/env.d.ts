@@ -2,6 +2,7 @@
 
 interface ImportMetaEnv {
   readonly VITE_CHUYAJI_API_BASE: string;
+  readonly VITE_SHOW_FAMILY_FEATURES?: string;
   readonly VITE_DEV_WECHAT_LOGIN?: string;
   readonly VITE_CHUYAJI_DEV_TOKEN?: string;
 }

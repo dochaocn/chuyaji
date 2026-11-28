@@ -6,8 +6,8 @@
           <text :class="['wb-name', !name && 'wb-name--solo']" @click="onNameTap">{{ name || stageTitle }}</text>
           <text v-if="canSwitch" class="wb-switch" @click="onNameTap">切换 ▾</text>
           <text v-if="badgeLabel" :class="['wb-badge', badgeClass]">{{ badgeLabel }}</text>
-          <text v-if="identityLabel" class="wb-ident">· {{ identityLabel }}</text>
-          <text v-else class="wb-ident wb-ident--empty" @click="$emit('identity')">设置身份 ›</text>
+          <text v-if="showFamilyFeatures && identityLabel" class="wb-ident">· {{ identityLabel }}</text>
+          <text v-else-if="showFamilyFeatures" class="wb-ident wb-ident--empty" @click="$emit('identity')">设置身份 ›</text>
         </view>
         <text v-if="name" class="wb-stage">{{ stageTitle }}</text>
       </view>
@@ -17,7 +17,7 @@
           <text class="wb-btn-icon">{{ profileIcon }}</text>
           <text class="wb-btn-text">{{ shortProfileLabel }}</text>
         </view>
-        <view class="wb-btn" @click="$emit('family')">
+        <view v-if="showFamilyFeatures" class="wb-btn" @click="$emit('family')">
           <text class="wb-btn-icon">👨‍👩‍👧</text>
           <text class="wb-btn-text">家人</text>
         </view>
@@ -28,6 +28,9 @@
 
 <script setup lang="ts">
 import { computed } from "vue";
+import { SHOW_FAMILY_FEATURES } from "@/api/config";
+
+const showFamilyFeatures = SHOW_FAMILY_FEATURES;
 
 const props = withDefaults(
   defineProps<{

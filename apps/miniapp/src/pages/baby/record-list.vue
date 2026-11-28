@@ -3,15 +3,25 @@
 
     
     <view class="filter-bar">
-      <view class="search-row">
-        <input v-model="searchText" class="search-input" placeholder="搜索关键词" confirm-type="search" />
-        <picker mode="date" :value="fromDate" @change="(e) => onDateChange('from', e.detail.value)">
-          <view :class="['date-chip', !fromDate && 'date-chip--empty']">{{ fromDate || "开始日期" }}</view>
-        </picker>
-        <picker mode="date" :value="toDate" @change="(e) => onDateChange('to', e.detail.value)">
-          <view :class="['date-chip', !toDate && 'date-chip--empty']">{{ toDate || "结束日期" }}</view>
-        </picker>
-        <view v-if="fromDate || toDate || searchText" class="date-clear" @click="clearSearch">清除</view>
+      <view class="date-row">
+        <view
+          v-for="option in quickDateOptions"
+          :key="option.value"
+          :class="['filter-chip', quickDateActive(option.value) && 'active']"
+          @click="selectQuickDate(option.value)"
+        >
+          <text class="filter-chip-text">{{ option.label }}</text>
+        </view>
+        <view class="date-range-picker">
+          <picker mode="date" :value="fromDate" @change="(e) => onDateChange('from', e.detail.value)">
+            <view :class="['date-range-value', !fromDate && 'date-range-value--empty']">{{ fromDate || "开始日期" }}</view>
+          </picker>
+          <text class="date-range-separator">至</text>
+          <picker mode="date" :value="toDate" @change="(e) => onDateChange('to', e.detail.value)">
+            <view :class="['date-range-value', !toDate && 'date-range-value--empty']">{{ toDate || "结束日期" }}</view>
+          </picker>
+        </view>
+        <view v-if="fromDate || toDate" class="date-clear" @click="clearDates">清除</view>
       </view>
       <view class="filter-row filter-row--phase">
         <view
@@ -98,7 +108,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
+import { computed, ref } from "vue";
 import { onLoad, onShow } from "@dcloudio/uni-app";
 import { apiGetBaby, apiListRecords, type RecordItem } from "@/api/chuyaji";
 import { isPostnatal } from "@/utils/gestation";
@@ -135,9 +145,12 @@ type PhaseChipValue = "all" | BabyPhase;
 /** 阶段单选：全部 / 怀孕期 / 成长期（chip 顺序随宝宝阶段调整） */
 const selectedPhase = ref<PhaseChipValue>("all");
 const selectedTypes = ref<Set<string>>(new Set());
-const searchText = ref("");
 const fromDate = ref("");
 const toDate = ref("");
+const quickDateOptions = [
+  { value: "today", label: "今日" },
+  { value: "yesterday", label: "昨日" },
+] as const;
 
 const phaseFilterOptions = computed(() => {
   const opts = BABY_PHASE_FILTER_OPTIONS;
@@ -216,10 +229,35 @@ function toggleTypeFilter(val: string) {
 }
 
 const emptyText = computed(() => {
-  if (searchText.value.trim()) return "没有找到匹配记录。";
   if (selectedPhase.value !== "all" || selectedTypes.value.size > 0 || fromDate.value || toDate.value) return "当前筛选下暂无记录。";
   return "还没有记录，回首页记一条吧。";
 });
+
+function dateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+function quickDateRange(value: "today" | "yesterday") {
+  const date = new Date();
+  if (value === "yesterday") date.setDate(date.getDate() - 1);
+  const day = dateInputValue(date);
+  return { from: day, to: day };
+}
+
+function quickDateActive(value: "today" | "yesterday") {
+  const range = quickDateRange(value);
+  return fromDate.value === range.from && toDate.value === range.to;
+}
+
+function selectQuickDate(value: "today" | "yesterday") {
+  const range = quickDateRange(value);
+  fromDate.value = range.from;
+  toDate.value = range.to;
+  void loadRecords(true);
+}
 
 async function primeDefaultFilters() {
   if (!babyId.value || filtersPrimed.value) return;
@@ -315,7 +353,6 @@ async function loadRecords(reset = false) {
       cursor: reset ? undefined : nextCursor.value,
       phase: selectedPhase.value === "all" ? undefined : selectedPhase.value,
       record_type: singleType,
-      q: searchText.value.trim() || undefined,
       from: fromDate.value || undefined,
       to: toDate.value || undefined,
     });
@@ -346,20 +383,13 @@ function onScrollToBottom() {
   loadRecords(false);
 }
 
-let searchTimer: ReturnType<typeof setTimeout> | null = null;
-watch(searchText, () => {
-  if (searchTimer) clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => void loadRecords(true), 400);
-});
-
 function onDateChange(which: "from" | "to", value: string) {
   if (which === "from") fromDate.value = value;
   else toDate.value = value;
   void loadRecords(true);
 }
 
-function clearSearch() {
-  searchText.value = "";
+function clearDates() {
   fromDate.value = "";
   toDate.value = "";
   void loadRecords(true);
@@ -388,27 +418,14 @@ function openRecord(id: number) {
   background: $cj-page-bg;
 }
 
-.search-row {
+.date-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10rpx;
   margin-bottom: 10rpx;
 }
 
-.search-input {
-  flex: 1;
-  min-width: 0;
-  box-sizing: border-box;
-  min-height: 68rpx;
-  padding: 0 24rpx;
-  border-radius: $cj-radius-pill;
-  background: $cj-surface;
-  border: 1rpx solid $cj-border-faint;
-  color: $cj-text;
-  font-size: 24rpx;
-}
-
-.date-chip,
 .date-clear {
   flex-shrink: 0;
   padding: 9rpx 16rpx;
@@ -420,8 +437,33 @@ function openRecord(id: number) {
   white-space: nowrap;
 }
 
-.date-chip--empty {
+.date-range-picker {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  justify-content: space-around;
+  gap: 12rpx;
+  padding: 9rpx 16rpx;
+  border-radius: $cj-radius-pill;
+  background: $cj-surface;
+  border: 1rpx solid $cj-border-faint;
+}
+
+.date-range-value {
+  color: $cj-text-secondary;
+  font-size: 21rpx;
+  white-space: nowrap;
+}
+
+.date-range-value--empty,
+.date-range-separator {
   color: $cj-text-muted;
+}
+
+.date-range-separator {
+  flex-shrink: 0;
+  font-size: 21rpx;
 }
 
 .date-clear {

@@ -37,7 +37,10 @@
       />
 
       <view v-if="!dashboard?.profile && !loading" class="empty-card">
-        <button class="main-btn" @click="goProfileEdit">创建宝宝档案</button>
+        <view class="empty-actions">
+          <button class="main-btn" @click="goProfileEdit">创建宝宝档案</button>
+          <button v-if="showFamilyFeatures" class="family-btn" @click="goFamily">家人</button>
+        </view>
       </view>
 
       <template v-else-if="dashboard?.profile">
@@ -55,18 +58,18 @@
                 <text>{{ feedingCount }} 次</text>
               </view>
             </view>
-            <view class="daily-card" @click="onDailyCardTap('sleep')">
-              <text class="daily-label">睡眠</text>
-              <text class="daily-main">{{ sleepTotalLabel }}</text>
-              <view class="daily-meta">
-                <text>{{ sleepCount }} 次</text>
-              </view>
-            </view>
             <view class="daily-card" @click="onDailyCardTap('diaper')">
               <text class="daily-label">排便</text>
               <text class="daily-main">{{ diaperTotalLabel }}</text>
               <view class="daily-meta">
                 <text>{{ diaperStatusLabel }}</text>
+              </view>
+            </view>
+            <view class="daily-card" @click="onDailyCardTap('sleep')">
+              <text class="daily-label">睡眠</text>
+              <text class="daily-main">{{ sleepTotalLabel }}</text>
+              <view class="daily-meta">
+                <text>{{ sleepCount }} 次</text>
               </view>
             </view>
           </view>
@@ -147,6 +150,7 @@
 <script setup lang="ts">
 import { onShow } from "@dcloudio/uni-app";
 import { computed, ref } from "vue";
+import { SHOW_FAMILY_FEATURES } from "@/api/config";
 import {
   apiBabyDashboard,
   apiCreateRecord,
@@ -177,6 +181,7 @@ import WorkbenchHeader from "@/components/WorkbenchHeader.vue";
 
 const auth = useAuthStore();
 const session = useSessionStore();
+const showFamilyFeatures = SHOW_FAMILY_FEATURES;
 const loading = ref(false);
 /** 首页展示用的身份；家庭接口同步失败时用 /me 的昵称兜底 */
 const identityLabel = ref("");
@@ -536,6 +541,28 @@ function goTimeline() {
   background: linear-gradient(160deg, $cj-primary-gradient-top 0%, $cj-primary-dark 100%);
   border-radius: $cj-radius-pill;
   box-shadow: $cj-shadow-soft;
+}
+
+.empty-actions {
+  display: flex;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.empty-actions .main-btn {
+  flex: 1;
+  min-width: 0;
+}
+
+.family-btn {
+  flex-shrink: 0;
+  margin-top: 8rpx;
+  padding: 20rpx 34rpx;
+  font-size: 28rpx;
+  color: $cj-primary-dark;
+  background: $cj-surface;
+  border: 1rpx solid $cj-border;
+  border-radius: $cj-radius-pill;
 }
 
 .panel {
