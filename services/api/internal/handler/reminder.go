@@ -197,7 +197,7 @@ func (h *Handler) PatchReminder(c *gin.Context) {
 		}
 		r.Status = *req.Status
 		if *req.Status == reminderStatusDone && r.DoneAt == nil {
-			now := time.Now()
+			now := shanghaiWall(time.Now())
 			r.DoneAt = &now
 		}
 		if *req.Status != reminderStatusDone {
@@ -205,11 +205,12 @@ func (h *Handler) PatchReminder(c *gin.Context) {
 		}
 	}
 	if req.DueAt != nil {
-		r.DueAt = *req.DueAt
+		r.DueAt = shanghaiWall(*req.DueAt)
 	}
 	if req.SnoozedUntil != nil {
-		r.SnoozedUntil = req.SnoozedUntil
-		r.DueAt = *req.SnoozedUntil
+		until := shanghaiWall(*req.SnoozedUntil)
+		r.SnoozedUntil = &until
+		r.DueAt = until
 	}
 	if req.Note != nil {
 		r.Note = *req.Note
@@ -278,6 +279,7 @@ func (h *Handler) upsertSourceReminder(db *gorm.DB, uid uint64, ownerType string
 	if !ok {
 		return h.deleteSourceReminder(db, sourceType, sourceID)
 	}
+	dueAt = shanghaiWall(dueAt)
 	var r model.Reminder
 	err := db.Where("source_type = ? AND source_id = ?", sourceType, sourceID).First(&r).Error
 	if errors.Is(err, gorm.ErrRecordNotFound) {

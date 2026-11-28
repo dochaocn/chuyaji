@@ -150,6 +150,7 @@ func (h *Handler) ListRecords(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "bad cursor"})
 			return
 		}
+		t = shanghaiWall(t)
 		q = q.Where("(occurred_at < ?) OR (occurred_at = ? AND id < ?)", t, t, id)
 	}
 
@@ -256,7 +257,7 @@ func (h *Handler) CreateRecord(c *gin.Context) {
 		BabyID:     babyID,
 		Phase:      req.Phase,
 		RecordType: req.RecordType,
-		OccurredAt: req.OccurredAt.UTC(),
+		OccurredAt: shanghaiWall(req.OccurredAt),
 		Summary:    req.Summary,
 		Payload:    payload,
 	}
@@ -347,7 +348,7 @@ func (h *Handler) PatchRecord(c *gin.Context) {
 			r.RecordType = *req.RecordType
 		}
 		if req.OccurredAt != nil {
-			r.OccurredAt = req.OccurredAt.UTC()
+			r.OccurredAt = shanghaiWall(*req.OccurredAt)
 		}
 		if req.Summary != nil {
 			r.Summary = *req.Summary

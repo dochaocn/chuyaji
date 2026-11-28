@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/dochaocn/chuyaji/services/api/internal/model"
+	"github.com/dochaocn/chuyaji/services/api/internal/store"
 	"github.com/gin-gonic/gin"
 	"github.com/glebarez/sqlite"
 	"gorm.io/datatypes"
@@ -18,10 +19,11 @@ func TestShanghaiDayBounds(t *testing.T) {
 	if date != "2026-11-28" {
 		t.Fatalf("date = %s", date)
 	}
-	wantStart := time.Date(2026, 11, 27, 16, 0, 0, 0, time.UTC)
-	wantEnd := time.Date(2026, 11, 28, 16, 0, 0, 0, time.UTC)
-	if !start.Equal(wantStart) || !end.Equal(wantEnd) {
-		t.Fatalf("bounds %s .. %s", start.Format(time.RFC3339), end.Format(time.RFC3339))
+	if start.Format(time.RFC3339) != "2026-11-28T00:00:00+08:00" {
+		t.Fatalf("start = %s", start.Format(time.RFC3339))
+	}
+	if end.Format(time.RFC3339) != "2026-11-29T00:00:00+08:00" {
+		t.Fatalf("end = %s", end.Format(time.RFC3339))
 	}
 }
 
@@ -34,50 +36,33 @@ func TestParseQueryDateTimeShanghaiDate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !start.Equal(time.Date(2026, 11, 27, 16, 0, 0, 0, time.UTC)) {
+	if start.Format(time.RFC3339) != "2026-11-28T00:00:00+08:00" {
 		t.Fatalf("from = %s", start.Format(time.RFC3339))
 	}
-	if !end.Equal(time.Date(2026, 11, 28, 16, 0, 0, 0, time.UTC)) {
+	if end.Format(time.RFC3339) != "2026-11-29T00:00:00+08:00" {
 		t.Fatalf("to = %s", end.Format(time.RFC3339))
 	}
 
-	abs, err := parseQueryDateTime("2026-11-28T01:30:00+08:00", false)
+	abs, err := parseQueryDateTime("2026-11-27T17:30:00Z", false)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !abs.Equal(time.Date(2026, 11, 27, 17, 30, 0, 0, time.UTC)) {
+	if abs.Format(time.RFC3339) != "2026-11-28T01:30:00+08:00" {
 		t.Fatalf("rfc3339 = %s", abs.Format(time.RFC3339))
 	}
 }
 
 func TestBabyDailySummaryUsesShanghaiDay(t *testing.T) {
-	db, err := gorm.Open(sqlite.Open("file:shanghai-day-test?mode=memory&cache=shared"), &gorm.Config{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	sqlDB, err := db.DB()
-	if err != nil {
-		t.Fatal(err)
-	}
-	sqlDB.SetMaxOpenConns(1)
-	if err := db.AutoMigrate(&model.Record{}); err != nil {
-		t.Fatal(err)
-	}
+	db := openShanghaiTestDB(t)
 	loc := shanghaiLocation()
 	const babyID = 7
 	rows := []model.Record{
-		// 上海 11-28 01:30，按 UTC 文本存储（客户端 toISOString 的常见形态）
-		{BabyID: babyID, Phase: "postnatal", RecordType: "feeding", OccurredAt: time.Date(2026, 11, 28, 1, 30, 0, 0, loc).UTC(), Payload: datatypes.JSON([]byte(`{"amount_ml":120}`))},
-		// 同一天 23:30，以 +08 墙钟写入，文本偏移不同但瞬间正确
+		{BabyID: babyID, Phase: "postnatal", RecordType: "feeding", OccurredAt: time.Date(2026, 11, 28, 1, 30, 0, 0, loc), Payload: datatypes.JSON([]byte(`{"amount_ml":120}`))},
 		{BabyID: babyID, Phase: "postnatal", RecordType: "feeding", OccurredAt: time.Date(2026, 11, 28, 23, 30, 0, 0, loc), Payload: datatypes.JSON([]byte(`{"amount_ml":80}`))},
-		// 次日凌晨，不应计入 11-28
-		{BabyID: babyID, Phase: "postnatal", RecordType: "feeding", OccurredAt: time.Date(2026, 11, 29, 1, 30, 0, 0, loc).UTC(), Payload: datatypes.JSON([]byte(`{"amount_ml":50}`))},
-		// 前一天晚上
-		{BabyID: babyID, Phase: "postnatal", RecordType: "sleep", OccurredAt: time.Date(2026, 11, 27, 23, 0, 0, 0, loc).UTC(), Payload: datatypes.JSON([]byte(`{"duration_min":40}`))},
-		// 当天睡眠
-		{BabyID: babyID, Phase: "postnatal", RecordType: "sleep", OccurredAt: time.Date(2026, 11, 28, 8, 0, 0, 0, loc).UTC(), Payload: datatypes.JSON([]byte(`{"duration_min":90}`))},
-		// 怀孕期同刻，不进今日汇总
-		{BabyID: babyID, Phase: "prenatal", RecordType: "feeding", OccurredAt: time.Date(2026, 11, 28, 12, 0, 0, 0, loc).UTC(), Payload: datatypes.JSON([]byte(`{"amount_ml":999}`))},
+		{BabyID: babyID, Phase: "postnatal", RecordType: "feeding", OccurredAt: time.Date(2026, 11, 29, 1, 30, 0, 0, loc), Payload: datatypes.JSON([]byte(`{"amount_ml":50}`))},
+		{BabyID: babyID, Phase: "postnatal", RecordType: "sleep", OccurredAt: time.Date(2026, 11, 27, 23, 0, 0, 0, loc), Payload: datatypes.JSON([]byte(`{"duration_min":40}`))},
+		{BabyID: babyID, Phase: "postnatal", RecordType: "sleep", OccurredAt: time.Date(2026, 11, 28, 8, 0, 0, 0, loc), Payload: datatypes.JSON([]byte(`{"duration_min":90}`))},
+		{BabyID: babyID, Phase: "prenatal", RecordType: "feeding", OccurredAt: time.Date(2026, 11, 28, 12, 0, 0, 0, loc), Payload: datatypes.JSON([]byte(`{"amount_ml":999}`))},
 	}
 	for i := range rows {
 		if err := db.Create(&rows[i]).Error; err != nil {
@@ -100,13 +85,12 @@ func TestBabyDailySummaryUsesShanghaiDay(t *testing.T) {
 		t.Fatalf("sleep = %#v", sleep)
 	}
 
-	// 管理端按日分桶也必须落在上海日历日，而不是 UTC 日期。
 	var buckets []dailyCount
 	dayExpr := shanghaiCalendarDateExpr("occurred_at")
 	since := shanghaiStatsSince(now, 2)
 	if err := db.Model(&model.Record{}).
 		Select(dayExpr+" as date, count(*) as baby_records").
-		Where("datetime(occurred_at) >= datetime(?) AND phase = ?", since, "postnatal").
+		Where("occurred_at >= ? AND phase = ?", since, "postnatal").
 		Group(dayExpr).
 		Order("date ASC").
 		Scan(&buckets).Error; err != nil {
@@ -119,4 +103,70 @@ func TestBabyDailySummaryUsesShanghaiDay(t *testing.T) {
 	if got["2026-11-27"] != 1 || got["2026-11-28"] != 3 || got["2026-11-29"] != 1 {
 		t.Fatalf("buckets = %#v", got)
 	}
+}
+
+func TestNormalizeUTCTextIntoShanghaiDay(t *testing.T) {
+	db := openShanghaiTestDB(t)
+	loc := shanghaiLocation()
+	instant := time.Date(2026, 11, 28, 1, 30, 0, 0, loc)
+	row := model.Record{
+		BabyID: 1, Phase: "postnatal", RecordType: "feeding",
+		OccurredAt: instant.UTC(),
+		Payload:    datatypes.JSON([]byte(`{"amount_ml":30}`)),
+	}
+	if err := db.Create(&row).Error; err != nil {
+		t.Fatal(err)
+	}
+	start, end, _ := shanghaiDayBounds(instant)
+	var before int64
+	if err := db.Model(&model.Record{}).Where("occurred_at >= ? AND occurred_at < ?", start, end).Count(&before).Error; err != nil {
+		t.Fatal(err)
+	}
+	if before != 0 {
+		t.Fatalf("utc text matched shanghai bounds: %d", before)
+	}
+	if err := store.NormalizeTimesToShanghai(db); err != nil {
+		t.Fatal(err)
+	}
+	var raw string
+	if err := db.Raw(`SELECT quote(occurred_at) FROM records WHERE id = ?`, row.ID).Scan(&raw).Error; err != nil {
+		t.Fatal(err)
+	}
+	if raw != "'2026-11-28 01:30:00+08:00'" {
+		t.Fatalf("stored = %s", raw)
+	}
+	var after int64
+	if err := db.Model(&model.Record{}).Where("occurred_at >= ? AND occurred_at < ?", start, end).Count(&after).Error; err != nil {
+		t.Fatal(err)
+	}
+	if after != 1 {
+		t.Fatalf("after normalize count = %d", after)
+	}
+	if err := store.NormalizeTimesToShanghai(db); err != nil {
+		t.Fatal(err)
+	}
+	var again string
+	if err := db.Raw(`SELECT quote(occurred_at) FROM records WHERE id = ?`, row.ID).Scan(&again).Error; err != nil {
+		t.Fatal(err)
+	}
+	if again != raw {
+		t.Fatalf("second pass changed %s -> %s", raw, again)
+	}
+}
+
+func openShanghaiTestDB(t *testing.T) *gorm.DB {
+	t.Helper()
+	db, err := gorm.Open(sqlite.Open("file:"+t.Name()+"?mode=memory&cache=shared"), &gorm.Config{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDB, err := db.DB()
+	if err != nil {
+		t.Fatal(err)
+	}
+	sqlDB.SetMaxOpenConns(1)
+	if err := db.AutoMigrate(&model.Record{}); err != nil {
+		t.Fatal(err)
+	}
+	return db
 }

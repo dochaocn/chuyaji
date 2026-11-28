@@ -134,7 +134,7 @@ func (h *Handler) buildBabyDailySummaryAt(babyID uint64, now time.Time) gin.H {
 
 	var rows []model.Record
 	if err := h.DB.Where(
-		"baby_id = ? AND phase = ? AND record_type IN ? AND datetime(occurred_at) >= datetime(?) AND datetime(occurred_at) < datetime(?)",
+		"baby_id = ? AND phase = ? AND record_type IN ? AND occurred_at >= ? AND occurred_at < ?",
 		babyID, "postnatal", []string{"feeding", "sleep", "diaper"}, dayStart, dayEnd,
 	).Find(&rows).Error; err == nil {
 		for i := range rows {

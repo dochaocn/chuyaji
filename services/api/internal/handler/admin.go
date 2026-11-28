@@ -594,7 +594,7 @@ func (h *Handler) AdminReminderStats(c *gin.Context) {
 	}
 
 	var overdueCount int64
-	h.DB.Model(&model.Reminder{}).Where("status = ? AND due_at < ?", "pending", time.Now()).Count(&overdueCount)
+	h.DB.Model(&model.Reminder{}).Where("status = ? AND due_at < ?", "pending", shanghaiWall(time.Now())).Count(&overdueCount)
 
 	c.JSON(http.StatusOK, reminderStatsOut{
 		Total:        total,
@@ -629,7 +629,7 @@ func (h *Handler) AdminAnalyticsRecords(c *gin.Context) {
 	var babyRows []dailyCount
 	h.DB.Model(&model.Record{}).
 		Select(dayExpr+" as date, count(*) as baby_records").
-		Where("datetime(occurred_at) >= datetime(?)", since).
+		Where("occurred_at >= ?", since).
 		Group(dayExpr).
 		Order("date ASC").
 		Scan(&babyRows)
@@ -640,7 +640,7 @@ func (h *Handler) AdminAnalyticsRecords(c *gin.Context) {
 	}
 	h.DB.Model(&model.MotherRecord{}).
 		Select(dayExpr+" as date, count(*) as mother_records").
-		Where("datetime(occurred_at) >= datetime(?)", since).
+		Where("occurred_at >= ?", since).
 		Group(dayExpr).
 		Order("date ASC").
 		Scan(&motherRows)
@@ -660,7 +660,7 @@ func (h *Handler) AdminAnalyticsRecords(c *gin.Context) {
 	var typeDist []typeCount
 	h.DB.Model(&model.Record{}).
 		Select("record_type, count(*) as count").
-		Where("datetime(occurred_at) >= datetime(?)", since).
+		Where("occurred_at >= ?", since).
 		Group("record_type").
 		Order("count DESC").
 		Scan(&typeDist)
@@ -687,7 +687,7 @@ func (h *Handler) AdminAnalyticsActivity(c *gin.Context) {
 		SELECT `+dayExpr+` as date, COUNT(DISTINCT b.user_id) as count
 		FROM records r
 		JOIN babies b ON b.id = r.baby_id
-		WHERE datetime(r.occurred_at) >= datetime(?)
+		WHERE r.occurred_at >= ?
 		GROUP BY `+dayExpr+`
 		ORDER BY date ASC
 	`, since).Scan(&babyActive)
@@ -698,7 +698,7 @@ func (h *Handler) AdminAnalyticsActivity(c *gin.Context) {
 		SELECT `+dayExpr+` as date, COUNT(DISTINCT m.user_id) as count
 		FROM mother_records r
 		JOIN mothers m ON m.id = r.mother_id
-		WHERE datetime(r.occurred_at) >= datetime(?)
+		WHERE r.occurred_at >= ?
 		GROUP BY `+dayExpr+`
 		ORDER BY date ASC
 	`, since).Scan(&motherActive)
@@ -719,7 +719,7 @@ func (h *Handler) AdminAnalyticsActivity(c *gin.Context) {
 		SELECT `+dayExpr+` as date, b.user_id
 		FROM records r
 		JOIN babies b ON b.id = r.baby_id
-		WHERE datetime(r.occurred_at) >= datetime(?)
+		WHERE r.occurred_at >= ?
 		GROUP BY `+dayExpr+`, b.user_id
 	`, since).Scan(&babyUserDays)
 
@@ -731,7 +731,7 @@ func (h *Handler) AdminAnalyticsActivity(c *gin.Context) {
 		SELECT `+dayExpr+` as date, m.user_id
 		FROM mother_records r
 		JOIN mothers m ON m.id = r.mother_id
-		WHERE datetime(r.occurred_at) >= datetime(?)
+		WHERE r.occurred_at >= ?
 		GROUP BY `+dayExpr+`, m.user_id
 	`, since).Scan(&motherUserDays)
 
