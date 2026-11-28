@@ -134,7 +134,7 @@ func (h *Handler) ListRecords(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "bad from"})
 			return
 		}
-		q = q.Where("occurred_at >= ?", t)
+		q = whereInstantFrom(q, "occurred_at", t)
 	}
 	if to := c.Query("to"); to != "" {
 		t, err := parseQueryDateTime(to, true)
@@ -142,7 +142,7 @@ func (h *Handler) ListRecords(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "bad to"})
 			return
 		}
-		q = q.Where("occurred_at < ?", t)
+		q = whereInstantBefore(q, "occurred_at", t)
 	}
 	if cursor != "" {
 		t, id, err := decodeCursor(cursor)
@@ -256,7 +256,7 @@ func (h *Handler) CreateRecord(c *gin.Context) {
 		BabyID:     babyID,
 		Phase:      req.Phase,
 		RecordType: req.RecordType,
-		OccurredAt: req.OccurredAt,
+		OccurredAt: req.OccurredAt.UTC(),
 		Summary:    req.Summary,
 		Payload:    payload,
 	}
@@ -347,7 +347,7 @@ func (h *Handler) PatchRecord(c *gin.Context) {
 			r.RecordType = *req.RecordType
 		}
 		if req.OccurredAt != nil {
-			r.OccurredAt = *req.OccurredAt
+			r.OccurredAt = req.OccurredAt.UTC()
 		}
 		if req.Summary != nil {
 			r.Summary = *req.Summary
@@ -412,20 +412,4 @@ func (h *Handler) DeleteRecord(c *gin.Context) {
 		return
 	}
 	c.Status(http.StatusNoContent)
-}
-
-func parseQueryDateTime(raw string, exclusiveEnd bool) (time.Time, error) {
-	layouts := []string{time.RFC3339Nano, time.RFC3339, "2006-01-02"}
-	var lastErr error
-	for _, layout := range layouts {
-		t, err := time.Parse(layout, raw)
-		if err == nil {
-			if exclusiveEnd && layout == "2006-01-02" {
-				return t.AddDate(0, 0, 1), nil
-			}
-			return t, nil
-		}
-		lastErr = err
-	}
-	return time.Time{}, lastErr
 }

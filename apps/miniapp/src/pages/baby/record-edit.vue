@@ -161,6 +161,7 @@ import { ensureImageUnderMaxBytes } from "@/utils/imageCompress";
 import { resolvePublicMediaUrl } from "@/utils/mediaUrl";
 import { ACTIVE_POSTNATAL_TYPES, BABY_TEMPLATES, labelForType, type RecordTemplate, type TemplateField } from "@/utils/recordTypes";
 import { useSessionStore } from "@/store/session";
+import { shanghaiParts, shanghaiWallClockToISO } from "@/utils/datetime";
 
 const session = useSessionStore();
 
@@ -283,9 +284,12 @@ onLoad(async (query: Record<string, string | undefined>) => {
   recordId.value = Number(query.id || 0);
   if (query.phase === "prenatal" || query.phase === "postnatal") phase.value = query.phase;
   if (query.type) recordType.value = query.type;
-  const now = new Date();
-  occurredAt.value = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  occurredTime.value = `${String(now.getHours()).padStart(2, "0")}:${String(now.getMinutes()).padStart(2, "0")}`;
+  const nowParts = shanghaiParts(new Date());
+  if (nowParts) {
+    const pad = (n: number) => String(n).padStart(2, "0");
+    occurredAt.value = `${nowParts.y}-${pad(nowParts.m)}-${pad(nowParts.d)}`;
+    occurredTime.value = `${pad(nowParts.hh)}:${pad(nowParts.mm)}`;
+  }
   if (recordId.value) {
     await loadExisting();
     return;
@@ -315,14 +319,14 @@ async function loadExisting() {
     const item = await apiGetRecord(recordId.value);
     phase.value = item.phase;
     recordType.value = item.record_type;
-    const occurred = new Date(item.occurred_at);
-    if (Number.isNaN(occurred.getTime())) {
+    const occurred = shanghaiParts(item.occurred_at);
+    if (!occurred) {
       occurredAt.value = item.occurred_at.slice(0, 10);
       occurredTime.value = "00:00";
     } else {
       const pad = (n: number) => String(n).padStart(2, "0");
-      occurredAt.value = `${occurred.getFullYear()}-${pad(occurred.getMonth() + 1)}-${pad(occurred.getDate())}`;
-      occurredTime.value = `${pad(occurred.getHours())}:${pad(occurred.getMinutes())}`;
+      occurredAt.value = `${occurred.y}-${pad(occurred.m)}-${pad(occurred.d)}`;
+      occurredTime.value = `${pad(occurred.hh)}:${pad(occurred.mm)}`;
     }
     summary.value = item.summary || "";
     const pl = item.payload || {};
@@ -502,7 +506,7 @@ async function save() {
     const body = {
       phase: phase.value,
       record_type: recordType.value,
-      occurred_at: new Date(`${occurredAt.value}T${time}:00`).toISOString(),
+      occurred_at: shanghaiWallClockToISO(occurredAt.value, time),
       summary: finalSummary,
       payload,
     };

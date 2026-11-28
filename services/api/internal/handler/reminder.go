@@ -127,7 +127,7 @@ func (h *Handler) ListReminders(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "bad from"})
 			return
 		}
-		query = query.Where("due_at >= ?", t)
+		query = whereInstantFrom(query, "due_at", t)
 	}
 	if to := c.Query("to"); to != "" {
 		t, err := parseQueryDateTime(to, true)
@@ -135,7 +135,7 @@ func (h *Handler) ListReminders(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "bad to"})
 			return
 		}
-		query = query.Where("due_at < ?", t)
+		query = whereInstantBefore(query, "due_at", t)
 	}
 
 	var rows []model.Reminder

@@ -79,7 +79,7 @@ func (h *Handler) BabyDashboard(c *gin.Context) {
 		}
 	}
 
-	dailySummary := h.buildBabyDailySummary(baby.ID)
+	dailySummary := h.buildBabyDailySummaryAt(baby.ID, time.Now())
 
 	c.JSON(http.StatusOK, gin.H{
 		"profile":        babyToOut(&baby),
@@ -88,14 +88,6 @@ func (h *Handler) BabyDashboard(c *gin.Context) {
 		"growth_summary": growthSummary,
 		"daily_summary":  dailySummary,
 	})
-}
-
-func shanghaiLocation() *time.Location {
-	loc, err := time.LoadLocation("Asia/Shanghai")
-	if err != nil {
-		return time.FixedZone("CST", 8*3600)
-	}
-	return loc
 }
 
 func payloadFloat(payload map[string]any, key string) float64 {
@@ -129,12 +121,8 @@ func payloadFloat(payload map[string]any, key string) float64 {
 	}
 }
 
-func (h *Handler) buildBabyDailySummary(babyID uint64) gin.H {
-	loc := shanghaiLocation()
-	now := time.Now().In(loc)
-	dayStart := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, loc)
-	dayEnd := dayStart.AddDate(0, 0, 1)
-	dateStr := dayStart.Format("2006-01-02")
+func (h *Handler) buildBabyDailySummaryAt(babyID uint64, now time.Time) gin.H {
+	dayStart, dayEnd, dateStr := shanghaiDayBounds(now)
 
 	var feedCount, sleepCount, diaperCount int
 	var feedML, feedDur, sleepDur, diaperTimes float64
@@ -146,7 +134,7 @@ func (h *Handler) buildBabyDailySummary(babyID uint64) gin.H {
 
 	var rows []model.Record
 	if err := h.DB.Where(
-		"baby_id = ? AND phase = ? AND record_type IN ? AND occurred_at >= ? AND occurred_at < ?",
+		"baby_id = ? AND phase = ? AND record_type IN ? AND datetime(occurred_at) >= datetime(?) AND datetime(occurred_at) < datetime(?)",
 		babyID, "postnatal", []string{"feeding", "sleep", "diaper"}, dayStart, dayEnd,
 	).Find(&rows).Error; err == nil {
 		for i := range rows {
