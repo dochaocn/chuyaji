@@ -208,6 +208,7 @@ func (h *Handler) ListBabyAttachments(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "bad cursor"})
 			return
 		}
+		t = shanghaiWall(t)
 		q = q.Where("(a.created_at < ?) OR (a.created_at = ? AND a.id < ?)", t, t, id)
 	}
 

@@ -53,6 +53,7 @@ import {
   type RecordItem,
 } from "@/api/chuyaji";
 import { copyToClipboard, exportAllRecordsJson } from "@/utils/export";
+import { shanghaiMonthKey } from "@/utils/datetime";
 import { useSessionStore } from "@/store/session";
 
 const session = useSessionStore();
@@ -90,11 +91,8 @@ const weightAgeHint = computed(() => {
 });
 
 const monthlyCount = computed(() => {
-  const now = new Date();
-  return latestRecords.value.filter((r) => {
-    const d = new Date(r.occurred_at);
-    return d.getFullYear() === now.getFullYear() && d.getMonth() === now.getMonth();
-  }).length;
+  const month = shanghaiMonthKey(new Date());
+  return latestRecords.value.filter((r) => shanghaiMonthKey(r.occurred_at) === month).length;
 });
 
 const latestMilestone = computed(() => {

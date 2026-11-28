@@ -111,7 +111,7 @@ import {
   resolveRecordSummary,
   templateForType,
 } from "@/utils/recordTypes";
-import { formatDateTime } from "@/utils/datetime";
+import { formatDateTime, shanghaiMonthKey } from "@/utils/datetime";
 
 /** 首屏与每次触底加载条数 */
 const PAGE_SIZE = 30;
@@ -249,7 +249,7 @@ async function primeDefaultFilters() {
 const groupedRecords = computed(() => {
   const map = new Map<string, { label: string; items: BabyListEntry[] }>();
   for (const r of filteredRecords.value) {
-    const key = r.occurred_at.slice(0, 7);
+    const key = shanghaiMonthKey(r.occurred_at);
     if (!map.has(key)) {
       const [y, m] = key.split("-");
       map.set(key, { label: `${y} 年 ${Number(m)} 月`, items: [] });

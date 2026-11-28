@@ -68,26 +68,26 @@ func (h *Handler) AdminOverview(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"user_count":            userCount,
-		"baby_count":            babyCount,
-		"mother_count":          motherCount,
-		"record_count":          recordCount,
-		"mother_record_count":   motherRecordCount,
+		"user_count":             userCount,
+		"baby_count":             babyCount,
+		"mother_count":           motherCount,
+		"record_count":           recordCount,
+		"mother_record_count":    motherRecordCount,
 		"reminder_pending_count": reminderPendingCount,
-		"recent_users":          userOuts,
-		"recent_records":        recOuts,
+		"recent_users":           userOuts,
+		"recent_records":         recOuts,
 	})
 }
 
 // --- Users ---
 
 type adminUserItem struct {
-	ID          uint64 `json:"id"`
-	OpenID      string `json:"open_id"`
-	Nickname    string `json:"nickname"`
-	AvatarURL   string `json:"avatar_url"`
-	BabyCount   int64  `json:"baby_count"`
-	MotherCount int64  `json:"mother_count"`
+	ID          uint64    `json:"id"`
+	OpenID      string    `json:"open_id"`
+	Nickname    string    `json:"nickname"`
+	AvatarURL   string    `json:"avatar_url"`
+	BabyCount   int64     `json:"baby_count"`
+	MotherCount int64     `json:"mother_count"`
 	CreatedAt   time.Time `json:"created_at"`
 }
 
@@ -328,13 +328,13 @@ func (h *Handler) AdminListRecords(c *gin.Context) {
 	if from := c.Query("from"); from != "" {
 		t, err := parseQueryDateTime(from, false)
 		if err == nil {
-			q = q.Where("occurred_at >= ?", t)
+			q = whereInstantFrom(q, "occurred_at", t)
 		}
 	}
 	if to := c.Query("to"); to != "" {
 		t, err := parseQueryDateTime(to, true)
 		if err == nil {
-			q = q.Where("occurred_at < ?", t)
+			q = whereInstantBefore(q, "occurred_at", t)
 		}
 	}
 
@@ -414,13 +414,13 @@ func (h *Handler) AdminListMotherRecords(c *gin.Context) {
 	if from := c.Query("from"); from != "" {
 		t, err := parseQueryDateTime(from, false)
 		if err == nil {
-			q = q.Where("occurred_at >= ?", t)
+			q = whereInstantFrom(q, "occurred_at", t)
 		}
 	}
 	if to := c.Query("to"); to != "" {
 		t, err := parseQueryDateTime(to, true)
 		if err == nil {
-			q = q.Where("occurred_at < ?", t)
+			q = whereInstantBefore(q, "occurred_at", t)
 		}
 	}
 
@@ -552,11 +552,11 @@ func (h *Handler) AdminListReminders(c *gin.Context) {
 }
 
 type reminderStatsOut struct {
-	Total     int64            `json:"total"`
-	ByStatus  map[string]int64 `json:"by_status"`
-	ByCategory map[string]int64 `json:"by_category"`
-	ByOwnerType map[string]int64 `json:"by_owner_type"`
-	OverdueCount int64          `json:"overdue_count"`
+	Total        int64            `json:"total"`
+	ByStatus     map[string]int64 `json:"by_status"`
+	ByCategory   map[string]int64 `json:"by_category"`
+	ByOwnerType  map[string]int64 `json:"by_owner_type"`
+	OverdueCount int64            `json:"overdue_count"`
 }
 
 func (h *Handler) AdminReminderStats(c *gin.Context) {
@@ -594,7 +594,7 @@ func (h *Handler) AdminReminderStats(c *gin.Context) {
 	}
 
 	var overdueCount int64
-	h.DB.Model(&model.Reminder{}).Where("status = ? AND due_at < ?", "pending", time.Now()).Count(&overdueCount)
+	h.DB.Model(&model.Reminder{}).Where("status = ? AND due_at < ?", "pending", shanghaiWall(time.Now())).Count(&overdueCount)
 
 	c.JSON(http.StatusOK, reminderStatsOut{
 		Total:        total,
@@ -623,13 +623,14 @@ func (h *Handler) AdminAnalyticsRecords(c *gin.Context) {
 	if days <= 0 || days > 365 {
 		days = 30
 	}
-	since := time.Now().AddDate(0, 0, -days)
+	since := shanghaiStatsSince(time.Now(), days)
+	dayExpr := shanghaiCalendarDateExpr("occurred_at")
 
 	var babyRows []dailyCount
 	h.DB.Model(&model.Record{}).
-		Select("date(occurred_at) as date, count(*) as baby_records").
+		Select(dayExpr+" as date, count(*) as baby_records").
 		Where("occurred_at >= ?", since).
-		Group("date(occurred_at)").
+		Group(dayExpr).
 		Order("date ASC").
 		Scan(&babyRows)
 
@@ -638,9 +639,9 @@ func (h *Handler) AdminAnalyticsRecords(c *gin.Context) {
 		MotherRecords int64
 	}
 	h.DB.Model(&model.MotherRecord{}).
-		Select("date(occurred_at) as date, count(*) as mother_records").
+		Select(dayExpr+" as date, count(*) as mother_records").
 		Where("occurred_at >= ?", since).
-		Group("date(occurred_at)").
+		Group(dayExpr).
 		Order("date ASC").
 		Scan(&motherRows)
 
@@ -677,27 +678,28 @@ func (h *Handler) AdminAnalyticsActivity(c *gin.Context) {
 	if days <= 0 || days > 365 {
 		days = 30
 	}
-	since := time.Now().AddDate(0, 0, -days)
+	since := shanghaiStatsSince(time.Now(), days)
+	dayExpr := shanghaiCalendarDateExpr("r.occurred_at")
 
 	// Daily active users from baby records (via baby -> user_id)
 	var babyActive []activeUserCount
 	h.DB.Raw(`
-		SELECT date(r.occurred_at) as date, COUNT(DISTINCT b.user_id) as count
+		SELECT `+dayExpr+` as date, COUNT(DISTINCT b.user_id) as count
 		FROM records r
 		JOIN babies b ON b.id = r.baby_id
 		WHERE r.occurred_at >= ?
-		GROUP BY date(r.occurred_at)
+		GROUP BY `+dayExpr+`
 		ORDER BY date ASC
 	`, since).Scan(&babyActive)
 
 	// Daily active users from mother records (via mother -> user_id)
 	var motherActive []activeUserCount
 	h.DB.Raw(`
-		SELECT date(r.occurred_at) as date, COUNT(DISTINCT m.user_id) as count
+		SELECT `+dayExpr+` as date, COUNT(DISTINCT m.user_id) as count
 		FROM mother_records r
 		JOIN mothers m ON m.id = r.mother_id
 		WHERE r.occurred_at >= ?
-		GROUP BY date(r.occurred_at)
+		GROUP BY `+dayExpr+`
 		ORDER BY date ASC
 	`, since).Scan(&motherActive)
 
@@ -714,11 +716,11 @@ func (h *Handler) AdminAnalyticsActivity(c *gin.Context) {
 		UserID uint64
 	}
 	h.DB.Raw(`
-		SELECT date(r.occurred_at) as date, b.user_id
+		SELECT `+dayExpr+` as date, b.user_id
 		FROM records r
 		JOIN babies b ON b.id = r.baby_id
 		WHERE r.occurred_at >= ?
-		GROUP BY date(r.occurred_at), b.user_id
+		GROUP BY `+dayExpr+`, b.user_id
 	`, since).Scan(&babyUserDays)
 
 	var motherUserDays []struct {
@@ -726,11 +728,11 @@ func (h *Handler) AdminAnalyticsActivity(c *gin.Context) {
 		UserID uint64
 	}
 	h.DB.Raw(`
-		SELECT date(r.occurred_at) as date, m.user_id
+		SELECT `+dayExpr+` as date, m.user_id
 		FROM mother_records r
 		JOIN mothers m ON m.id = r.mother_id
 		WHERE r.occurred_at >= ?
-		GROUP BY date(r.occurred_at), m.user_id
+		GROUP BY `+dayExpr+`, m.user_id
 	`, since).Scan(&motherUserDays)
 
 	userDayMap := map[string]map[uint64]bool{}

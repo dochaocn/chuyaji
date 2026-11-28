@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/dochaocn/chuyaji/services/api/internal/model"
+	"github.com/dochaocn/chuyaji/services/api/internal/tz"
 	"github.com/glebarez/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -18,7 +19,8 @@ func Open(dbPath string) (*gorm.DB, error) {
 		return nil, fmt.Errorf("mkdir data dir: %w", err)
 	}
 	db, err := gorm.Open(sqlite.Open(dbPath), &gorm.Config{
-		Logger: logger.Default.LogMode(logger.Warn),
+		Logger:  logger.Default.LogMode(logger.Warn),
+		NowFunc: tz.Now,
 	})
 	if err != nil {
 		return nil, err
@@ -38,6 +40,9 @@ func Open(dbPath string) (*gorm.DB, error) {
 		return nil, err
 	}
 	if err := migrateEnsureFamilies(db); err != nil {
+		return nil, err
+	}
+	if err := NormalizeTimesToShanghai(db); err != nil {
 		return nil, err
 	}
 	return db, nil

@@ -289,7 +289,7 @@ func (h *Handler) ListMotherRecords(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "bad from"})
 			return
 		}
-		q = q.Where("occurred_at >= ?", t)
+		q = whereInstantFrom(q, "occurred_at", t)
 	}
 	if to := c.Query("to"); to != "" {
 		t, err := parseQueryDateTime(to, true)
@@ -297,7 +297,7 @@ func (h *Handler) ListMotherRecords(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "bad to"})
 			return
 		}
-		q = q.Where("occurred_at < ?", t)
+		q = whereInstantBefore(q, "occurred_at", t)
 	}
 	if cursor != "" {
 		t, id, err := decodeCursor(cursor)
@@ -305,6 +305,7 @@ func (h *Handler) ListMotherRecords(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "bad cursor"})
 			return
 		}
+		t = shanghaiWall(t)
 		q = q.Where("(occurred_at < ?) OR (occurred_at = ? AND id < ?)", t, t, id)
 	}
 
@@ -395,7 +396,7 @@ func (h *Handler) CreateMotherRecord(c *gin.Context) {
 	r := model.MotherRecord{
 		MotherID:   motherID,
 		RecordType: req.RecordType,
-		OccurredAt: req.OccurredAt,
+		OccurredAt: shanghaiWall(req.OccurredAt),
 		Summary:    req.Summary,
 		Payload:    payload,
 	}
@@ -473,7 +474,7 @@ func (h *Handler) PatchMotherRecord(c *gin.Context) {
 			r.RecordType = *req.RecordType
 		}
 		if req.OccurredAt != nil {
-			r.OccurredAt = *req.OccurredAt
+			r.OccurredAt = shanghaiWall(*req.OccurredAt)
 		}
 		if req.Summary != nil {
 			r.Summary = *req.Summary

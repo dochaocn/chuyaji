@@ -225,7 +225,7 @@ func (h *Handler) CreateFamilyInvite(c *gin.Context) {
 		FamilyID:  fam.ID,
 		Role:      req.Role,
 		InviterID: uid,
-		ExpiresAt: time.Now().Add(7 * 24 * time.Hour),
+		ExpiresAt: shanghaiWall(time.Now().Add(7 * 24 * time.Hour)),
 	}
 	if err := h.DB.Create(&inv).Error; err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "create"})
@@ -413,7 +413,7 @@ func (h *Handler) AcceptFamilyInvite(c *gin.Context) {
 		}
 	}
 
-	now := time.Now()
+	now := shanghaiWall(time.Now())
 	if err := h.DB.Transaction(func(tx *gorm.DB) error {
 		if hasExisting {
 			if err := detachUserFromFamilyForJoin(tx, uid, &existing); err != nil {
